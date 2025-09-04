@@ -1,0 +1,24 @@
+{
+    "initial_state": "init",
+    "state": "init",
+    "role": "user",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "init": [null, null, 0, true, 0.0],
+        "ready": ["check_messages", {"max_silence_seconds": 20.0, "talk_probability": 0.33, "history_len": 3}, 1, true, 0.0],
+        "message_sent": [null, null, 2, true, 0.0]
+    },
+    "transitions": {
+        "init": {
+            "ready": [["connect_to_broadcaster", {"role": "broadcaster"}, true, 0]]
+        },
+        "ready": {
+            "message_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": true}, false, 2]]
+        },
+        "message_sent": {
+            "ready": [["nop", {}, true, 3]]
+        }
+    },
+    "cur_action": null
+}

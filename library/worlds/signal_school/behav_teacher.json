@@ -1,0 +1,95 @@
+{
+    "initial_state": "init",
+    "state": "init",
+    "role": "teacher",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "looking_for_peers": [null, null, 0, true],
+        "looking_for_students": ["find_agents", {"role": "student"}, 1, true],
+        "student_found": [null, null, 2, 5.0],
+        "student_engaged": [null, null, 3, 5.0],
+        "teaching_time": [null, null, 4, true],
+        "lecture_in_progress": [null, null, 5, true],
+        "student_finished_following": [null, null, 6, 1.0],
+        "change_lecture": ["next_pref_stream", {}, 7, true],
+        "exam_time": [null, null, 8, true],
+        "exam_in_progress": [null, null, 9, true],
+        "student_finished_exam": [null, null, 10, 5.0],
+        "eval_time": ["evaluate", {"stream_hash": "<playlist>", "how": "mse", "steps": 1000}, 11, true],
+        "bad": [null, null, 12, true],
+        "good": ["next_pref_stream", {}, 13, true],
+        "finished_work": [null, null, 14, true],
+        "init": [null, null, 15, true],
+        "hard_exam_in_progress": [null, null, 16, true],
+        "eval_time_again": ["evaluate", {"stream_hash": "<agent>:squLfLa", "how": "mse", "steps": 1000}, 17, true],
+        "very_good": [null, null, 18, true],
+        "not_good": [null, null, 19, true]
+    },
+    "transitions": {
+        "looking_for_peers": {
+            "looking_for_students": [["connect_by_role", {"role": "student"}, true, 4]]
+        },
+        "looking_for_students": {
+            "student_found": [["send_engagement", {}, true, 5]],
+            "looking_for_peers": [["nop", {}, true, 6]]
+        },
+        "student_found": {
+            "looking_for_students": [["nop", {}, true, 7]],
+            "student_engaged": [["got_engagement", {}, false, 8]]
+        },
+        "student_engaged": {
+            "student_engaged": [["got_engagement", {}, false, 9]],
+            "teaching_time": [["nop", {}, true, 10]]
+        },
+        "teaching_time": {
+            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": 1000, "timeout": 5.0}, true, 11]]
+        },
+        "lecture_in_progress": {
+            "student_finished_following": [["done_learn", {}, false, 12]]
+        },
+        "student_finished_following": {
+            "student_finished_following": [["done_learn", {}, false, 13]],
+            "change_lecture": [["nop", {}, true, 14]]
+        },
+        "change_lecture": {
+            "teaching_time": [["check_pref_stream", {"what": "not_last_round"}, true, 15]],
+            "exam_time": [["check_pref_stream", {"what": "last_round"}, true, 16]]
+        },
+        "exam_time": {
+            "exam_in_progress": [["ask_gen", {"u_hashes": ["<playlist>"], "samples": 1000, "timeout": 5.0}, true, 17]]
+        },
+        "exam_in_progress": {
+            "student_finished_exam": [["done_gen", {}, false, 18]]
+        },
+        "student_finished_exam": {
+            "student_finished_exam": [["done_gen", {}, false, 19]],
+            "eval_time": [["nop", {}, true, 20]]
+        },
+        "eval_time": {
+            "good": [["compare_eval", {"cmp": "<=", "thres": 0.2}, true, 21]],
+            "bad": [["nop", {"message": "The evaluation was not passed"}, true, 22]]
+        },
+        "good": {
+            "exam_time": [["check_pref_stream", {"what": "not_first"}, true, 23]],
+            "finished_work": [["check_pref_stream", {"what": "first"}, true, 24]]
+        },
+        "bad": {
+            "teaching_time": [["first_pref_stream", {}, true, 25]]
+        },
+        "finished_work": {
+            "hard_exam_in_progress": [["ask_gen", {"u_hashes": ["<agent>:squLfLa"], "samples": 1000, "timeout": 5.0}, true, 27]]
+        },
+        "init": {
+            "looking_for_peers": [["set_pref_streams", {"net_hashes": ["<agent>:smoHfHa", "<agent>:smoHfLa", "<agent>:smoLfHa", "<agent>:smoLfLa", "<agent>:squHfHa", "<agent>:squHfLa", "<agent>:squLfHa"], "repeat": 4}, true, 26]]
+        },
+        "hard_exam_in_progress": {
+            "eval_time_again": [["done_gen", {}, false, 28]]
+        },
+        "eval_time_again": {
+            "very_good": [["compare_eval", {"cmp": "<=", "thres": 0.2}, true, 30]],
+            "not_good": [["nop", {}, true, 31]]
+        }
+    },
+    "cur_action": null
+}

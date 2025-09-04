@@ -1,0 +1,16 @@
+{
+    "initial_state": "ready",
+    "state": "ready",
+    "role": "broadcaster",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "ready": [null, null, 0, true, 0.0]
+    },
+    "transitions": {
+        "ready": {
+            "ready": [["do_gen", {"timeout": 3.0}, false, 0]]
+        }
+    },
+    "cur_action": null
+}

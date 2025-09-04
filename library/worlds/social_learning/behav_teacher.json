@@ -1,0 +1,103 @@
+{
+    "initial_state": "init",
+    "state": "init",
+    "role": "teacher",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "searching": ["disconnect_by_role", {"role": ["student", "student_isolated"]}, 0, false, 5.0],
+        "connected": [null, null, 1, true, 0.0],
+        "can_engage": [null, null, 2, false, 0.0],
+        "engagement_sent": [null, null, 3, false, 0.0],
+        "engaged_one": [null, null, 4, false, 0.0],
+        "engagement_complete": ["count_students", {}, 5, false, 0.0],
+        "init": [null, null, 6, false, 0.0],
+        "begin_teaching": ["shuffle_and_stop_streaming", {}, 7, false, 0.0],
+        "lecture_in_progress": [null, null, 8, true, 0.0],
+        "student_finished_following": ["stop_streaming", {}, 9, false, 0.0],
+        "exam_time": [null, null, 10, false, 0.0],
+        "exam_in_progress": [null, null, 11, true, 0.0],
+        "student_finished_exam": ["stop_streaming", {}, 12, false, 0.0],
+        "compare_time": ["evaluate", {"stream_hash": "<agent>:eval", "how": "max", "steps": 7}, 13, false, 0.0],
+        "best_found": ["manage_best_of_class", {}, 14, false, 0.0],
+        "best_not_found": [null, null, 15, false, 0.0],
+        "change_lecture": ["next_pref_stream", {}, 16, false, 0.0],
+        "finished_teaching": ["manage_best_of_the_bests", {}, 17, false, 0.0],
+        "best_teaching": [null, null, 18, false, 0.0],
+        "wait_for_disengagement": [null, null, 19, true, 3.0]
+    },
+    "transitions": {
+        "searching": {
+            "connected": [["connect_by_role", {"role": ["student", "student_isolated"]}, true, 1]]
+        },
+        "connected": {
+            "connected": [["agents_are_waiting", {}, true, 2]],
+            "can_engage": [["find_agents", {"role": ["student", "student_isolated"]}, true, 3]],
+            "searching": [["nop", {"delay": 15.0}, true, 4]]
+        },
+        "can_engage": {
+            "engagement_sent": [["send_engagement", {}, true, 5]],
+            "searching": [["nop", {}, true, 6]]
+        },
+        "engagement_sent": {
+            "engaged_one": [["got_engagement", {}, false, 7]],
+            "searching": [["nop", {"delay": 7.5}, true, 8]]
+        },
+        "engaged_one": {
+            "engaged_one": [["got_engagement", {}, false, 9]],
+            "engagement_complete": [["all_engagements_completed", {}, true, 10], ["nop", {"delay": 7.5}, true, 11]]
+        },
+        "engagement_complete": {
+            "begin_teaching": [["set_pref_streams", {"net_hashes": ["<agent>:teach_0", "<agent>:teach_1", "<agent>:teach_2", "<agent>:teach_3"]}, true, 33]]
+        },
+        "init": {
+            "searching": [["nop", {}, true, 12]]
+        },
+        "begin_teaching": {
+            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": 16, "timeout": 5.0}, true, 15]]
+        },
+        "lecture_in_progress": {
+            "student_finished_following": [["done_learn", {}, false, 16], ["nop", {"delay": 15.0}, true, 17]]
+        },
+        "student_finished_following": {
+            "student_finished_following": [["done_learn", {}, false, 18]],
+            "exam_time": [["all_asked_finished", {}, true, 19], ["nop", {"delay": 15.0}, true, 20]]
+        },
+        "exam_time": {
+            "exam_in_progress": [["ask_gen", {"u_hashes": ["<agent>:eval"], "samples": 7, "timeout": 5.0}, true, 21]]
+        },
+        "exam_in_progress": {
+            "student_finished_exam": [["done_gen", {}, false, 22], ["nop", {"delay": 15.0}, true, 23]]
+        },
+        "student_finished_exam": {
+            "student_finished_exam": [["done_gen", {}, false, 24]],
+            "compare_time": [["all_asked_finished", {}, true, 25], ["nop", {"delay": 15.0}, true, 26]]
+        },
+        "compare_time": {
+            "best_found": [["compare_eval", {"cmp": "min", "thres": 0.5}, true, 27]],
+            "best_not_found": [["nop", {}, true, 28]]
+        },
+        "best_found": {
+            "best_teaching": [["ask_best_to_gen_ask_others_to_learn", {}, true, 39]],
+            "change_lecture": [["nop", {}, true, 40]]
+        },
+        "best_not_found": {
+            "change_lecture": [["nop", {}, true, 30]]
+        },
+        "change_lecture": {
+            "begin_teaching": [["check_pref_stream", {"what": "not_first"}, true, 31]],
+            "finished_teaching": [["check_pref_stream", {"what": "first"}, true, 32]]
+        },
+        "finished_teaching": {
+            "wait_for_disengagement": [["send_disengagement", {"send_disconnection_too": true}, true, 46]]
+        },
+        "best_teaching": {
+            "best_teaching": [["done_gen", {}, false, 41], ["done_learn", {}, false, 42]],
+            "change_lecture": [["all_asked_finished", {}, true, 43], ["nop", {"delay": 15.0}, true, 44]]
+        },
+        "wait_for_disengagement": {
+            "init": [["nop", {}, true, 47]]
+        }
+    },
+    "cur_action": null
+}

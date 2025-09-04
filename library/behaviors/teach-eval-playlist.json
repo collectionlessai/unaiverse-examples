@@ -1,0 +1,68 @@
+{
+    "initial_state": "begin_teaching",
+    "state": "begin_teaching",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "begin_teaching": [null, null, 0, false],
+        "lecture_in_progress": [null, null, 1, true],
+        "student_finished_following": [null, null, 2, false],
+        "exam_time": [null, null, 3, false],
+        "exam_in_progress": [null, null, 4, true],
+        "student_finished_exam": [null, null, 5, false],
+        "compare_time": ["evaluate", {"stream_hash": "<agent>:eval", "how": "max", "steps": "<eval_steps>"}, 6, false],
+        "best_found": [null, null, 7, false],
+        "best_not_found": [null, null, 8, false],
+        "change_lecture": ["next_pref_stream", {}, 9, false],
+        "finished_teaching": [null, null, 8, false]
+    },
+    "transitions": {
+        "begin_teaching": {
+            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": "<learn_steps>", "timeout": 5.0}, true, 0]]
+        },
+        "lecture_in_progress": {
+            "student_finished_following": [
+                ["done_learn", {}, false, 1],
+                ["nop", {"delay": "<learn_exam_timeout>"}, true, 2]
+            ]
+        },
+        "student_finished_following": {
+            "student_finished_following": [["done_learn", {}, false, 3]],
+            "exam_time": [
+                ["all_asked_finished", {}, true, 4],
+                ["nop", {"delay":  "<learn_exam_timeout>"}, true, 17]
+            ]
+        },
+        "exam_time": {
+            "exam_in_progress": [["ask_gen", {"u_hashes": ["<agent>:eval"], "samples": "<eval_steps>", "timeout": 5.0}, true, 5]]
+        },
+        "exam_in_progress": {
+            "student_finished_exam": [
+                ["done_gen", {}, false, 6],
+                ["nop", {"delay": "<learn_exam_timeout>"}, true, 7]
+            ]
+        },
+        "student_finished_exam": {
+            "student_finished_exam": [["done_gen", {}, false, 8]],
+            "compare_time": [
+                ["all_asked_finished", {}, true, 9],
+                ["nop", {"delay":  "<learn_exam_timeout>"}, true, 16]
+            ]
+        },
+        "compare_time": {
+            "best_found": [["compare_eval", {"cmp": "min", "thres": "<cmp_thres>"}, true, 10]],
+            "best_not_found": [["nop", {}, true, 11]]
+        },
+        "best_found": {
+            "change_lecture": [["nop", {}, true, 12]]
+        },
+        "best_not_found": {
+            "change_lecture": [["nop", {}, true, 13]]
+        },
+        "change_lecture": {
+            "begin_teaching": [["check_pref_stream", {"what": "not_first"}, true, 14]],
+            "finished_teaching": [["check_pref_stream", {"what": "first"}, true, 15]]
+        }
+    },
+    "cur_action": null
+}

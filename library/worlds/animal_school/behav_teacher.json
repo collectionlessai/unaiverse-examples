@@ -1,0 +1,85 @@
+{
+    "initial_state": "init",
+    "state": "init",
+    "role": "teacher",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "init": [null, null, 0, true, 0.0],
+        "exam_prepared": [null, null, 1, true, 0.0],
+        "looking_for_peers": [null, null, 2, true, 0.0],
+        "looking_for_students": ["find_agents", {"role": "student"}, 3, true, 0.0],
+        "student_found": [null, null, 4, 5.0, 0.0],
+        "student_engaged": [null, null, 5, 5.0, 0.0],
+        "teaching_time": [null, null, 6, true, 0.0],
+        "lecture_in_progress": [null, null, 7, true, 0.0],
+        "student_finished_following": [null, null, 8, 5.0, 0.0],
+        "change_lecture": ["next_pref_stream", {}, 9, true, 0.0],
+        "exam_time": [null, null, 10, true, 0.0],
+        "exam_in_progress": [null, null, 11, true, 0.0],
+        "student_finished_exam": [null, null, 12, 5.0, 0.0],
+        "eval_time": ["evaluate", {"stream_hash": "<agent>:recorded1", "how": "max", "steps": 30}, 13, true, 0.0],
+        "bad": [null, null, 14, true, 0.0],
+        "good": ["suggest_badges_to_world", {"agent": "<valid_cmp>", "score": 1.0, "badge_type": "completed", "badge_description": "Completed the Animal School #ImageClassification #AnimalPictures"}, 15, true, 0.0],
+        "promote": [null, null, 16, true, 0.0],
+        "habilitate": [null, null, 17, true, 0.0]
+    },
+    "transitions": {
+        "init": {
+            "exam_prepared": [["record", {"net_hash": "<world>:all", "samples": 30}, true, 0]]
+        },
+        "exam_prepared": {
+            "looking_for_peers": [["set_pref_streams", {"net_hashes": ["<world>:albatross", "<world>:cheetah", "<world>:giraffe"]}, true, 23]]
+        },
+        "looking_for_peers": {
+            "looking_for_students": [["connect_by_role", {"role": "student"}, true, 4]]
+        },
+        "looking_for_students": {
+            "student_found": [["send_engagement", {}, true, 5]],
+            "looking_for_peers": [["nop", {}, true, 6]]
+        },
+        "student_found": {
+            "looking_for_students": [["nop", {}, true, 7]],
+            "student_engaged": [["got_engagement", {}, false, 8]]
+        },
+        "student_engaged": {
+            "student_engaged": [["got_engagement", {}, false, 9]],
+            "teaching_time": [["nop", {}, true, 10]]
+        },
+        "teaching_time": {
+            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": 40, "timeout": 5.0}, true, 11]]
+        },
+        "lecture_in_progress": {
+            "student_finished_following": [["done_learn", {}, false, 12]]
+        },
+        "student_finished_following": {
+            "student_finished_following": [["done_learn", {}, false, 13]],
+            "change_lecture": [["nop", {}, true, 14]]
+        },
+        "change_lecture": {
+            "teaching_time": [["check_pref_stream", {"what": "not_first"}, true, 15]],
+            "exam_time": [["check_pref_stream", {"what": "first"}, true, 16]]
+        },
+        "exam_time": {
+            "exam_in_progress": [["ask_gen", {"u_hashes": ["<agent>:recorded1"], "samples": 30, "timeout": 5.0}, true, 17]]
+        },
+        "exam_in_progress": {
+            "student_finished_exam": [["done_gen", {}, false, 18]]
+        },
+        "student_finished_exam": {
+            "student_finished_exam": [["done_gen", {}, false, 19]],
+            "eval_time": [["nop", {}, true, 20]]
+        },
+        "eval_time": {
+            "good": [["compare_eval", {"cmp": "<=", "thres": 0.45}, true, 21]],
+            "bad": [["nop", {}, true, 22]]
+        },
+        "good": {
+            "promote": [["suggest_role_to_world", {"agent": "<valid_cmp>", "role": "teacher"}, true, 24]]
+        },
+        "promote": {
+            "habilitate": [["send_disengagement", {}, true, 26]]
+        }
+    },
+    "cur_action": null
+}

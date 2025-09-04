@@ -1,0 +1,22 @@
+{
+    "initial_state": "ready",
+    "state": "ready",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "ready": ["disengage_all", null, 0],
+        "user_engaged": [null, null, 1]
+    },
+    "transitions": {
+        "ready": {
+            "user_engaged": [["get_engagement", {"acceptable_role": "<user_role>"}, false, 0]]
+        },
+        "user_engaged": {
+            "ready": [
+                ["do_gen", {}, false, 1],
+                ["nop", {"delay": 60.0}, true, 2]
+            ]
+        }
+    },
+    "cur_action": null
+}

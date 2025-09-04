@@ -1,0 +1,40 @@
+{
+    "initial_state": "searching",
+    "state": "searching",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "searching": ["disconnect_by_role", {"role": "<roles_to_engage>"}, 0, false, 5.0],
+        "connected": [null, null, 1, true],
+        "can_engage": [null, null, 2, false],
+        "engagement_sent": [null, null, 3, false],
+        "engaged_one": [null, null, 4, false],
+        "engagement_complete": [null, null, 5, false]
+    },
+    "transitions": {
+        "searching": {
+            "connected": [["connect_by_role", {"role": "<roles_to_engage>"}, true, 0]]
+        },
+        "connected": {
+            "connected": [["agents_are_waiting", {}, true, 1]],
+            "can_engage": [["find_agents", {"role": "<roles_to_engage>"}, true, 2]],
+            "searching": [["nop", {"delay": 15.0}, true, 3]]
+        },
+        "can_engage": {
+            "engagement_sent": [["send_engagement", {}, true, 4]],
+            "searching": [["nop", {}, true, 5]]
+        },
+        "engagement_sent": {
+            "engaged_one": [["got_engagement", {}, false, 6]],
+            "searching": [["nop", {"delay": 7.5}, true, 7]]
+        },
+        "engaged_one": {
+            "engaged_one": [["got_engagement", {}, false, 8]],
+            "engagement_complete": [
+                ["all_engagements_completed", {}, true, 8],
+                ["nop", {"delay": 7.5}, true, 9]
+            ]
+        }
+    },
+    "cur_action": null
+}
