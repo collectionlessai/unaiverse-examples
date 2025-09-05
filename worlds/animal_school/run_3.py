@@ -5,7 +5,7 @@ from unaiverse.modules.networks import CNN
 from unaiverse.networking.node.node import Node
 from unaiverse.utils.misc import get_node_addresses_from_file
 
-# agent
+# Agent
 net = CNN(3, return_input=True, seed=42)
 agent = Agent(proc=net,
               proc_opts={'optimizer': torch.optim.SGD(net.module.parameters(), lr=0.0025),
@@ -19,8 +19,8 @@ agent.proc_outputs[1].set_tensor_labels(["albatross", "cheetah", "giraffe"])
 node = Node(node_id="80b825fe93e547ca8c75b094e1788e61",
             unaiverse_key="password", hosted=agent, clock_delta=1. / 1000.)
 
-# telling agent to join world
+# Telling agent to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))
 
-# running node
+# Running node
 node.run()

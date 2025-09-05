@@ -21,19 +21,19 @@ from unaiverse.networking.node.profile import NodeProfile
 
 class WWorld(World, ChatRoles):
 
-    # feasible roles
+    # Feasible roles
     ROLE_BITS_TO_STR = {**World.ROLE_BITS_TO_STR, **ChatRoles.ROLE_BITS_TO_STR}
     ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
 
     def __init__(self, *args, **kwargs):
 
-        # dynamically re-create the behaviour files (not formally needed, just for easier develop)
+        # Dynamically re-create the behaviour files (not formally needed, just for easier develop)
         WWorld.__create_behav_files()
 
-        # guess the name of the folder containing this world
+        # Guess the name of the folder containing this world
         world_folder_name = os.path.basename(os.path.dirname(__file__))
 
-        # building world
+        # Building world
         super().__init__(*args,
                          agent_actions=os.path.join(world_folder_name, 'agent.py'),
                          role_to_behav={self.ROLE_BITS_TO_STR[self.ROLE_USER]: os.path.join(world_folder_name, 'behav_user.json'),
@@ -68,7 +68,7 @@ class WWorld(World, ChatRoles):
                           ready=False)
         behav.add_transit("message_sent", "ready", action="nop")
 
-        # saving to file
+        # Saving to file
         if behav.save(os.path.join(path_of_this_file, 'behav_user.json'), only_if_changed=dummy_agent):
             os.makedirs(os.path.join(path_of_this_file, 'pdf'), exist_ok=True)
             behav.save_pdf(os.path.join(path_of_this_file, 'pdf', 'behav_user.pdf'))
@@ -79,7 +79,7 @@ class WWorld(World, ChatRoles):
 
         behav.add_transit("ready", "ready", action="do_gen", args={"timeout": 3.0}, ready=False)
 
-        # saving to file
+        # Saving to file
         if behav.save(os.path.join(path_of_this_file, 'behav_broadcaster.json'), only_if_changed=dummy_agent):
             os.makedirs(os.path.join(path_of_this_file, 'pdf'), exist_ok=True)
             behav.save_pdf(os.path.join(path_of_this_file, 'pdf', 'behav_broadcaster.pdf'))

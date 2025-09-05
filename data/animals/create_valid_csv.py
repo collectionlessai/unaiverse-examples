@@ -15,12 +15,12 @@
 import os
 import csv
 
-main_classes_only = True  # customize this!
+main_classes_only = True  # Customize this!
 
 folder_contents = os.listdir("./")
 main_class_dirs = [f for f in folder_contents
                    if os.path.isdir(os.path.join("./", f)) and not f.endswith(".")]
-main_class_dirs = sorted(main_class_dirs)  # sorting alphabetically
+main_class_dirs = sorted(main_class_dirs)  # Sorting alphabetically
 main_class_count = len(main_class_dirs)
 
 classes = ["albatross", "cheetah", "giraffe", "ostrich", "penguin", "tiger", "zebra",
@@ -65,5 +65,5 @@ with open(csv_filename, mode='w', newline='') as file:
     writer = csv.writer(file)
 
     for i in range(len(files)):
-        row = [files[i]] + labels[i]  # combine file path with the corresponding labels
+        row = [files[i]] + labels[i]  # Combine file path with the corresponding labels
         writer.writerow(row)

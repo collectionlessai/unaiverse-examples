@@ -19,12 +19,14 @@ from unaiverse.modules.utils import MultiIdentity
 
 
 class ChatRoles:
+
     # Role bitmasks
     ROLE_USER = 1 << 2
     ROLE_BROADCASTER = 1 << 3
 
     # Feasible roles
     ROLE_BITS_TO_STR = {
+
         # The base roles will be inherited from AgentBasics later
         ROLE_USER: "user",
         ROLE_BROADCASTER: "broadcaster"
@@ -32,7 +34,8 @@ class ChatRoles:
 
 
 class WAgent(Agent, ChatRoles):
-    # feasible roles
+
+    # Feasible roles
     ROLE_BITS_TO_STR = {**Agent.ROLE_BITS_TO_STR, **ChatRoles.ROLE_BITS_TO_STR}
     ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
 
@@ -60,7 +63,7 @@ class WAgent(Agent, ChatRoles):
 
         if self.connect_by_role(role):
             self._engaged_agents = self._found_agents
-            self._broadcaster_peer_id = next(iter(self._found_agents))  # takes the first broadcaster
+            self._broadcaster_peer_id = next(iter(self._found_agents))  # Takes the first broadcaster
             self._last_msg_time = tm.time()
             return True
         else:
@@ -167,10 +170,10 @@ class WAgent(Agent, ChatRoles):
     def proc_callback_outputs(self, outputs):
         outputs = super().proc_callback_outputs(outputs)
 
-        # users will add their name at the beginning of the message
+        # Users will add their name at the beginning of the message
         if self.get_current_role(return_int=True) == self.ROLE_USER:
             if self.behaving_in_world():
-                outputs = list(outputs)  # it was likely a tuple
+                outputs = list(outputs)  # It was likely a tuple
                 for i, output in enumerate(outputs):
                     if isinstance(output, str):
                         outputs[i] = "**" + self.get_name() + ":** " + output

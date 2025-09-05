@@ -3,7 +3,7 @@ import re
 import sys
 import glob
 
-# configuration
+# Configuration
 world_file_runner = "run_w.py"
 agent_file_runners = "run_*.py"
 files_to_skip = {"run_synch.py", "run_asynch.py", "run_demo.py", "run_demo_a.py", "run_demo_b.py"}
@@ -14,30 +14,33 @@ import sys
 from unaiverse.utils.server import Server
 from unaiverse.networking.node.node import NodeSynchronizer
 
-# synchronizing nodes (for visualization purposes)
+# Synchronizing nodes (for visualization purposes)
 node_synchronizer = NodeSynchronizer()
 """
 
 code_after_world = """
-# get world addresses
+
+# Get world addresses
 node_addresses = node.get_public_addresses()
 node_synchronizer.add_node(node)
 """
 
 code_after_every_agent = """
-# tell agent to join the world
+
+# Tell agent to join the world
 node.ask_to_join_world(addresses=node_addresses)
 node_synchronizer.add_node(node)
 """
 
 final_code = """
-# creating server
+
+# Creating server
 # Server(node_synchronizer=node_synchronizer)
 
-# running
+# Running
 node_synchronizer.run()
 """
-methods_to_skip = {"run", "ask_to_join_world", "save_node_addresses_to_file"}  # method calls to skip
+methods_to_skip = {"run", "ask_to_join_world", "save_node_addresses_to_file"}  # Method calls to skip
 
 
 def build_script(code_dir: str) -> str:
@@ -56,7 +59,7 @@ def build_script(code_dir: str) -> str:
     unique_imports = set()
     code_lines = []
 
-    # initial code
+    # Initial code
     for line in initial_code.splitlines():
         if is_import(line):
             if line.strip() not in unique_imports:
@@ -66,7 +69,7 @@ def build_script(code_dir: str) -> str:
             if line.strip():
                 code_lines.append(line.rstrip())
 
-    # collect world runner
+    # Collect world runner
     with open(world_file_runner, "r") as f:
         skip_next = False
         for line in f:
@@ -88,12 +91,12 @@ def build_script(code_dir: str) -> str:
                 if line.strip():
                     code_lines.append(line.rstrip())
 
-        # add post-world code
+        # Add post-world code
         for line in code_after_world.splitlines():
             if line.strip():
                 code_lines.append(line)
 
-    # collect agent runners
+    # Collect agent runners
     for filename in sorted(glob.glob(os.path.join(code_dir, agent_file_runners))):
         if os.path.basename(filename) == world_file_runner:
             continue
@@ -120,17 +123,17 @@ def build_script(code_dir: str) -> str:
                     if line.strip():
                         code_lines.append(line.rstrip())
 
-            # add post-agent code
+            # Add post-agent code
             for line in code_after_every_agent.splitlines():
                 if line.strip():
                     code_lines.append(line)
 
-    # final code
+    # Final code
     for line in final_code.splitlines():
         if line.strip():
             code_lines.append(line)
 
-    # construct final script
+    # Construct final script
     script = "\n".join(imports) + "\n\n" + "\n".join(code_lines) + "\n"
     return script
 

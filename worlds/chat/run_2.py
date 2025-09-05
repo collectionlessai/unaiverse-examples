@@ -5,7 +5,7 @@ from unaiverse.modules.networks import Phi
 from unaiverse.networking.node.node import Node
 from unaiverse.utils.misc import get_node_addresses_from_file
 
-# agent
+# Agent
 agent = Agent(proc=Phi(),
               proc_inputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
               proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
@@ -17,8 +17,8 @@ agent = Agent(proc=Phi(),
 node = Node(node_id="3054024a135c4e65b495e8720e775881",
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
-# telling agent to join world
+# Telling agent to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))
 
-# running node
+# Running node
 node.run()

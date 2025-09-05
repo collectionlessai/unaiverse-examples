@@ -6,12 +6,12 @@ import shutil
 import threading
 import subprocess
 
-# config
+# Config
 world_file_runner = "run_w.py"
-agent_file_runners = "run_*.py"  # where * must be a number
+agent_file_runners = "run_*.py"  # Where * must be a number
 log_to_file = True
 
-# keep track of all running processes
+# Keep track of all running processes
 running_processes = []
 stop_event = threading.Event()
 
@@ -26,7 +26,7 @@ def stream_output(my_proc, script_name, log_file=None):
             log_file.flush()
     my_proc.wait()
 
-    # if the process failed, signal to stop others
+    # If the process failed, signal to stop others
     if my_proc.returncode != 0:
         print(f"[{script_name}] ERROR: Exited with code {my_proc.returncode}")
         stop_event.set()
@@ -39,7 +39,7 @@ def stream_output(my_proc, script_name, log_file=None):
 def terminate_all_processes():
     """Terminate all running processes."""
     for p in running_processes:
-        if p.poll() is None:  # still running
+        if p.poll() is None:  # Still running
             try:
                 p.terminate()
             except Exception:
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     main_dir = os.path.dirname(os.path.abspath(__file__))
     script_dir = os.path.join(main_dir, world_name)
 
-    # collect scripts
+    # Collect scripts
     scripts = [os.path.join(script_dir, world_file_runner)]
     pattern = re.compile(r".*\d+\.\w+$")
     for filename in sorted(glob.glob(os.path.join(script_dir, agent_file_runners))):
@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     threads = []
 
-    # clear addresses.txt
+    # Clear addresses.txt
     if os.path.exists(os.path.join(script_dir, "addresses.txt")):
         os.remove(os.path.join(script_dir, "addresses.txt"))
 
@@ -96,6 +96,6 @@ if __name__ == "__main__":
         t.start()
         threads.append(t)
 
-    # wait for all threads to finish
+    # Wait for all threads to finish
     for t in threads:
         t.join()

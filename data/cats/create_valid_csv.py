@@ -15,7 +15,7 @@
 import csv
 from nltk.tokenize import word_tokenize
 
-# category labels are: ['people', 'chasing', 'communication', 'playing', 'food', 'health']
+# Category labels are: ['people', 'chasing', 'communication', 'playing', 'food', 'health']
 
 unique_labels = {}
 stream_of_tokens = []
@@ -38,7 +38,7 @@ with open('dataset.csv', mode='r') as file:
         for label in labels:
             unique_labels[label] = True
 
-# vocabulary
+# Vocabulary
 voc = {}
 idx = 0
 sorted_stream_of_tokens = sorted(stream_of_tokens)
@@ -47,10 +47,10 @@ for token in sorted_stream_of_tokens:
         voc[token] = idx
         idx += 1
 
-# convert each tokenized text to a list of indices
+# Convert each tokenized text to a list of indices
 stream_of_token_indices = [voc[token] for token in stream_of_tokens]
 
-# final data
+# Final data
 print(voc)
 print(stream_of_tokens)
 print(stream_of_labels)
@@ -63,5 +63,5 @@ with open(csv_filename, mode='w', newline='') as file:
     writer = csv.writer(file)
 
     for i in range(len(stream_of_tokens)):
-        row = [stream_of_tokens[i]] + stream_of_labels[i]  # combine file with the corresponding labels
+        row = [stream_of_tokens[i]] + stream_of_labels[i]  # Combine file with the corresponding labels
         writer.writerow(row)

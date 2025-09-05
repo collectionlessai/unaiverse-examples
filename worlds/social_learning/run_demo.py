@@ -9,17 +9,17 @@ from unaiverse.networking.node.node import Node
 from unaiverse.modules.utils import error_rate_mnist_test_set
 from unaiverse.utils.misc import get_node_addresses_from_file, countdown_start, countdown_wait
 
-# creating neural network
+# Creating neural network
 net = CNN(d_dim=10, in_channels=1, seed=62)
-net.transforms = lambda x: x  # processing tensor data
+net.transforms = lambda x: x  # Processing tensor data
 
-# evaluating before 'living'
+# Evaluating before 'living'
 spec = importlib.util.find_spec("unaiverse.worlds.social_learning.world")
 save_path = os.path.join(os.path.dirname(os.path.abspath(spec.origin)), "mnist_data")
 error_rate_initial = error_rate_mnist_test_set(net, mnist_data_save_path=save_path)
 print(f"\n*** Error: {error_rate_initial}")
 
-# creating agent
+# Creating agent
 agent = Agent(proc=net,
               proc_inputs=[Data4Proc(data_type="tensor", tensor_shape=(None, 1, 28, 28), tensor_dtype=torch.float32,
                                      pubsub=False, private_only=True)],
@@ -30,26 +30,26 @@ agent = Agent(proc=net,
                          'losses': [torch.nn.functional.cross_entropy]},
               buffer_generated_by_others="none")
 
-# node hosting agent
+# Node hosting agent
 node = Node(node_id="02c1de71207c48acbb7c62c74c04673e",
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
-# telling agent to join world
+# Telling agent to join world
 if node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__))) is None:
     print("Connection error!")
     sys.exit(0)
 
-# starting countdown
+# Starting countdown
 living_seconds = 90
 c = countdown_start(living_seconds, msg="Living")
 
-# running node
+# Running node
 node.run(max_time=living_seconds)
 
-# evaluating after 'living
+# Evaluating after 'living
 error_rate_final = error_rate_mnist_test_set(net, mnist_data_save_path=save_path)
 
-# final prints
+# Final prints
 countdown_wait(c)
 print(f"\n*** Error (initial): {error_rate_initial}")
 print(f"*** Error (final):   {error_rate_final}\n")

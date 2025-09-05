@@ -28,6 +28,7 @@ from unaiverse.streams import DataStream, Dataset
 
 
 class SocialLearningRoles:
+
     # Role bitmasks
     ROLE_TEACHER = 1 << 2
     ROLE_STUDENT = 1 << 3
@@ -35,6 +36,7 @@ class SocialLearningRoles:
 
     # Feasible roles
     ROLE_BITS_TO_STR = {
+
         # The base roles will be inherited from AgentBasics later
         ROLE_TEACHER: "teacher",
         ROLE_STUDENT: "student",
@@ -43,7 +45,8 @@ class SocialLearningRoles:
 
 
 class WAgent(Agent, SocialLearningRoles):
-    # feasible roles
+
+    # Feasible roles
     ROLE_BITS_TO_STR = {**Agent.ROLE_BITS_TO_STR, **SocialLearningRoles.ROLE_BITS_TO_STR}
     ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
 
@@ -85,13 +88,13 @@ class WAgent(Agent, SocialLearningRoles):
 
         if self.get_current_role(return_int=True) == self.ROLE_TEACHER:
 
-            # guess the name of the folder containing this the agent file
+            # Guess the name of the folder containing this the agent file
             spec = importlib.util.find_spec("unaiverse.worlds.social_learning.agent")
             if spec is None or spec.origin is None:
                 raise ImportError("Module unaiverse.worlds.social_learning.agent was not found")
             self._agent_folder_name = os.path.dirname(os.path.abspath(spec.origin))
 
-            # loading stats
+            # Loading stats
             if not os.path.exists("stats.json"):
                 self.out(f"Creating new stats file stats.json...")
                 with open("stats.json", "w") as f:
@@ -108,7 +111,7 @@ class WAgent(Agent, SocialLearningRoles):
                                 self._stats[k] = v
                 self.out(f"Loaded stats:\n{self._stats}")
 
-            # getting MNIST data
+            # Getting MNIST data
             mnist_transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,))
@@ -120,7 +123,7 @@ class WAgent(Agent, SocialLearningRoles):
                                         download=True,
                                         transform=mnist_transform)
 
-            # preparing dataset that will be streamed by the teacher
+            # Preparing dataset that will be streamed by the teacher
             def subsample(dataset, n_per_class, c, grp=0, offset=0):
                 targets = dataset.targets.cpu().numpy()
                 indices = []
@@ -141,7 +144,7 @@ class WAgent(Agent, SocialLearningRoles):
             unlabeled_set = subsample(mnist_train, n_per_class=self._unlabeled_per_class, c=10,
                                       grp=0, offset=self._rounds * self._teach_per_class)
 
-            # adding streams
+            # Adding streams
             s = self.add_streams([DataStream.create(group="eval", name="images", public=False,
                                                     stream=Dataset(eval_set, shape=(None, 1, 28, 28), index=0,
                                                                    batch_size=self._batch_size)),
@@ -164,7 +167,7 @@ class WAgent(Agent, SocialLearningRoles):
                                                                    batch_size=10))])
             self._test_teach_and_unlabeled_data_streams += s
 
-            # initially de-activating pub-sub streams
+            # Initially de-activating pub-sub streams
             for stream_dict in self._test_teach_and_unlabeled_data_streams:
                 for stream_obj in stream_dict.values():
                     stream_obj.disable()
@@ -195,20 +198,20 @@ class WAgent(Agent, SocialLearningRoles):
         all_students = copy.deepcopy(self._engaged_agents)
         not_isolated_students = copy.deepcopy(self._found_agents)
         _, teacher = self.get_peer_ids()
-        best_student = next(iter(self._valid_cmp_agents))  # this set has only 1 element
+        best_student = next(iter(self._valid_cmp_agents))  # This set has only 1 element
         other_not_isolated_students = not_isolated_students - {best_student}
 
-        # considering not-isolated students (different from the best one)
+        # Considering not-isolated students (different from the best one)
         self._engaged_agents = other_not_isolated_students
 
-        # telling them to listen to what the best student streams
+        # Telling them to listen to what the best student streams
         net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
         best_student_stream_hash = None
         for net_hash in net_hash_to_stream_dict.keys():
             best_student_stream_hash = net_hash
             break
 
-        # storing the list of agents who were asked multiple things
+        # Storing the list of agents who were asked multiple things
         agents_who_were_asked = set()
 
         if not self.ask_subscribe(stream_hashes=[best_student_stream_hash]):
@@ -216,22 +219,22 @@ class WAgent(Agent, SocialLearningRoles):
             self._engaged_agents = all_students
             return False
 
-        # remembering who we asked
+        # Remembering who we asked
         agents_who_were_asked |= self._agents_who_were_asked
 
-        # asking them to learn from the best student
+        # Asking them to learn from the best student
         if self.ask_learn(u_hashes=[f"{best_student}:best_student_stream"],
                           yhat_hashes=[f"{best_student}:best_student_stream"],
                           samples=self.get_unlabeled_steps(),
                           timeout=30.0):
 
-            # remembering who we asked
+            # Remembering who we asked
             agents_who_were_asked |= self._agents_who_were_asked
 
-            # getting the UUID of the request
+            # Getting the UUID of the request
             ref_uuid = self._last_ref_uuid
 
-            # asking the best student to label the data
+            # Asking the best student to label the data
             if not self.ask_gen(best_student,
                                 u_hashes=[f"{teacher}:unlabeled"],
                                 samples=self.get_unlabeled_steps(),
@@ -242,19 +245,19 @@ class WAgent(Agent, SocialLearningRoles):
                 return False
             else:
 
-                # from the teacher's perspective: setting the UUID of the pubsub that the best student will send
+                # From the teacher's perspective: setting the UUID of the pubsub that the best student will send
                 net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
                 for _, stream_dict in net_hash_to_stream_dict.items():
                     for name, stream_obj in stream_dict.items():
 
-                        # forcing UUID
+                        # Forcing UUID
                         stream_obj.set_uuid(None, expected=True)
                         stream_obj.set_uuid(ref_uuid, expected=False)
 
-                # remembering who we asked
+                # Remembering who we asked
                 agents_who_were_asked |= self._agents_who_were_asked
 
-                # overwriting the internal set of asked peers with the merged one
+                # Overwriting the internal set of asked peers with the merged one
                 self._agents_who_were_asked = agents_who_were_asked
 
                 self._engaged_agents = all_students
@@ -269,15 +272,15 @@ class WAgent(Agent, SocialLearningRoles):
                _requester: str | list | None = None, _request_time: float = -1., _request_uuid: str | None = None,
                _completed: bool = False):
 
-        # generic generation request
+        # Generic generation request
         if not super().do_gen(u_hashes, samples, time, timeout, _requester, _request_time, _request_uuid, _completed):
             return False
 
-        # if the teacher asked to label its unlabeled data, then load the data and predictions in the apposite stream
+        # If the teacher asked to label its unlabeled data, then load the data and predictions in the apposite stream
         if len(u_hashes) == 1 and u_hashes[0].endswith(":unlabeled") and len(self.known_streams[u_hashes[0]]) == 1:
 
-            # getting the stream of the images coming from the teacher and of the labels predicted by my processor
-            image_stream_obj = next(iter(self.known_streams[u_hashes[0]].values()))  # this has only one data stream
+            # Getting the stream of the images coming from the teacher and of the labels predicted by my processor
+            image_stream_obj = next(iter(self.known_streams[u_hashes[0]].values()))  # This has only one data stream
             prediction_stream_obj = None
             for net_hash, stream_dict in self.proc_streams.items():
                 for name, stream_obj in stream_dict.items():
@@ -285,21 +288,21 @@ class WAgent(Agent, SocialLearningRoles):
                         prediction_stream_obj = stream_obj
                         break
 
-            # loading data to the pubsub stream
+            # Loading data to the pubsub stream
             _, best_student = self.get_peer_ids()
             net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
             for _, stream_dict in net_hash_to_stream_dict.items():
                 for name, stream_obj in stream_dict.items():
 
-                    # forcing UUID
+                    # Forcing UUID
                     stream_obj.set_uuid(None, expected=True)
                     stream_obj.set_uuid(_request_uuid, expected=False)
 
-                    # setting up the stream data
+                    # Setting up the stream data
                     if name == "images":
-                        stream_obj.set(image_stream_obj.get("do_gen"))  # streaming image
+                        stream_obj.set(image_stream_obj.get("do_gen"))  # Streaming image
                     elif name == "labels":
-                        stream_obj.set(prediction_stream_obj.get("do_gen"))  # streaming decision
+                        stream_obj.set(prediction_stream_obj.get("do_gen"))  # Streaming decision
                     else:
                         raise ValueError(f"Unexpected stream name in the best_student_stream group: {name}")
                 break
@@ -340,7 +343,7 @@ class WAgent(Agent, SocialLearningRoles):
         if self.get_current_role(return_int=True) == self.ROLE_TEACHER:
             self.out(f"Managing the best of this class...")
             if len(self._valid_cmp_agents) > 0:
-                best_student = next(iter(self._valid_cmp_agents))  # this has length 1
+                best_student = next(iter(self._valid_cmp_agents))  # This has length 1
                 best_student_name = self.all_agents[best_student].get_static_profile()['node_name']
                 best_student_role = self.ROLE_BITS_TO_STR[self._node_conn.get_role(best_student)]
 

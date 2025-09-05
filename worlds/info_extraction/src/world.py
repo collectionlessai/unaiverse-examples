@@ -22,19 +22,19 @@ from unaiverse.networking.node.profile import NodeProfile
 
 class WWorld(World, IERoles):
 
-    # feasible roles
+    # Feasible roles
     ROLE_BITS_TO_STR = {**World.ROLE_BITS_TO_STR, **IERoles.ROLE_BITS_TO_STR}
     ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
 
     def __init__(self, *args, **kwargs):
 
-        # dynamically re-create the behaviour files (not formally needed, just for easier develop)
+        # Dynamically re-create the behaviour files (not formally needed, just for easier develop)
         WWorld.__create_behav_files()
 
-        # guess the name of the folder containing this world
+        # Guess the name of the folder containing this world
         world_folder_name = os.path.basename(os.path.dirname(__file__))
 
-        # building world
+        # Building world
         super().__init__(*args,
                          agent_actions=os.path.join(world_folder_name, 'agent.py'),
                          role_to_behav={self.ROLE_BITS_TO_STR[self.ROLE_USER]: os.path.join(world_folder_name, 'behav_user.json'),
@@ -80,7 +80,7 @@ class WWorld(World, IERoles):
 
             if in_img and out_text:
                 return self.ROLE_EXTRACTOR
-        return -1  # no role
+        return -1  # No role
 
     @staticmethod
     def __create_behav_files():
@@ -91,7 +91,7 @@ class WWorld(World, IERoles):
         behav = HybridStateMachine(dummy_agent)
         behav.set_role(dummy_agent.ROLE_BITS_TO_STR[WAgent.ROLE_USER])
 
-        # let's wait a little bit before moving from init to the ready state of the service_requester.json, so that,
+        # Let's wait a little bit before moving from init to the ready state of the service_requester.json, so that,
         # meanwhile, this agent will become known to the others...
         behav.add_transit("init",
                           os.path.join(path_of_this_file, "..", "..", "behaviors", "service_requester.json"),
@@ -102,14 +102,14 @@ class WWorld(World, IERoles):
                              "<providers_filter_fcn>": "filter_addresses",
                              "<providers_data_processing_fcn>": "handle_received_data"})
 
-        # messages
+        # Messages
         behav.add_state("ready", msg="🔍 Looking for new agents for information exaction")
         behav.add_state("connected_to_providers", msg="🔗 Connected to new agents")
         behav.add_state("time_to_ask", msg="🙋 Asking new agents to handle my stream of data")
         behav.add_state("request_handled_by_a_provider",
                         msg="✅ An agent finished its job (good or bad), waiting others (if any)")
 
-        # saving to file
+        # Saving to file
         if behav.save(os.path.join(path_of_this_file, 'behav_user.json'), only_if_changed=dummy_agent):
             os.makedirs(os.path.join(path_of_this_file, 'pdf'), exist_ok=True)
             behav.save_pdf(os.path.join(path_of_this_file, 'pdf', 'behav_user.pdf'))
@@ -124,7 +124,7 @@ class WWorld(World, IERoles):
 
         behav.add_wildcards({"<user_role>": WWorld.ROLE_BITS_TO_STR[WWorld.ROLE_USER]})
 
-        # saving to file
+        # Saving to file
         if behav.save(os.path.join(path_of_this_file, 'behav_extractor.json'), only_if_changed=dummy_agent):
             os.makedirs(os.path.join(path_of_this_file, 'pdf'), exist_ok=True)
             behav.save_pdf(os.path.join(path_of_this_file, 'pdf', 'behav_extractor.pdf'))

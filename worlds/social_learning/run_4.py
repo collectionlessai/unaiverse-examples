@@ -8,9 +8,9 @@ from unaiverse.utils.misc import get_node_addresses_from_file
 
 import torch
 
-# agent (student 3)
+# Agent (student 3)
 net = CNN(d_dim=10, in_channels=1, seed=62)
-net.transforms = lambda x: x  # processing tensor data
+net.transforms = lambda x: x  # Processing tensor data
 agent = Agent(proc=net,
               proc_inputs=[Data4Proc(data_type="tensor", tensor_shape=(None, 1, 28, 28), tensor_dtype=torch.float32,
                                      pubsub=False, private_only=True)],
@@ -21,13 +21,13 @@ agent = Agent(proc=net,
                          'losses': [torch.nn.functional.cross_entropy]},
               buffer_generated_by_others="none")
 
-# node hosting agent
+# Node hosting agent
 node = Node(node_id="70e94a785ccf428cb7934a203b3134b0",
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
-# telling agent to join world
+# Telling agent to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)),
                        role_preference=SocialLearningRoles.ROLE_STUDENT_ISOLATED)
 
-# running node
+# Running node
 node.run()

@@ -19,12 +19,14 @@ from unaiverse.streams.streams import (AllHotLabelStream, SmoothHFHA, SmoothHFLA
 
 
 class SignalSchoolRoles:
+
     # Role bitmasks
     ROLE_TEACHER = 1 << 2
     ROLE_STUDENT = 1 << 3
 
     # Feasible roles
     ROLE_BITS_TO_STR = {
+
         # The base roles will be inherited from AgentBasics later
         ROLE_TEACHER: "teacher",
         ROLE_STUDENT: "student",
@@ -33,7 +35,7 @@ class SignalSchoolRoles:
 
 class WAgent(Agent, SignalSchoolRoles):
 
-    # feasible roles
+    # Feasible roles
     ROLE_BITS_TO_STR = {**Agent.ROLE_BITS_TO_STR, **SignalSchoolRoles.ROLE_BITS_TO_STR}
     ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
 
