@@ -11,8 +11,8 @@ agent = Agent(proc=None,
 
 # TODO replace node_id="..." with node_name="Broadcaster"
 # TODO replace password with unaiverse key
-# node hosting agent
-node = Node(node_id="255b2dbf73134e18877365d4b9323f46",
+# Node hosting agent
+node = Node(node_id="255b2dbf73134e18877365d4b9323f46", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

@@ -21,13 +21,15 @@ agent = Agent(proc=net,
                          'losses': [torch.nn.functional.cross_entropy]},
               buffer_generated_by_others="none")
 
+# TODO replace node_id="..." with node_name="DigitClassifier4"
+# TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="70e94a785ccf428cb7934a203b3134b0",
+node = Node(node_id="70e94a785ccf428cb7934a203b3134b0", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)),
-                       role_preference=SocialLearningRoles.ROLE_STUDENT_ISOLATED)
+                       role_preference=SocialLearningRoles.ROLE_STUDENT_ISOLATED)  # role suggestion
 
 # Running node
 node.run()

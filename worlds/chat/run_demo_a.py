@@ -10,10 +10,10 @@ agent = Agent(proc=None,
               proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=True)],
               proc_opts={})
 
-# TODO replace node_id="..." with node_name="PyChat"
+# TODO replace node_id="..." with node_name="Test0"
 # TODO replace password with unaiverse key
-# node hosting agent
-node = Node(node_id="3054024a135c4e65b495e8720e775881",
+# Node hosting agent
+node = Node(node_id="3054024a135c4e65b495e8720e775881", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

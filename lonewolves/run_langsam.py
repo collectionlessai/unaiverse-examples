@@ -57,10 +57,10 @@ agent = Agent(proc=LangSegmentAnything(),
               proc_outputs=[Data4Proc(data_type="img", pubsub=False, private_only=False)],
               proc_opts={})
 
-# TODO replace node_id="..." with node_name="Test0"
+# TODO replace node_id="..." with node_name="LangSAM"
 # TODO replace password with unaiverse key
 # Node hosting agent
-node_agent = Node(node_id="e4fc5f368f334df5bfb8d5bec501c776",
+node_agent = Node(node_id="e4fc5f368f334df5bfb8d5bec501c776", hidden=True,
                   unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Dumping public addresses to file

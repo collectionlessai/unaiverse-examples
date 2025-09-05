@@ -1,16 +1,15 @@
 import os
-import sys
 from unaiverse.agent import Agent
 from unaiverse.networking.node.node import Node
 from unaiverse.streams import ImageFileStream, DataStream
-from unaiverse.utils.misc import get_node_addresses_from_file, check_json_start, Silent
+from unaiverse.utils.misc import get_node_addresses_from_file, check_json_start
 
 # Monitoring file
 check_json_start(file=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'extracted_info.json'),
                  delete_existing=True,
                  msg="\nStarted monitoring file extracted_info.json...")
 
-# Agent (Image Streamer)
+# Agent
 agent = Agent(proc=None)
 
 data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -23,8 +22,10 @@ agent.add_stream(stream)
 agent.add_behav_wildcard("<stream_name>", "animal_stream")
 agent.add_behav_wildcard("<stream_len>", len(stream))
 
+# TODO replace node_id="..." with node_name="Test0"
+# TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="e027812a81a94401a94c8e43526f66d1",
+node = Node(node_id="e027812a81a94401a94c8e43526f66d1", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

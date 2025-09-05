@@ -19,7 +19,7 @@ save_path = os.path.join(os.path.dirname(os.path.abspath(spec.origin)), "mnist_d
 error_rate_initial = error_rate_mnist_test_set(net, mnist_data_save_path=save_path)
 print(f"\n*** Error: {error_rate_initial}")
 
-# Creating agent
+# Agent
 agent = Agent(proc=net,
               proc_inputs=[Data4Proc(data_type="tensor", tensor_shape=(None, 1, 28, 28), tensor_dtype=torch.float32,
                                      pubsub=False, private_only=True)],
@@ -30,8 +30,10 @@ agent = Agent(proc=net,
                          'losses': [torch.nn.functional.cross_entropy]},
               buffer_generated_by_others="none")
 
+# TODO replace node_id="..." with node_name="Test0"
+# TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="02c1de71207c48acbb7c62c74c04673e",
+node = Node(node_id="02c1de71207c48acbb7c62c74c04673e", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

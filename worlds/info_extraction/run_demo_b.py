@@ -6,7 +6,7 @@ from unaiverse.networking.node.node import Node
 from unaiverse.modules.networks import FasterRCNN
 from unaiverse.utils.misc import get_node_addresses_from_file
 
-# Agent (FasterRCNN)
+# Agent
 agent = Agent(proc=FasterRCNN(),
               proc_inputs=[Data4Proc(data_type="img", pubsub=False, private_only=True)],
               proc_outputs=[Data4Proc(data_type="tensor", tensor_dtype="torch.long", tensor_shape=(None,),
@@ -18,8 +18,10 @@ agent = Agent(proc=FasterRCNN(),
                             Data4Proc(data_type="text", pubsub=False, private_only=True)],
               proc_opts={})
 
+# TODO replace node_id="..." with node_name="Test1"
+# TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="337a5f4ccc274d2b95a472c616baf010",
+node = Node(node_id="337a5f4ccc274d2b95a472c616baf010", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

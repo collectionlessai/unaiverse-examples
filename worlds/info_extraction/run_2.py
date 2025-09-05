@@ -5,15 +5,17 @@ from unaiverse.modules.networks import SmolVLM
 from unaiverse.networking.node.node import Node
 from unaiverse.utils.misc import get_node_addresses_from_file
 
-# Agent (SmolVLM)
+# Agent
 agent = Agent(proc=SmolVLM(),
               proc_inputs=[Data4Proc(data_type="img", pubsub=False, private_only=False),
                            Data4Proc(data_type="text", pubsub=False, private_only=False)],
               proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
               proc_opts={})
 
+# TODO replace node_id="..." with node_name="SmolVLM"
+# TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="f3a6023bb69443088f8bc80b0fbe6ed6",
+node = Node(node_id="f3a6023bb69443088f8bc80b0fbe6ed6", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

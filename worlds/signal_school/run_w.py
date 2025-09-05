@@ -6,8 +6,11 @@ from unaiverse.utils.misc import save_node_addresses_to_file
 # World "Signal School"
 world = WWorld()
 
-# Node hosting world "Signal School"
-node = Node(node_id="1ccfcb72165047b28b7f28239bf5e5c7",
+# TODO replace node_id="..." with node_name="Test0"
+# TODO replace password with unaiverse key
+# TODO replace with world_masters_node_ids=["..."] with world_masters_node_names=["Test1"]
+# Node hosting world
+node = Node(node_id="1ccfcb72165047b28b7f28239bf5e5c7", hidden=True,
             unaiverse_key="password", hosted=world, clock_delta=1. / 1000.,
             world_masters_node_ids=["c3aa541d54964852b3f96198920ef508"])
 

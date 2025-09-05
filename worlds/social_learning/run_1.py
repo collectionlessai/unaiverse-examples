@@ -6,8 +6,10 @@ from unaiverse.utils.misc import get_node_addresses_from_file
 # Agent (teacher)
 agent = Agent(proc=None, buffer_generated_by_others="one")
 
-# Node agent
-node = Node(node_id="f1abec9edbff432f9b0cf6d6ce898a50",
+# TODO replace node_id="..." with node_name="DigitClassifier1"
+# TODO replace password with unaiverse key
+# Node hosting agent
+node = Node(node_id="f1abec9edbff432f9b0cf6d6ce898a50", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

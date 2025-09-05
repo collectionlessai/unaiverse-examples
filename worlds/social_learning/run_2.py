@@ -6,7 +6,7 @@ from unaiverse.modules.networks import CNN
 from unaiverse.networking.node.node import Node
 from unaiverse.utils.misc import get_node_addresses_from_file
 
-# Agent (student 1)
+# Agent
 net = CNN(d_dim=10, in_channels=1, seed=42)
 net.transforms = lambda x: x  # Processing tensor data
 agent = Agent(proc=net,
@@ -19,8 +19,10 @@ agent = Agent(proc=net,
                          'losses': [torch.nn.functional.cross_entropy]},
               buffer_generated_by_others="none")
 
+# TODO replace node_id="..." with node_name="DigitClassifier2"
+# TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="59e8c5a9bb4d44a290b57ccb549a9239",
+node = Node(node_id="59e8c5a9bb4d44a290b57ccb549a9239", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

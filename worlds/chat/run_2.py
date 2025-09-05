@@ -14,7 +14,7 @@ agent = Agent(proc=Phi(),
 # TODO replace node_id="..." with node_name="ChatAI"
 # TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="3054024a135c4e65b495e8720e775881",
+node = Node(node_id="3054024a135c4e65b495e8720e775881", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

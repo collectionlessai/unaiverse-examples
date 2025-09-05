@@ -5,7 +5,7 @@ from unaiverse.modules.networks import ViT
 from unaiverse.networking.node.node import Node
 from unaiverse.utils.misc import get_node_addresses_from_file
 
-# Agent (ViT)
+# Agent
 net = ViT()
 agent = Agent(proc=net,
               proc_inputs=[Data4Proc(data_type="img", pubsub=False, private_only=True)],
@@ -13,8 +13,10 @@ agent = Agent(proc=net,
                                       tensor_shape=(None, len(net.labels)), tensor_labels=net.labels,
                                       pubsub=False, private_only=True)])
 
+# TODO replace node_id="..." with node_name="ViT"
+# TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="02822e3961df4b6b9f9c6e6eeb4f7f73",
+node = Node(node_id="02822e3961df4b6b9f9c6e6eeb4f7f73", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

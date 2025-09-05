@@ -11,10 +11,10 @@ agent = Agent(proc=TinyLLama(),
               proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
               proc_opts={})
 
-# TODO replace node_id="..." with node_name="Test0"
+# TODO replace node_id="..." with node_name="TinyLLama"
 # TODO replace password with unaiverse key
 # Node hosting agent
-node_agent = Node(node_id="63a2fecf52b24989bb81ec35a7b8173e",
+node_agent = Node(node_id="63a2fecf52b24989bb81ec35a7b8173e", hidden=True,
                   unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Dumping public addresses to file

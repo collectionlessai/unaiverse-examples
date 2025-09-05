@@ -7,8 +7,10 @@ from unaiverse.utils.misc import save_node_addresses_to_file
 # World
 world = WWorld()
 
+# TODO replace node_id="..." with node_name="InfoExtraction"
+# TODO replace password with unaiverse key
 # Node hosting world
-node = Node(node_id="ce50cae6046141d6bfa0da6347a9c686",
+node = Node(node_id="ce50cae6046141d6bfa0da6347a9c686", hidden=True,
             unaiverse_key="password", hosted=world, clock_delta=1. / 10.)
 
 # Dumping world addresses to file

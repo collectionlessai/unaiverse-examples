@@ -9,8 +9,8 @@ world = WWorld()
 # TODO replace node_id="..." with node_name="ChatRoom"
 # TODO replace password with unaiverse key
 # TODO replace with world_masters_node_ids=["..."] with world_masters_node_names=["Broadcaster"]
-# node hosting world
-node = Node(node_id="72ae13520d3c4043b3de056f47b2baa7",
+# Node hosting world
+node = Node(node_id="72ae13520d3c4043b3de056f47b2baa7", hidden=True,
             unaiverse_key="password", hosted=world, clock_delta=1. / 10.,
             world_masters_node_ids=["255b2dbf73134e18877365d4b9323f46"])
 

@@ -12,10 +12,10 @@ agent = Agent(proc=SmolVLM(),
               proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
               proc_opts={})
 
-# TODO replace node_id="..." with node_name="Test0"
+# TODO replace node_id="..." with node_name="SmolVLM"
 # TODO replace password with unaiverse key
 # Node hosting agent
-node_agent = Node(node_id="f3a6023bb69443088f8bc80b0fbe6ed6",
+node_agent = Node(node_id="f3a6023bb69443088f8bc80b0fbe6ed6", hidden=True,
                   unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Dumping public addresses to file

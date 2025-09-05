@@ -7,7 +7,7 @@ from unaiverse.utils.misc import get_node_addresses_from_file
 
 import torch
 
-# Agent (student 2)
+# Agent
 net = CNN(d_dim=10, in_channels=1, seed=52)
 net.transforms = lambda x: x  # Processing tensor data
 agent = Agent(proc=net,
@@ -20,8 +20,10 @@ agent = Agent(proc=net,
                          'losses': [torch.nn.functional.cross_entropy]},
               buffer_generated_by_others="none")
 
+# TODO replace node_id="..." with node_name="DigitClassifier3"
+# TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="1a3c3be88ddf427cb479be8ac54d389f",
+node = Node(node_id="1a3c3be88ddf427cb479be8ac54d389f", hidden=True,
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world

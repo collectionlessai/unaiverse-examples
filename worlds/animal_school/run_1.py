@@ -8,7 +8,7 @@ agent = Agent(proc=None, buffer_generated_by_others="all")
 
 # TODO replace node_id="..." with node_name="Test1"
 # TODO replace password with unaiverse key
-# node hosting agent
+# Node hosting agent
 node = Node(node_id="9f287a3a4e2e466f93aaad5098dbbc76",
             unaiverse_key="password", hosted=agent, clock_delta=1. / 1000.)
 
