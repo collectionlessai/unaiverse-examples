@@ -50,14 +50,16 @@ results[0]['mask_scores']: mono-dim numpy array with some float32 (4 in the runn
     each mask that was predicted.
 """
 
-# Our agent
+# Agent
 agent = Agent(proc=LangSegmentAnything(),
               proc_inputs=[Data4Proc(data_type="img", pubsub=False, private_only=False),
                            Data4Proc(data_type="text", pubsub=False, private_only=False)],
               proc_outputs=[Data4Proc(data_type="img", pubsub=False, private_only=False)],
               proc_opts={})
 
-# Node hosting our agent
+# TODO replace node_id="..." with node_name="Test0"
+# TODO replace password with unaiverse key
+# Node hosting agent
 node_agent = Node(node_id="e4fc5f368f334df5bfb8d5bec501c776",
                   unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 

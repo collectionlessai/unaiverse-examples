@@ -14,13 +14,15 @@ pip install tiktoken blobfile langchain-community
 pip install --no-cache-dir --force-reinstall sentencepiece
 """
 
-# Our agent
+# Agent
 agent = Agent(proc=SiteRAG(site_url="https://collectionless.ai/"),
               proc_inputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
               proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
               proc_opts={})
 
-# Node hosting our agent
+# TODO replace node_id="..." with node_name="Test0"
+# TODO replace password with unaiverse key
+# Node hosting agent
 node_agent = Node(node_id="2bdcbf6376094d75b15d937a045ebad9",
                   unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 

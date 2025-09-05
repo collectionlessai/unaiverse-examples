@@ -13,7 +13,7 @@ agent = Agent(proc=Phi(),
 
 # TODO replace node_id="..." with node_name="ChatAI"
 # TODO replace password with unaiverse key
-# node hosting agent
+# Node hosting agent
 node = Node(node_id="3054024a135c4e65b495e8720e775881",
             unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
