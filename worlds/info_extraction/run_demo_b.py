@@ -20,7 +20,7 @@ agent = Agent(proc=FasterRCNN(),
 
 # node hosting agent
 node = Node(node_id="337a5f4ccc274d2b95a472c616baf010",
-            password="password", hosted=agent, clock_delta=1. / 10.)
+            unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # telling agent to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))

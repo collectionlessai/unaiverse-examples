@@ -13,7 +13,7 @@ agent = Agent(proc=Phi(),
 
 # node hosting our agent
 node_agent = Node(node_id="98bad85baa1e4ee7bbc811551b6cbffd",
-                  password="password", hosted=agent, clock_delta=1. / 10.)
+                  unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # dumping public addresses to file
 save_node_addresses_to_file(node_agent, os.path.dirname(__file__), public=True)

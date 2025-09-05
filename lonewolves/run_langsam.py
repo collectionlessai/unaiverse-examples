@@ -59,7 +59,7 @@ agent = Agent(proc=LangSegmentAnything(),
 
 # node hosting our agent
 node_agent = Node(node_id="e4fc5f368f334df5bfb8d5bec501c776",
-                  password="password", hosted=agent, clock_delta=1. / 10.)
+                  unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # dumping public addresses to file
 save_node_addresses_to_file(node_agent, os.path.dirname(__file__), public=True)

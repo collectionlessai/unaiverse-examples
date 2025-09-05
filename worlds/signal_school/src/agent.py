@@ -1,22 +1,20 @@
 """
- █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
-░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
- ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░ 
- ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████   
- ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█   
- ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
- ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
-  ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░ 
-
-~ Registration/Login: https://unaiverse.io
-~ Code Repositories:  https://github.com/collectionlessai/
-~ Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
-
-A Collectionless AI Project (https://collectionless.ai)
+       █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
+      ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░ 
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████   
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█   
+       ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
+       ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░ 
+                 A Collectionless AI Project (https://collectionless.ai)
+                 Registration/Login: https://unaiverse.io
+                 Code Repositories:  https://github.com/collectionlessai/
+                 Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
 from unaiverse.agent import Agent
 from unaiverse.streams import DataStream
-from unaiverse.library.streams.streams import (AllHotLabelStream, SmoothHFHA, SmoothHFLA, SmoothLFHA, SmoothLFLA,
+from unaiverse.streams.streams import (AllHotLabelStream, SmoothHFHA, SmoothHFLA, SmoothLFHA, SmoothLFLA,
                                                SquareHFHA, SquareHFLA, SquareLFHA, SquareLFLA)
 
 

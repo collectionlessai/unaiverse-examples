@@ -13,7 +13,7 @@ agent = Agent(proc=TinyLLama(),
 
 # node hosting our agent
 node_agent = Node(node_id="63a2fecf52b24989bb81ec35a7b8173e",
-                  password="password", hosted=agent, clock_delta=1. / 10.)
+                  unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # dumping public addresses to file
 save_node_addresses_to_file(node_agent, os.path.dirname(__file__), public=True)

@@ -1,18 +1,16 @@
 """
- █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
-░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
- ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░ 
- ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████   
- ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█   
- ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
- ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
-  ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░ 
-
-~ Registration/Login: https://unaiverse.io
-~ Code Repositories:  https://github.com/collectionlessai/
-~ Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
-
-A Collectionless AI Project (https://collectionless.ai)
+       █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
+      ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░ 
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████   
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█   
+       ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
+       ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░ 
+                 A Collectionless AI Project (https://collectionless.ai)
+                 Registration/Login: https://unaiverse.io
+                 Code Repositories:  https://github.com/collectionlessai/
+                 Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
 import os
 import math
@@ -88,9 +86,9 @@ class WAgent(Agent, SocialLearningRoles):
         if self.get_current_role(return_int=True) == self.ROLE_TEACHER:
 
             # guess the name of the folder containing this the agent file
-            spec = importlib.util.find_spec("unaiverse.library.worlds.social_learning.agent")
+            spec = importlib.util.find_spec("unaiverse.worlds.social_learning.agent")
             if spec is None or spec.origin is None:
-                raise ImportError("Module unaiverse.library.worlds.social_learning.agent was not found")
+                raise ImportError("Module unaiverse.worlds.social_learning.agent was not found")
             self._agent_folder_name = os.path.dirname(os.path.abspath(spec.origin))
 
             # loading stats

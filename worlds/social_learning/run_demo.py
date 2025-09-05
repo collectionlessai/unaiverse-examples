@@ -14,7 +14,7 @@ net = CNN(d_dim=10, in_channels=1, seed=62)
 net.transforms = lambda x: x  # processing tensor data
 
 # evaluating before 'living'
-spec = importlib.util.find_spec("unaiverse.library.worlds.social_learning.world")
+spec = importlib.util.find_spec("unaiverse.worlds.social_learning.world")
 save_path = os.path.join(os.path.dirname(os.path.abspath(spec.origin)), "mnist_data")
 error_rate_initial = error_rate_mnist_test_set(net, mnist_data_save_path=save_path)
 print(f"\n*** Error: {error_rate_initial}")
@@ -32,7 +32,7 @@ agent = Agent(proc=net,
 
 # node hosting agent
 node = Node(node_id="02c1de71207c48acbb7c62c74c04673e",
-            password="password", hosted=agent, clock_delta=1. / 10.)
+            unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # telling agent to join world
 if node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__))) is None:

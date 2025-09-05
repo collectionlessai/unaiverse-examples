@@ -9,7 +9,7 @@ world = WWorld()
 
 # node hosting world
 node = Node(node_id="ce50cae6046141d6bfa0da6347a9c686",
-            password="password", hosted=world, clock_delta=1. / 10.)
+            unaiverse_key="password", hosted=world, clock_delta=1. / 10.)
 
 # dumping world addresses to file
 save_node_addresses_to_file(node, os.path.dirname(__file__), public=True)

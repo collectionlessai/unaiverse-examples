@@ -22,7 +22,7 @@ agent = Agent(proc=SiteRAG(site_url="https://collectionless.ai/"),
 
 # node hosting our agent
 node_agent = Node(node_id="2bdcbf6376094d75b15d937a045ebad9",
-                  password="password", hosted=agent, clock_delta=1. / 10.)
+                  unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # dumping public addresses to file
 save_node_addresses_to_file(node_agent, os.path.dirname(__file__), public=True)

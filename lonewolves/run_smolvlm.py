@@ -14,7 +14,7 @@ agent = Agent(proc=SmolVLM(),
 
 # node hosting our agent
 node_agent = Node(node_id="f3a6023bb69443088f8bc80b0fbe6ed6",
-                  password="password", hosted=agent, clock_delta=1. / 10.)
+                  unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # dumping public addresses to file
 save_node_addresses_to_file(node_agent, os.path.dirname(__file__), public=True)

@@ -15,7 +15,7 @@ agent.proc_outputs[1].set_tensor_labels(["albatross", "cheetah", "giraffe"])
 
 # node hosting agent "Fred" (student 1)
 node = Node(node_id="80b825fe93e547ca8c75b094e1788e61",
-            password="password", hosted=agent, clock_delta=1. / 1000.)
+            unaiverse_key="password", hosted=agent, clock_delta=1. / 1000.)
 
 # telling "Alice" to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))

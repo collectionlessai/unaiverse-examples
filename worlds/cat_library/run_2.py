@@ -30,7 +30,7 @@ agent = Agent(proc=net,
 
 # node hosting agent "Bob"
 node = Node(node_id="27ec668f13e644c782659a6ac1370a4a",
-            password="password", hosted=agent, clock_delta=1. / 10.)
+            unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # telling "Bob" to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))

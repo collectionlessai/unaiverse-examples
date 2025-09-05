@@ -12,7 +12,7 @@ agent = Agent(proc=None,
 
 # node hosting our agent
 node_agent = Node(node_id="1b37140a496948df80cc0e8c996e9501",
-                  password="password", hosted=agent, clock_delta=1. / 10.)
+                  unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
 
 # connecting to a lone wolf
 wolf_peer_id = node_agent.ask_to_get_in_touch(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))

@@ -2,10 +2,11 @@ import os
 import re
 import sys
 import glob
+import shutil
 import threading
 import subprocess
 
-# configuration
+# config
 world_file_runner = "run_w.py"
 agent_file_runners = "run_*.py"  # where * must be a number
 log_to_file = True
@@ -46,7 +47,14 @@ def terminate_all_processes():
 
 
 if __name__ == "__main__":
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    if len(sys.argv) != 2:
+        script_name = os.path.basename(sys.argv[0])
+        print(f"Usage: python {script_name} <world-name>")
+        sys.exit(1)
+
+    world_name = sys.argv[1]
+    main_dir = os.path.dirname(os.path.abspath(__file__))
+    script_dir = os.path.join(main_dir, world_name)
 
     # collect scripts
     scripts = [os.path.join(script_dir, world_file_runner)]
@@ -69,8 +77,11 @@ if __name__ == "__main__":
             break
 
         if log_to_file:
-            os.makedirs(os.path.join(script_dir, "log"), exist_ok=True)
-            log_path = os.path.join(script_dir, "log", f"{os.path.basename(script)}.log")
+            log_dir = os.path.join(script_dir, "log")
+            if os.path.exists(log_dir) and os.path.isdir(log_dir):
+                shutil.rmtree(log_dir)
+            os.makedirs(log_dir, exist_ok=True)
+            log_path = os.path.join(log_dir, f"{os.path.basename(script)}.log")
             log_f = open(log_path, "w+")
         else:
             log_f = None

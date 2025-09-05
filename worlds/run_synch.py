@@ -1,8 +1,7 @@
 import os
 import re
+import sys
 import glob
-from unaiverse.utils.server import Server
-from unaiverse.networking.node.node import NodeSynchronizer
 
 # configuration
 world_file_runner = "run_w.py"
@@ -12,6 +11,8 @@ files_to_skip = {"run_synch.py", "run_asynch.py", "run_demo.py", "run_demo_a.py"
 initial_code = """
 import os
 import sys
+from unaiverse.utils.server import Server
+from unaiverse.networking.node.node import NodeSynchronizer
 
 # synchronizing nodes (for visualization purposes)
 node_synchronizer = NodeSynchronizer()
@@ -36,10 +37,10 @@ final_code = """
 # running
 node_synchronizer.run()
 """
-methods_to_skip = {"sys.path.append", "run", "ask_to_join_world", "save_node_addresses_to_file"}  # method calls to skip
+methods_to_skip = {"run", "ask_to_join_world", "save_node_addresses_to_file"}  # method calls to skip
 
 
-def build_script() -> str:
+def build_script(code_dir: str) -> str:
 
     def is_import(_line: str) -> bool:
         return (_line.strip().startswith("import ") or _line.strip().startswith("from ") or
@@ -64,9 +65,6 @@ def build_script() -> str:
         else:
             if line.strip():
                 code_lines.append(line.rstrip())
-
-    # folder where this script resides
-    script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # collect world runner
     with open(world_file_runner, "r") as f:
@@ -96,7 +94,7 @@ def build_script() -> str:
                 code_lines.append(line)
 
     # collect agent runners
-    for filename in sorted(glob.glob(os.path.join(script_dir, agent_file_runners))):
+    for filename in sorted(glob.glob(os.path.join(code_dir, agent_file_runners))):
         if os.path.basename(filename) == world_file_runner:
             continue
         if os.path.basename(filename) in files_to_skip:
@@ -138,5 +136,14 @@ def build_script() -> str:
 
 
 if __name__ == "__main__":
-    generated_script = build_script()
+    if len(sys.argv) != 2:
+        script_name = os.path.basename(sys.argv[0])
+        print(f"Usage: python {script_name} <world-name>")
+        sys.exit(1)
+
+    world_name = sys.argv[1]
+    main_dir = os.path.dirname(os.path.abspath(__file__))
+    script_dir = os.path.join(main_dir, world_name)
+
+    generated_script = build_script(script_dir)
     exec(generated_script, globals())

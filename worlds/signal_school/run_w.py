@@ -8,7 +8,7 @@ world = WWorld()
 
 # node hosting world "Signal School"
 node = Node(node_id="1ccfcb72165047b28b7f28239bf5e5c7",
-            password="password", hosted=world, clock_delta=1. / 1000.,
+            unaiverse_key="password", hosted=world, clock_delta=1. / 1000.,
             world_masters_node_ids=["c3aa541d54964852b3f96198920ef508"])
 
 # dumping world addresses to file

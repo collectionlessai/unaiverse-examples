@@ -8,7 +8,7 @@ world = WWorld(merge_flat_stream_labels=True)
 
 # node hosting world "Animal Lectures"
 node = Node(node_id="d0d5e11bb9864d0580da6cf1b211dd8a",
-            password="password", hosted=world, clock_delta=1. / 1000.,
+            unaiverse_key="password", hosted=world, clock_delta=1. / 1000.,
             world_masters_node_ids=["9f287a3a4e2e466f93aaad5098dbbc76"])
 
 # dumping world addresses to file
