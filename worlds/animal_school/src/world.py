@@ -14,8 +14,8 @@
 """
 import os
 from unaiverse.world import World
-from agent import WAgent, AnimalSchoolRoles
 from unaiverse.hsm import HybridStateMachine
+from src.agent import WAgent, AnimalSchoolRoles
 from unaiverse.networking.node.profile import NodeProfile
 from unaiverse.streams import DataStream, ImageFileStream, LabelStream
 
@@ -42,7 +42,7 @@ class WWorld(World, AnimalSchoolRoles):
                          **kwargs)
 
         # Adding streams
-        data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'data', 'animals')
+        data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'data', 'animals')
 
         self.add_streams([DataStream.create(group="albatross", public=False,
                                             stream=ImageFileStream(image_dir=data_path,
@@ -93,7 +93,7 @@ class WWorld(World, AnimalSchoolRoles):
 
         # Engaging students, teaching and, afterward, evaluating students
         behav.add_transit("exam_prepared",
-                          os.path.join(path_of_this_file, "..", "..",
+                          os.path.join(path_of_this_file, "..",
                                        "behaviors", "teach-playlist_eval-recorded1.json"),
                           action="set_pref_streams",
                           args={"net_hashes": ["<world>:albatross", "<world>:cheetah", "<world>:giraffe"]})

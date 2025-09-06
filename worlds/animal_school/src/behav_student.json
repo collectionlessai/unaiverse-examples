@@ -5,25 +5,16 @@
     "prev_state": null,
     "limbo_state": null,
     "state_actions": {
-        "teacher_engaged": [null, null, 0, true, 0.0],
-        "done_learn": [null, null, 1, true, 0.0],
-        "done_gen": [null, null, 2, true, 0.0],
-        "init": [null, null, 3, true, 0.0]
+        "init": [null, null, 0, true, 0.0],
+        "/Users/mela/Workspaces/Unisi/unaiverse-dev/unaiverse-examples/worlds/animal_school/src/../../behaviors/listening_to_teacher.json": [null, null, 1, true, 0.0],
+        "teacher_engaged": [null, null, 2, true, 0.0]
     },
     "transitions": {
-        "teacher_engaged": {
-            "done_learn": [["do_learn", {}, false, 0]],
-            "done_gen": [["do_gen", {}, false, 1]],
-            "init": [["get_disengagement", {}, false, 5]]
-        },
-        "done_learn": {
-            "teacher_engaged": [["nop", {}, true, 2]]
-        },
-        "done_gen": {
-            "teacher_engaged": [["nop", {}, true, 3]]
-        },
         "init": {
-            "teacher_engaged": [["get_engagement", {"acceptable_role": "teacher"}, false, 4]]
+            "/Users/mela/Workspaces/Unisi/unaiverse-dev/unaiverse-examples/worlds/animal_school/src/../../behaviors/listening_to_teacher.json": [["get_engagement", {"acceptable_role": "teacher"}, false, 0]]
+        },
+        "teacher_engaged": {
+            "init": [["get_disengagement", {}, false, 1]]
         }
     },
     "cur_action": null
