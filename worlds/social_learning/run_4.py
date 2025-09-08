@@ -1,12 +1,10 @@
 import os
+import torch
 from unaiverse.agent import Agent
 from unaiverse.dataprops import Data4Proc
-from src.world import SocialLearningRoles
 from unaiverse.modules.networks import CNN
 from unaiverse.networking.node.node import Node
 from unaiverse.utils.misc import get_node_addresses_from_file
-
-import torch
 
 # Agent (student 3)
 net = CNN(d_dim=10, in_channels=1, seed=62)
@@ -29,7 +27,7 @@ node = Node(node_id="70e94a785ccf428cb7934a203b3134b0", hidden=True,
 
 # Telling agent to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)),
-                       role_preference=SocialLearningRoles.ROLE_STUDENT_ISOLATED)  # role suggestion
+                       role_preference="student_isolated")  # role suggestion
 
 # Running node
 node.run()

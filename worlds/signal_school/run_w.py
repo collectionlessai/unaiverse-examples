@@ -3,7 +3,7 @@ from src.world import WWorld
 from unaiverse.networking.node.node import Node
 from unaiverse.utils.misc import save_node_addresses_to_file
 
-# World "Signal School"
+# World
 world = WWorld()
 
 # TODO replace node_id="..." with node_name="Test0"

@@ -5,7 +5,7 @@ from unaiverse.streams import ImageFileStream, DataStream
 from unaiverse.utils.misc import get_node_addresses_from_file, check_json_start
 
 # Monitoring file
-check_json_start(file=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'extracted_info.json'),
+check_json_start(file='extracted_info.json',
                  delete_existing=True,
                  msg="\nStarted monitoring file extracted_info.json...")
 

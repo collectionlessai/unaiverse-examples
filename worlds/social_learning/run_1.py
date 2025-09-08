@@ -3,7 +3,7 @@ from unaiverse.agent import Agent
 from unaiverse.networking.node.node import Node
 from unaiverse.utils.misc import get_node_addresses_from_file
 
-# Agent (teacher)
+# Agent
 agent = Agent(proc=None, buffer_generated_by_others="one")
 
 # TODO replace node_id="..." with node_name="DigitClassifier1"

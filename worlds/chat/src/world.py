@@ -14,53 +14,39 @@
 """
 import os
 from unaiverse.world import World
-from agent import WAgent, ChatRoles
 from unaiverse.hsm import HybridStateMachine
 from unaiverse.networking.node.profile import NodeProfile
 
 
-class WWorld(World, ChatRoles):
+class WWorld(World):
 
-    # Feasible roles
-    ROLE_BITS_TO_STR = {**World.ROLE_BITS_TO_STR, **ChatRoles.ROLE_BITS_TO_STR}
-    ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
-
-    def __init__(self, *args, **kwargs):
-
-        # Dynamically re-create the behaviour files (not formally needed, just for easier develop)
-        WWorld.__create_behav_files()
-
-        # Guess the name of the folder containing this world
-        world_folder_name = os.path.basename(os.path.dirname(__file__))
-
-        # Building world
-        super().__init__(*args,
-                         agent_actions=os.path.join(world_folder_name, 'agent.py'),
-                         role_to_behav={self.ROLE_BITS_TO_STR[self.ROLE_USER]: os.path.join(world_folder_name, 'behav_user.json'),
-                                        self.ROLE_BITS_TO_STR[self.ROLE_BROADCASTER]: os.path.join(world_folder_name, 'behav_broadcaster.json')},
-                         **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(world_folder=os.path.dirname(os.path.abspath(__file__)), **kwargs)
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         if is_world_master:
             if len(self.world_masters) <= 1:
-                return self.ROLE_BROADCASTER
+                return "broadcaster"
             else:
-                return self.ROLE_USER
+                return "user"
         else:
-            return self.ROLE_USER
+            return "user"
 
-    @staticmethod
-    def __create_behav_files():
-        path_of_this_file = os.path.dirname(os.path.abspath(__file__))
+    def create_behav_files(self):
+        """Create role-behavior JSON files: if you manually create the JSON files, no need to implement this method."""
+
+        # Creating a dummy agent to check actions
+        import sys
+        sys.path.append(self.world_folder)
+        from agent import WAgent
         dummy_agent = WAgent(proc=None)
 
         # ROLE 1/2: user
         behav = HybridStateMachine(dummy_agent)
-        behav.set_role(dummy_agent.ROLE_BITS_TO_STR[WAgent.ROLE_USER])
+        behav.set_role("user")
 
         behav.add_transit("init", "ready",
-                          action="connect_to_broadcaster",
-                          args={"role": WWorld.ROLE_BITS_TO_STR[WAgent.ROLE_BROADCASTER]})
+                          action="connect_to_broadcaster", args={"role": "broadcaster"})
         behav.add_state("ready", action="check_messages",
                         args={"max_silence_seconds": 20.0, "talk_probability": 0.33, "history_len": 3})
         behav.add_transit("ready", "message_sent",
@@ -69,17 +55,13 @@ class WWorld(World, ChatRoles):
         behav.add_transit("message_sent", "ready", action="nop")
 
         # Saving to file
-        if behav.save(os.path.join(path_of_this_file, 'behav_user.json'), only_if_changed=dummy_agent):
-            os.makedirs(os.path.join(path_of_this_file, 'pdf'), exist_ok=True)
-            behav.save_pdf(os.path.join(path_of_this_file, 'pdf', 'behav_user.pdf'))
+        behav.save(os.path.join(self.world_folder, 'user.json'), only_if_changed=dummy_agent)
 
         # ROLE 2/2: broadcaster
         behav = HybridStateMachine(dummy_agent)
-        behav.set_role(dummy_agent.ROLE_BITS_TO_STR[WAgent.ROLE_BROADCASTER])
+        behav.set_role("broadcaster")
 
         behav.add_transit("ready", "ready", action="do_gen", args={"timeout": 3.0}, ready=False)
 
         # Saving to file
-        if behav.save(os.path.join(path_of_this_file, 'behav_broadcaster.json'), only_if_changed=dummy_agent):
-            os.makedirs(os.path.join(path_of_this_file, 'pdf'), exist_ok=True)
-            behav.save_pdf(os.path.join(path_of_this_file, 'pdf', 'behav_broadcaster.pdf'))
+        behav.save(os.path.join(self.world_folder, 'broadcaster.json'), only_if_changed=dummy_agent)

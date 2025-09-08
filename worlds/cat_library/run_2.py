@@ -9,8 +9,7 @@ from unaiverse.modules.networks import RNNTokenLM
 from unaiverse.utils.misc import get_node_addresses_from_file
 
 # Creating a stream that will not be shared at all, just  to get the vocabulary
-data_path = os.path.join(os.path.dirname(os.path.abspath(sys.modules[Agent.__module__].__file__)),
-                         'library', 'data', 'cats', 'stream_of_words.csv')
+data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'data', 'cats', 'stream_of_words.csv')
 stream = TokensStream(tokens_file_csv=data_path, max_tokens=998)
 voc_size = len(stream.get_props().proc_to_stream_transforms)
 voc = stream.get_props().proc_to_stream_transforms

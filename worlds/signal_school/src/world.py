@@ -14,53 +14,40 @@
 """
 import os
 from unaiverse.world import World
-from agent import WAgent, SignalSchoolRoles
 from unaiverse.hsm import HybridStateMachine
 from unaiverse.networking.node.profile import NodeProfile
 
 
-class WWorld(World, SignalSchoolRoles):
+class WWorld(World):
 
-    # Feasible roles
-    ROLE_BITS_TO_STR = {**World.ROLE_BITS_TO_STR, **SignalSchoolRoles.ROLE_BITS_TO_STR}
-    ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
-
-    def __init__(self, *args, **kwargs):
-
-        # Dynamically re-create the behaviour files (not formally needed, just for easier develop)
-        WWorld.__create_behav_files()
-
-        # Guess the name of the folder containing this world
-        world_folder_name = os.path.basename(os.path.dirname(__file__))
-
-        # Building world
-        super().__init__(*args,
-                         agent_actions=os.path.join(world_folder_name, 'agent.py'),
-                         role_to_behav={WAgent.ROLE_BITS_TO_STR[WAgent.ROLE_TEACHER]: os.path.join(world_folder_name, 'behav_teacher.json'),
-                                        WAgent.ROLE_BITS_TO_STR[WAgent.ROLE_STUDENT]: os.path.join(world_folder_name, 'behav_student.json')},
-                         **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(world_folder=os.path.dirname(os.path.abspath(__file__)), **kwargs)
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         if is_world_master:
             if len(self.world_masters) <= 1:
-                return WAgent.ROLE_TEACHER
+                return "teacher"
             else:
-                return WAgent.ROLE_STUDENT
+                return "student"
         else:
-            return WAgent.ROLE_STUDENT
+            return "student"
 
-    @staticmethod
-    def __create_behav_files():
-        path_of_this_file = os.path.dirname(os.path.abspath(__file__))
+    def create_behav_files(self):
+        """Create role-behavior JSON files: if you manually create the JSON files, no need to implement this method."""
+
+        # Creating a dummy agent to check actions
+        import sys
+        sys.path.append(self.world_folder)
+        from agent import WAgent
         dummy_agent = WAgent(proc=None)
 
         # ROLE 1/2: teacher
         behav = HybridStateMachine(dummy_agent)
-        behav.set_role(dummy_agent.ROLE_BITS_TO_STR[WAgent.ROLE_TEACHER])
+        behav.set_role("teacher")
 
         # Engaging students, teaching and, afterward, evaluating students
         behav.add_transit("init",
-                          os.path.join(path_of_this_file, "..", "..", "behaviors",
+                          os.path.join(self.world_folder, "..", "..", "..", "behaviors",
                                        "teach-playlist_eval-playlist-lastrep_looped.json"),
                           action="set_pref_streams",
                           args={"net_hashes": ["<agent>:smoHfHa", "<agent>:smoHfLa", "<agent>:smoLfHa",
@@ -78,28 +65,24 @@ class WWorld(World, SignalSchoolRoles):
         behav.add_transit("eval_time_again", "not_good", action="nop")
 
         # Wildcards present in the template
-        behav.add_wildcards({"<role_to_connect>": dummy_agent.ROLE_BITS_TO_STR[WAgent.ROLE_STUDENT],
+        behav.add_wildcards({"<role_to_connect>": "student",
                              "<learn_steps>": 1000, "<eval_steps>": 1000, "<cmp_thres>": 0.2})
 
         # Saving to file
-        if behav.save(os.path.join(path_of_this_file, 'behav_teacher.json'), only_if_changed=dummy_agent):
-            os.makedirs(os.path.join(path_of_this_file, 'pdf'), exist_ok=True)
-            behav.save_pdf(os.path.join(path_of_this_file, 'pdf', 'behav_teacher.pdf'))
+        behav.save(os.path.join(self.world_folder, 'teacher.json'), only_if_changed=dummy_agent)
 
         # ROLE 2/2: student
         behav = HybridStateMachine(dummy_agent)
-        behav.set_role(dummy_agent.ROLE_BITS_TO_STR[WAgent.ROLE_STUDENT])
+        behav.set_role("student")
 
         # Generic behaviour of a student who listens to the requests from the teacher
         behav.add_transit("init",
-                          os.path.join(path_of_this_file, "..", "..", "behaviors", "listening_to_teacher.json"),
+                          os.path.join(self.world_folder, "..", "..", "..", "behaviors", "listening_to_teacher.json"),
                           action="get_engagement",
-                          args={"acceptable_role": dummy_agent.ROLE_BITS_TO_STR[dummy_agent.ROLE_TEACHER]})
+                          args={"acceptable_role": "teacher"})
 
         # When the teacher will send the student back home
         behav.add_transit("teacher_engaged", "init", action="get_disengagement")
 
         # Saving to file
-        if behav.save(os.path.join(path_of_this_file, 'behav_student.json'), only_if_changed=dummy_agent):
-            os.makedirs(os.path.join(path_of_this_file, 'pdf'), exist_ok=True)
-            behav.save_pdf(os.path.join(path_of_this_file, 'pdf', 'behav_student.pdf'))
+        behav.save(os.path.join(self.world_folder, 'student.json'), only_if_changed=dummy_agent)

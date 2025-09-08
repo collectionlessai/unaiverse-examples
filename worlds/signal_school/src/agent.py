@@ -14,35 +14,16 @@
 """
 from unaiverse.agent import Agent
 from unaiverse.streams import DataStream
-from unaiverse.streams.streams import (AllHotLabelStream, SmoothHFHA, SmoothHFLA, SmoothLFHA, SmoothLFLA,
-                                               SquareHFHA, SquareHFLA, SquareLFHA, SquareLFLA)
+from unaiverse.streamlib.streamlib import (AllHotLabelStream, SmoothHFHA, SmoothHFLA, SmoothLFHA, SmoothLFLA,
+                                           SquareHFHA, SquareHFLA, SquareLFHA, SquareLFLA)
 
 
-class SignalSchoolRoles:
+class WAgent(Agent):
 
-    # Role bitmasks
-    ROLE_TEACHER = 1 << 2
-    ROLE_STUDENT = 1 << 3
+    def accept_new_role(self, role: int):
+        super().accept_new_role(role)
 
-    # Feasible roles
-    ROLE_BITS_TO_STR = {
-
-        # The base roles will be inherited from AgentBasics later
-        ROLE_TEACHER: "teacher",
-        ROLE_STUDENT: "student",
-    }
-
-
-class WAgent(Agent, SignalSchoolRoles):
-
-    # Feasible roles
-    ROLE_BITS_TO_STR = {**Agent.ROLE_BITS_TO_STR, **SignalSchoolRoles.ROLE_BITS_TO_STR}
-    ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
-
-    def accept_new_role(self, role: int, default_behav: str | None):
-        super().accept_new_role(role, default_behav)
-
-        if ((role >> 2) << 2) == self.ROLE_TEACHER:
+        if self.get_current_role() == "teacher":
             self.add_streams([DataStream.create(group="smoHfHa", public=False, stream=SmoothHFHA()),
                               DataStream.create(group="smoHfHa", public=False,
                                                 stream=AllHotLabelStream(SmoothHFHA.FEATURES))])

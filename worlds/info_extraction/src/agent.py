@@ -20,26 +20,7 @@ from unaiverse.agent import Agent
 from unaiverse.dataprops import DataProps
 
 
-class IERoles:
-
-    # Role bitmasks
-    ROLE_USER = 1 << 2
-    ROLE_EXTRACTOR = 1 << 3
-
-    # Feasible roles
-    ROLE_BITS_TO_STR = {
-
-        # The base roles will be inherited from AgentBasics later
-        ROLE_USER: "user",
-        ROLE_EXTRACTOR: "extractor"
-    }
-
-
-class WAgent(Agent, IERoles):
-
-    # Feasible roles
-    ROLE_BITS_TO_STR = {**Agent.ROLE_BITS_TO_STR, **IERoles.ROLE_BITS_TO_STR}
-    ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
+class WAgent(Agent):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -51,14 +32,14 @@ class WAgent(Agent, IERoles):
     def check_status(self):
         self.disengage_all()
 
-        if self.get_current_role(return_int=True) == self.ROLE_EXTRACTOR:
-            self.disconnect_by_role(self.ROLE_BITS_TO_STR[self.ROLE_USER])
+        if self.get_current_role() == "extractor":
+            self.disconnect_by_role("user")
 
-        elif self.get_current_role(return_int=True) == self.ROLE_USER:
+        elif self.get_current_role() == "user":
             for agent in self._agents_who_completed_what_they_were_asked:
                 self._exploited_extractors.add(agent)  # Do this before disconnecting!
 
-            self.disconnect_by_role(self.ROLE_BITS_TO_STR[self.ROLE_EXTRACTOR])
+            self.disconnect_by_role("extractor")
 
             if not os.path.exists("extracted_info.json"):
                 self._first_check = False

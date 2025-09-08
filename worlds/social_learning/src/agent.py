@@ -27,28 +27,7 @@ from torchvision import datasets, transforms
 from unaiverse.streams import DataStream, Dataset
 
 
-class SocialLearningRoles:
-
-    # Role bitmasks
-    ROLE_TEACHER = 1 << 2
-    ROLE_STUDENT = 1 << 3
-    ROLE_STUDENT_ISOLATED = 1 << 4
-
-    # Feasible roles
-    ROLE_BITS_TO_STR = {
-
-        # The base roles will be inherited from AgentBasics later
-        ROLE_TEACHER: "teacher",
-        ROLE_STUDENT: "student",
-        ROLE_STUDENT_ISOLATED: "student_isolated",
-    }
-
-
-class WAgent(Agent, SocialLearningRoles):
-
-    # Feasible roles
-    ROLE_BITS_TO_STR = {**Agent.ROLE_BITS_TO_STR, **SocialLearningRoles.ROLE_BITS_TO_STR}
-    ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
+class WAgent(Agent):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -83,10 +62,10 @@ class WAgent(Agent, SocialLearningRoles):
     def get_unlabeled_steps(self):
         return math.ceil(float(self._unlabeled_per_class * 10.) / float(self._batch_size))
 
-    def accept_new_role(self, role: int, default_behav: str | None):
-        super().accept_new_role(role, default_behav)
+    def accept_new_role(self, role: int):
+        super().accept_new_role(role)
 
-        if self.get_current_role(return_int=True) == self.ROLE_TEACHER:
+        if self.get_current_role() == "teacher":
 
             # Guess the name of the folder containing this the agent file
             spec = importlib.util.find_spec("unaiverse.worlds.social_learning.agent")
@@ -150,7 +129,7 @@ class WAgent(Agent, SocialLearningRoles):
                                                                    batch_size=self._batch_size)),
                                   DataStream.create(group="eval", name="labels", public=False,
                                                     stream=Dataset(eval_set, shape=(None,), index=1,
-                                                               batch_size=self._batch_size))])
+                                                                   batch_size=self._batch_size))])
             self._test_teach_and_unlabeled_data_streams += s
 
             for n in range(0, self._rounds):
@@ -172,7 +151,7 @@ class WAgent(Agent, SocialLearningRoles):
                 for stream_obj in stream_dict.values():
                     stream_obj.disable()
 
-        elif self.get_current_role(return_int=True) == self.ROLE_STUDENT:
+        elif self.get_current_role() == "student":
             self.add_streams([DataStream(props=DataProps(group="best_student_stream", name="images", public=False,
                                                          data_type="tensor",
                                                          data_desc="Batched images if this is the best student",
@@ -184,7 +163,7 @@ class WAgent(Agent, SocialLearningRoles):
                                                          tensor_shape=(None,),
                                                          tensor_dtype=torch.long))])
 
-        elif self.get_current_role(return_int=True) == self.ROLE_STUDENT_ISOLATED:
+        elif self.get_current_role() == "student_isolated":
             pass
 
         self.update_streams_in_profile()
@@ -194,7 +173,7 @@ class WAgent(Agent, SocialLearningRoles):
             self.err("There is no best student to ask for the next lecture")
             return False
 
-        self.find_agents(self.ROLE_BITS_TO_STR[self.ROLE_STUDENT])
+        self.find_agents("student")
         all_students = copy.deepcopy(self._engaged_agents)
         not_isolated_students = copy.deepcopy(self._found_agents)
         _, teacher = self.get_peer_ids()
@@ -232,7 +211,7 @@ class WAgent(Agent, SocialLearningRoles):
             agents_who_were_asked |= self._agents_who_were_asked
 
             # Getting the UUID of the request
-            ref_uuid = self._last_ref_uuid
+            ref_uuid = self.last_ref_uuid
 
             # Asking the best student to label the data
             if not self.ask_gen(best_student,
@@ -328,10 +307,10 @@ class WAgent(Agent, SocialLearningRoles):
                 stream_obj.disable()
 
     def count_students(self):
-        self.find_agents(self.ROLE_BITS_TO_STR[self.ROLE_STUDENT])
+        self.find_agents("student")
         self._stats["cur_num_students"] = len(self._found_agents)
         self._stats["tot_num_students"] += self._stats["cur_num_students"]
-        self.find_agents(self.ROLE_BITS_TO_STR[self.ROLE_STUDENT_ISOLATED])
+        self.find_agents("student_isolated")
         self._stats["cur_num_students_isolated"] = len(self._found_agents)
         self._stats["tot_num_students_isolated"] += self._stats["cur_num_students_isolated"]
 
@@ -340,7 +319,7 @@ class WAgent(Agent, SocialLearningRoles):
             json.dump(self._stats, f, indent=4)
 
     def manage_best_of_class(self):
-        if self.get_current_role(return_int=True) == self.ROLE_TEACHER:
+        if self.get_current_role() == "teacher":
             self.out(f"Managing the best of this class...")
             if len(self._valid_cmp_agents) > 0:
                 best_student = next(iter(self._valid_cmp_agents))  # This has length 1
@@ -372,7 +351,7 @@ class WAgent(Agent, SocialLearningRoles):
             return True
 
     def manage_best_of_the_bests(self):
-        if self.get_current_role(return_int=True) == self.ROLE_TEACHER:
+        if self.get_current_role() == "teacher":
             self.out(f"Managing the best of the bests, if any...")
             if len(self._valid_cmp_agents) > 0:
                 best_student_name, best_student = self._stats["cur_best_student"]

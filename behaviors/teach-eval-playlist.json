@@ -18,7 +18,7 @@
     },
     "transitions": {
         "begin_teaching": {
-            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": "<learn_steps>", "timeout": 5.0}, true, 0]]
+            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": "<learn_steps>", "timeout": 60.0}, true, 0]]
         },
         "lecture_in_progress": {
             "student_finished_following": [

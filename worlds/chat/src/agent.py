@@ -18,26 +18,7 @@ from unaiverse.agent import Agent
 from unaiverse.modules.utils import MultiIdentity
 
 
-class ChatRoles:
-
-    # Role bitmasks
-    ROLE_USER = 1 << 2
-    ROLE_BROADCASTER = 1 << 3
-
-    # Feasible roles
-    ROLE_BITS_TO_STR = {
-
-        # The base roles will be inherited from AgentBasics later
-        ROLE_USER: "user",
-        ROLE_BROADCASTER: "broadcaster"
-    }
-
-
-class WAgent(Agent, ChatRoles):
-
-    # Feasible roles
-    ROLE_BITS_TO_STR = {**Agent.ROLE_BITS_TO_STR, **ChatRoles.ROLE_BITS_TO_STR}
-    ROLE_STR_TO_BITS = {v: k for k, v in ROLE_BITS_TO_STR.items()}
+class WAgent(Agent):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -70,7 +51,7 @@ class WAgent(Agent, ChatRoles):
             return False
 
     def check_messages(self, max_silence_seconds: float = 10.0, talk_probability: float = 0.333, history_len: int = 3):
-        if self.get_current_role(return_int=True) != self.ROLE_USER:
+        if self.get_current_role() != "user":
             return False
 
         if self._broadcaster_stream is None:
@@ -88,7 +69,7 @@ class WAgent(Agent, ChatRoles):
                 if (self.proc is not None and
                         (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, MultiIdentity))) and (
                         self.get_name().lower() in msg.lower().split() or
-                        self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_USER) == 2 or
+                        self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) == 2 or
                         random.random() < (1.0 - talk_probability))):
                     augmented_msg = (f"Generate a meaningful reply to the following conversation going on in chatroom "
                                      f"(just to let you know, your name is {self.get_name()}). "
@@ -118,7 +99,7 @@ class WAgent(Agent, ChatRoles):
                 if (self.proc is not None and
                         (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, MultiIdentity))) and
                         (tm.time() - self._last_msg_time) > max_silence_seconds and
-                        self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_USER) > 1):
+                        self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) > 1):
                     promote_prompt = (f"The conversation in a chatroom is simply silent, nobody is talking. "
                                       f"Generate a nice message to trigger the conversation of a topic that is "
                                       f"expected to be pretty popular and known (select among: sport, weather, "
@@ -152,7 +133,7 @@ class WAgent(Agent, ChatRoles):
                _completed: bool = False) -> bool:
         """Broadcast the result of the generation to all the agents in this world (excluding the sender)."""
 
-        if self.behaving_in_world() and self.get_current_role(return_int=True) == self.ROLE_BROADCASTER:
+        if self.behaving_in_world() and self.get_current_role() == "broadcaster":
             _, _my_peer_id = self.get_peer_ids()
             self.out(f"Broadcaster received a request from {_requester}, "
                      f"where the current agent list is:\n{list(self.world_agents.keys())}\n"
@@ -171,7 +152,7 @@ class WAgent(Agent, ChatRoles):
         outputs = super().proc_callback_outputs(outputs)
 
         # Users will add their name at the beginning of the message
-        if self.get_current_role(return_int=True) == self.ROLE_USER:
+        if self.get_current_role() == "user":
             if self.behaving_in_world():
                 outputs = list(outputs)  # It was likely a tuple
                 for i, output in enumerate(outputs):

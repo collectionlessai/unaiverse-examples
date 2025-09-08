@@ -9,17 +9,16 @@ import subprocess
 # Config
 world_file_runner = "run_w.py"
 agent_file_runners = "run_*.py"  # Where * must be a number
-log_to_file = True
 
 # Keep track of all running processes
 running_processes = []
 stop_event = threading.Event()
 
 
-def stream_output(my_proc, script_name, log_file=None):
+def stream_output(my_proc, _script_name, log_file=None):
     """Read process stdout line by line and print (and optionally log)."""
     for line in my_proc.stdout:
-        sys.stdout.write(f"[{script_name}] {line}")
+        sys.stdout.write(f"[{_script_name}] {line}")
         sys.stdout.flush()
         if log_file:
             log_file.write(line)
@@ -28,7 +27,7 @@ def stream_output(my_proc, script_name, log_file=None):
 
     # If the process failed, signal to stop others
     if my_proc.returncode != 0:
-        print(f"[{script_name}] ERROR: Exited with code {my_proc.returncode}")
+        print(f"[{_script_name}] ERROR: Exited with code {my_proc.returncode}")
         stop_event.set()
         terminate_all_processes()
 
@@ -47,12 +46,20 @@ def terminate_all_processes():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if (len(sys.argv) != 2 and len(sys.argv) != 3) or \
+            (len(sys.argv) == 3 and sys.argv[1] != "-l" and sys.argv[1] != "--log"):
         script_name = os.path.basename(sys.argv[0])
-        print(f"Usage: python {script_name} <world-name>")
+        print(f"Usage: python {script_name} [-l or --log] <world-name>")
+        print(f"Flags: -l or --log: activate logging ('log' folder inside the world folder)")
         sys.exit(1)
 
-    world_name = sys.argv[1]
+    if len(sys.argv) == 3:
+        log_to_file = True
+        world_name = sys.argv[2]
+    else:
+        log_to_file = False
+        world_name = sys.argv[1]
+
     main_dir = os.path.dirname(os.path.abspath(__file__))
     script_dir = os.path.join(main_dir, world_name)
 
@@ -72,15 +79,19 @@ if __name__ == "__main__":
     if os.path.exists(os.path.join(script_dir, "addresses.txt")):
         os.remove(os.path.join(script_dir, "addresses.txt"))
 
+    log_dir = os.path.join(script_dir, "log")
+    if log_to_file:
+        if os.path.exists(log_dir) and os.path.isdir(log_dir):
+            shutil.rmtree(log_dir)
+        os.makedirs(log_dir, exist_ok=True)
+
+    os.chdir(script_dir)  # Working folder
+
     for i, script in enumerate(scripts):
         if stop_event.is_set():
             break
 
         if log_to_file:
-            log_dir = os.path.join(script_dir, "log")
-            if os.path.exists(log_dir) and os.path.isdir(log_dir):
-                shutil.rmtree(log_dir)
-            os.makedirs(log_dir, exist_ok=True)
             log_path = os.path.join(log_dir, f"{os.path.basename(script)}.log")
             log_f = open(log_path, "w+")
         else:
