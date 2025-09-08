@@ -12,8 +12,7 @@ check_json_start(file='extracted_info.json',
 # Agent
 agent = Agent(proc=None)
 
-data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         '..', '..', 'unaiverse', 'library', 'data', 'animals')
+data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'data', 'animals')
 
 stream = DataStream.create(group="animal_stream", public=False,
                            stream=ImageFileStream(image_dir=data_path, show_images=True,

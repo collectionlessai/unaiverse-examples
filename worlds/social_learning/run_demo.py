@@ -14,7 +14,7 @@ net = CNN(d_dim=10, in_channels=1, seed=62)
 net.transforms = lambda x: x  # Processing tensor data
 
 # Evaluating before 'living'
-spec = importlib.util.find_spec("unaiverse.worlds.social_learning.world")
+spec = importlib.util.find_spec("src.world")
 save_path = os.path.join(os.path.dirname(os.path.abspath(spec.origin)), "mnist_data")
 error_rate_initial = error_rate_mnist_test_set(net, mnist_data_save_path=save_path)
 print(f"\n*** Error: {error_rate_initial}")

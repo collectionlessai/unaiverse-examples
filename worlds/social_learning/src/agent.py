@@ -68,9 +68,9 @@ class WAgent(Agent):
         if self.get_current_role() == "teacher":
 
             # Guess the name of the folder containing this the agent file
-            spec = importlib.util.find_spec("unaiverse.worlds.social_learning.agent")
+            spec = importlib.util.find_spec("src.agent")
             if spec is None or spec.origin is None:
-                raise ImportError("Module unaiverse.worlds.social_learning.agent was not found")
+                raise ImportError("Module src.agent was not found")
             self._agent_folder_name = os.path.dirname(os.path.abspath(spec.origin))
 
             # Loading stats
