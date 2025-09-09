@@ -1,0 +1,24 @@
+{
+    "initial_state": "init",
+    "state": "init",
+    "role": "extractor",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "ready": ["disengage_all", {}, 0, true, 0.0],
+        "user_engaged": [null, null, 1, true, 0.0],
+        "init": [null, null, 2, true, 0.0]
+    },
+    "transitions": {
+        "ready": {
+            "user_engaged": [["get_engagement", {"acceptable_role": "user"}, false, 1]]
+        },
+        "user_engaged": {
+            "ready": [["do_gen", {}, false, 2], ["nop", {"delay": 60.0}, true, 3]]
+        },
+        "init": {
+            "ready": [["nop", {}, true, 4]]
+        }
+    },
+    "cur_action": null
+}

@@ -1,0 +1,51 @@
+{
+    "initial_state": "init",
+    "state": "init",
+    "role": "user",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "ready": ["check_status", {}, 0, false, 0.0, "&#128269; Looking for new agents for information exaction"],
+        "connected_to_providers": [null, null, 1, true, 0.0, "&#128279; Connected to new agents"],
+        "providers_asked_for_service": [null, null, 2, false, 0.0],
+        "a_provider_confirmed_availability": [null, null, 3, false, 0.0],
+        "request_sent_to_available_providers": [null, null, 4, false, 0.0],
+        "request_handled_by_a_provider": [null, null, 5, false, 0.0, "&#9989; An agent finished its job (good or bad), waiting others (if any)"],
+        "time_to_ask": [null, null, 6, true, 0.0, "&#128587; Asking new agents to handle my stream of data"],
+        "init": [null, null, 7, true, 0.0]
+    },
+    "transitions": {
+        "ready": {
+            "connected_to_providers": [["connect_by_role", {"role": "extractor", "filter_fcn": "filter_addresses"}, true, 1]]
+        },
+        "connected_to_providers": {
+            "ready": [["nop", {"delay": 60.0}, true, 2]],
+            "connected_to_providers": [["agents_are_waiting", {}, true, 3]],
+            "providers_asked_for_service": [["send_engagement", {}, true, 4]]
+        },
+        "providers_asked_for_service": {
+            "a_provider_confirmed_availability": [["got_engagement", {}, false, 5]],
+            "ready": [["nop", {"delay": 60.0}, true, 6]]
+        },
+        "a_provider_confirmed_availability": {
+            "a_provider_confirmed_availability": [["got_engagement", {}, false, 7]],
+            "time_to_ask": [["all_engagements_completed", {}, true, 8], ["nop", {"delay": 60.0}, true, 9]]
+        },
+        "time_to_ask": {
+            "request_sent_to_available_providers": [["ask_gen", {"u_hashes": ["<agent>:<stream_name>"], "samples": "<stream_len>", "timeout": 60.0}, true, 10]]
+        },
+        "request_sent_to_available_providers": {
+            "request_handled_by_a_provider": [["done_gen", {}, false, 11]],
+            "request_sent_to_available_providers": [["received_some_asked_data", {"processing_fcn": "handle_received_data"}, true, 12]],
+            "ready": [["nop", {"delay": 60.0}, true, 13]]
+        },
+        "request_handled_by_a_provider": {
+            "request_handled_by_a_provider": [["received_some_asked_data", {"processing_fcn": "handle_received_data"}, true, 14], ["done_gen", {}, false, 15]],
+            "ready": [["nop", {"delay": 60.0}, true, 16], ["all_asked_finished", {}, true, 17]]
+        },
+        "init": {
+            "ready": [["nop", {}, true, 18]]
+        }
+    },
+    "cur_action": null
+}
