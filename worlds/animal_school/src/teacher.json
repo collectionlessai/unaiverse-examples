@@ -47,7 +47,7 @@
             "teaching_time": [["nop", {}, true, 10]]
         },
         "teaching_time": {
-            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": 40, "timeout": 5.0}, true, 11]]
+            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": 40, "timeout": 60.0}, true, 11]]
         },
         "lecture_in_progress": {
             "student_finished_following": [["done_learn", {}, false, 12]]

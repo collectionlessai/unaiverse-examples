@@ -14,8 +14,8 @@ agent = Agent(proc=TinyLLama(),
 # TODO replace node_id="..." with node_name="TinyLLama"
 # TODO replace password with unaiverse key
 # Node hosting agent
-node_agent = Node(node_id="63a2fecf52b24989bb81ec35a7b8173e", hidden=True,
-                  unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
+node_agent = Node(node_id="63a2fecf52b24989bb81ec35a7b8173e", unaiverse_key="<UNAIVERSE_KEY_GOES_HERE>", hidden=True,
+                  hosted=agent, clock_delta=1. / 10.)
 
 # Dumping public addresses to file
 save_node_addresses_to_file(node_agent, os.path.dirname(__file__), public=True)

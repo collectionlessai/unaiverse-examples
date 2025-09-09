@@ -13,8 +13,8 @@ agent = Agent(proc=None,
 # TODO replace node_id="..." with node_name="Tester"
 # TODO replace password with unaiverse key
 # Node hosting agent
-node_agent = Node(node_id="1b37140a496948df80cc0e8c996e9501", hidden=True,
-                  unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
+node_agent = Node(node_id="1b37140a496948df80cc0e8c996e9501", unaiverse_key="<UNAIVERSE_KEY_GOES_HERE>", hidden=True,
+                  hosted=agent, clock_delta=1. / 10.)
 
 # Connecting to a lone wolf
 wolf_peer_id = node_agent.ask_to_get_in_touch(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))

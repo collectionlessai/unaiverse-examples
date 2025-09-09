@@ -15,8 +15,8 @@ agent = Agent(proc=SmolVLM(),
 # TODO replace node_id="..." with node_name="SmolVLM"
 # TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="f3a6023bb69443088f8bc80b0fbe6ed6", hidden=True,
-            unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
+node = Node(node_id="f3a6023bb69443088f8bc80b0fbe6ed6", unaiverse_key="<UNAIVERSE_KEY_GOES_HERE>", hidden=True,
+            hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))

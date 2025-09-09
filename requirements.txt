@@ -17,4 +17,3 @@ torch
 torchvision
 tqdm
 transformers
-typing_extensions

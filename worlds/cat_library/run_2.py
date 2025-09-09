@@ -28,10 +28,9 @@ agent = Agent(proc=net,
               }, buffer_generated_by_others="all")
 
 # TODO replace node_id="..." with node_name="Test1"
-# TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="27ec668f13e644c782659a6ac1370a4a", hidden=True,
-            unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
+node = Node(node_id="27ec668f13e644c782659a6ac1370a4a", unaiverse_key="<UNAIVERSE_KEY_GOES_HERE>", hidden=True,
+            hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))

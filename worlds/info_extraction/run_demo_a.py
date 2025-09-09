@@ -24,8 +24,8 @@ agent.add_behav_wildcard("<stream_len>", len(stream))
 # TODO replace node_id="..." with node_name="Test0"
 # TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="e027812a81a94401a94c8e43526f66d1", hidden=True,
-            unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
+node = Node(node_id="e027812a81a94401a94c8e43526f66d1", unaiverse_key="<UNAIVERSE_KEY_GOES_HERE>", hidden=True,
+            hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))

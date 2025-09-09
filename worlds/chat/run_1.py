@@ -10,10 +10,9 @@ agent = Agent(proc=None,
               proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=True)])  # Also switch to pubsub=True
 
 # TODO replace node_id="..." with node_name="Broadcaster"
-# TODO replace password with unaiverse key
 # Node hosting agent
-node = Node(node_id="255b2dbf73134e18877365d4b9323f46", hidden=True,
-            unaiverse_key="password", hosted=agent, clock_delta=1. / 10.)
+node = Node(node_id="255b2dbf73134e18877365d4b9323f46", unaiverse_key="<UNAIVERSE_KEY_GOES_HERE>", hidden=True,
+            hosted=agent, clock_delta=1. / 10.)
 
 # Telling agent to join world
 node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))
