@@ -63,6 +63,7 @@ wolf_img.png
 *.pem
 #unaiverse/networking/root/viewer/www/*
 unaiverse/networking/root/api/secret.json
-worlds/log_asynch/
-worlds/log_asynch/*
-
+log
+mnist_data
+extracted_info.json
+stats.json
