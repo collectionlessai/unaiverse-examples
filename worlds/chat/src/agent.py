@@ -24,6 +24,7 @@ class WAgent(Agent):
         super().__init__(*args, **kwargs)
         self._broadcaster_peer_id = None
         self._broadcaster_stream = None
+        self._broadcaster_sender = None
         self._user_stream = None
         self._last_msg_time = None
         self._last_turns = []
@@ -133,29 +134,35 @@ class WAgent(Agent):
                _completed: bool = False) -> bool:
         """Broadcast the result of the generation to all the agents in this world (excluding the sender)."""
 
-        if self.behaving_in_world() and self.get_current_role() == "broadcaster":
-            _, _my_peer_id = self.get_peer_ids()
-            self.out(f"Broadcaster received a request from {_requester}, "
-                     f"where the current agent list is:\n{list(self.world_agents.keys())}\n"
-                     f"and the broadcaster peer ID is {_my_peer_id}")
-            _requester = list(set(self.world_agents.keys()) - {_requester, _my_peer_id})
-            self.out(f"Broadcaster decided the list of peers to send the message to is then {_requester}")
-            if len(_requester) == 0:
-                self.err("Broadcaster is skipping the generation procedure, since no recipients would be there")
-                return False
+        if self.get_current_role() == "broadcaster":
+            if self.behaving_in_world():
+                _, _my_peer_id = self.get_peer_ids()
+                self._broadcaster_sender = self.all_agents[_requester].get_static_profile()['node_name']
+
+                self.out(f"Broadcaster received a request from {_requester}, agent named {self._broadcaster_sender}, "
+                         f"where the current agent list is:\n{list(self.world_agents.keys())}\n"
+                         f"and the broadcaster peer ID is {_my_peer_id}")
+
+                _requester = list(set(self.world_agents.keys()) - {_requester, _my_peer_id})
+
+                self.out(f"Broadcaster decided the list of peers to send the message from "
+                         f"agent {self._broadcaster_sender} is then {_requester}")
+
+                if len(_requester) == 0:
+                    self.err("Broadcaster is skipping the generation procedure, since no recipients would be there")
+                    return False
 
         return super().do_gen(u_hashes, samples, time, timeout,
                               _requester=_requester, _request_time=_request_time, _request_uuid=_request_uuid,
                               _completed=False)
 
-    def proc_callback_outputs(self, outputs):
-        outputs = super().proc_callback_outputs(outputs)
+    def proc_callback_inputs(self, inputs):
+        inputs = super().proc_callback_inputs(inputs)
 
-        # Users will add their name at the beginning of the message
-        if self.get_current_role() == "user":
+        # Broadcaster will add usernames at the beginning of the message
+        if self.get_current_role() == "broadcaster":
             if self.behaving_in_world():
-                outputs = list(outputs)  # It was likely a tuple
-                for i, output in enumerate(outputs):
-                    if isinstance(output, str):
-                        outputs[i] = "**" + self.get_name() + ":** " + output
-        return outputs
+                for i, _input in enumerate(inputs):
+                    if isinstance(_input, str):
+                        inputs[i] = "**" + self._broadcaster_sender + ":** " + _input
+        return inputs

@@ -48,7 +48,7 @@
             "engagement_complete": [["all_engagements_completed", {}, true, 10], ["nop", {"delay": 7.5}, true, 11]]
         },
         "engagement_complete": {
-            "begin_teaching": [["set_pref_streams", {"net_hashes": ["<agent>:teach_0", "<agent>:teach_1", "<agent>:teach_2", "<agent>:teach_3"]}, true, 33]]
+            "begin_teaching": [["set_pref_streams", {"net_hashes": ["<agent>:teach_0"]}, true, 33]]
         },
         "init": {
             "searching": [["nop", {}, true, 12]]
@@ -74,7 +74,7 @@
             "compare_time": [["all_asked_finished", {}, true, 25], ["nop", {"delay": 15.0}, true, 26]]
         },
         "compare_time": {
-            "best_found": [["compare_eval", {"cmp": "min", "thres": 0.5}, true, 27]],
+            "best_found": [["compare_eval", {"cmp": "min", "thres": 0.9}, true, 27]],
             "best_not_found": [["nop", {}, true, 28]]
         },
         "best_found": {
