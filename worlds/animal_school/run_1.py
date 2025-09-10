@@ -5,8 +5,7 @@ from unaiverse.networking.node.node import Node
 agent = Agent(proc=None, buffer_generated_by_others="all")
 
 # Node hosting agent
-node = Node(node_name="Test1", unaiverse_key="<UNAIVERSE_KEY_GOES_HERE>",
-            hosted=agent, clock_delta=1. / 1000.)
+node = Node(node_name="Test1", hosted=agent, hidden=True, clock_delta=1. / 1000.)
 
 # Telling agent to join world
 node.ask_to_join_world(node_name="Test0")
