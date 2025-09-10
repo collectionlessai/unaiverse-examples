@@ -1,21 +1,12 @@
-import os
 from src.world import WWorld
 from unaiverse.networking.node.node import Node
-from unaiverse.utils.misc import save_node_addresses_to_file
 
 # World
 world = WWorld()
 
-# TODO replace node_id="..." with node_name="DigitSocialLearning"
-# TODO replace password with unaiverse key
-# TODO replace with world_masters_node_ids=["..."] with world_masters_node_names=["DigitClassifier1"]
 # Node hosting world
-node = Node(node_id="820c68076ee34efe99d02ea0b2de325c", unaiverse_key="<UNAIVERSE_KEY_GOES_HERE>", hidden=True,
-            hosted=world, clock_delta=1. / 10.,
-            world_masters_node_ids=["f1abec9edbff432f9b0cf6d6ce898a50"])
-
-# Dumping world addresses to file
-save_node_addresses_to_file(node, os.path.dirname(__file__), public=True)
+node = Node(node_name="DigitSocialLearning", hosted=world, hidden=True, clock_delta=1. / 10.,
+            world_masters_node_names=["DigitClassifier1"])
 
 # Running node
 node.run()

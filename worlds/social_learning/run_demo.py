@@ -7,7 +7,7 @@ from unaiverse.dataprops import Data4Proc
 from unaiverse.modules.networks import CNN
 from unaiverse.networking.node.node import Node
 from unaiverse.modules.utils import error_rate_mnist_test_set
-from unaiverse.utils.misc import get_node_addresses_from_file, countdown_start, countdown_wait
+from unaiverse.utils.misc import countdown_start, countdown_wait
 
 # Creating neural network
 net = CNN(d_dim=10, in_channels=1, seed=62)
@@ -30,13 +30,11 @@ agent = Agent(proc=net,
                          'losses': [torch.nn.functional.cross_entropy]},
               buffer_generated_by_others="none")
 
-# TODO replace node_id="..." with node_name="Test0"
 # Node hosting agent
-node = Node(node_id="02c1de71207c48acbb7c62c74c04673e", unaiverse_key="<UNAIVERSE_KEY_GOES_HERE>", hidden=True,
-            hosted=agent, clock_delta=1. / 10.)
+node = Node(node_name="Test0", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Telling agent to join world
-if node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__))) is None:
+if node.ask_to_join_world(node_name="DigitSocialLearning") is None:
     print("Connection error!")
     sys.exit(0)
 

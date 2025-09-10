@@ -1,9 +1,7 @@
-import os
 import torch
 from unaiverse.agent import Agent
 from unaiverse.modules.hl.hl_utils import HL
 from unaiverse.networking.node.node import Node
-from unaiverse.utils.misc import get_node_addresses_from_file
 from unaiverse.modules.networks import CTBEInitStateBZeroInput
 
 # Agent
@@ -19,13 +17,11 @@ agent = Agent(proc=net,
               },
               buffer_generated_by_others="all")
 
-# TODO replace node_id="..." with node_name="Test2"
 # Node hosting agent
-node = Node(node_id="5bacc8b5504c417d880ac1a8d147fbe1", unaiverse_key="<UNAIVERSE_KEY_GOES_HERE>", hidden=True,
-            hosted=agent, clock_delta=1. / 1000.)
+node = Node(node_name="Test2", hosted=agent, hidden=True, clock_delta=1. / 1000.)
 
 # Telling agent to join world
-node.ask_to_join_world(addresses=get_node_addresses_from_file(os.path.dirname(__file__)))
+node.ask_to_join_world(node_name="Test0")
 
 # Running node
 node.run()

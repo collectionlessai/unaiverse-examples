@@ -5,6 +5,7 @@ import glob
 import shutil
 import threading
 import subprocess
+import time
 
 # Config
 world_file_runner = "run_w.py"
@@ -105,6 +106,8 @@ if __name__ == "__main__":
 
         t = threading.Thread(target=stream_output, args=(proc, os.path.basename(script), log_f))
         t.start()
+        if i == 0:
+            time.sleep(3)  # Running world, wait a bit for role/node creation (or the other agents will not find it)
         threads.append(t)
 
     # Wait for all threads to finish
