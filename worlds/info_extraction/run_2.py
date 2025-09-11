@@ -11,7 +11,7 @@ agent = Agent(proc=SmolVLM(),
               proc_opts={})
 
 # Node hosting agent
-node = Node(node_id="SmolVLM", hosted=agent, hidden=True, clock_delta=1. / 10.)
+node = Node(node_name="SmolVLM", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Telling agent to join world
 node.ask_to_join_world(node_name="InfoExtraction")
