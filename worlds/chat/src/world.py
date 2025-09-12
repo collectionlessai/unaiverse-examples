@@ -53,7 +53,7 @@ class WWorld(World):
                           action="ask_gen", args={"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": True},
                           ready=False)
         behav.add_transit("message_sent", "ready", action="nop")
-        behav.add_transit("ready", "init", action="disconnected")
+        behav.add_transit("ready", "init", action="disconnected", args={"delay": 5.0})
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'user.json'), only_if_changed=dummy_agent)
