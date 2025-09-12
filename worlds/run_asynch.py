@@ -71,7 +71,7 @@ if __name__ == "__main__":
         base = os.path.basename(filename)
         if base == world_file_runner:
             continue
-        if pattern.match(filename):
+        if pattern.match(filename) and not filename.endswith("run_2.py"):  # TODO remove last check
             scripts.append(filename)
 
     threads = []
