@@ -14,7 +14,8 @@
             "ready": [["connect_to_broadcaster", {"role": "broadcaster"}, true, 0]]
         },
         "ready": {
-            "message_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": true}, false, 2]]
+            "message_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": true}, false, 2]],
+            "init": [["disconnected", {}, true, 4]]
         },
         "message_sent": {
             "ready": [["nop", {}, true, 3]]
