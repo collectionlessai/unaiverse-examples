@@ -62,7 +62,7 @@ class WWorld(World):
         behav = HybridStateMachine(dummy_agent)
         behav.set_role("broadcaster")
 
-        behav.add_transit("ready", "ready", action="do_gen", args={"timeout": 3.0}, ready=False)
+        behav.add_transit("ready", "ready", action="do_gen", args={"timeout": 5.0}, ready=False)
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'broadcaster.json'), only_if_changed=dummy_agent)
