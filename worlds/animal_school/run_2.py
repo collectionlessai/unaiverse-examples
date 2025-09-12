@@ -17,7 +17,7 @@ agent = Agent(proc=net,
 agent.proc_outputs[1].set_tensor_labels(["albatross", "cheetah", "giraffe"])
 
 # Node hosting agent
-node = Node(node_name="Test2", hosted=agent, hidden=True, clock_delta=1. / 1000.)
+node = Node(node_name="Test2", hosted=agent, hidden=True, clock_delta=1. / 100.)
 
 # Telling agent to join world
 node.ask_to_join_world(node_name="Test0")
