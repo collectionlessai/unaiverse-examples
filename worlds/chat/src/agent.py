@@ -161,8 +161,13 @@ class WAgent(Agent):
 
         # Broadcaster will add usernames at the beginning of the message
         if self.get_current_role() == "broadcaster":
+            print("CALLBACK")
+            print(inputs)
             if self.behaving_in_world():
+                print("in world")
                 for i, _input in enumerate(inputs):
                     if isinstance(_input, str):
+                        print("altering " + str(_input))
                         inputs[i] = "**" + self._broadcaster_sender + ":** " + _input
+                        print("altered " + str(inputs[i]))
         return inputs

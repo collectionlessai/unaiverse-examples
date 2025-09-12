@@ -9,7 +9,7 @@ agent = Agent(proc=None,
               proc_opts={})
 
 # Node hosting agent
-node = Node(node_name="Test0", hosted=agent, hidden=True, clock_delta=1. / 10.)
+node = Node(node_name="Test20", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Telling agent to join world
 node.ask_to_join_world(node_name="ChatRoom")
