@@ -97,11 +97,12 @@ class WAgent(Agent):
                 self._last_turns.append(msg)
                 self._last_turns = self._last_turns[1:history_len]
             else:
-                print(f"COUNT BY ROLE {Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS['user']}: {self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"])}")
+                print(f"COUNT BY ROLE {Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS['user']}: {self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS['user'])}")
                 if (self.proc is not None and
                         (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, MultiIdentity))) and
                         (tm.time() - self._last_msg_time) > max_silence_seconds and
                         self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) > 1):
+                    print("PROMPT")
                     promote_prompt = (f"The conversation in a chatroom is simply silent, nobody is talking. "
                                       f"Generate a nice message to trigger the conversation of a topic that is "
                                       f"expected to be pretty popular and known (select among: sport, weather, "
