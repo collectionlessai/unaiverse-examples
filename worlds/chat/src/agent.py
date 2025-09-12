@@ -97,6 +97,7 @@ class WAgent(Agent):
                 self._last_turns.append(msg)
                 self._last_turns = self._last_turns[1:history_len]
             else:
+                print(f"COUNT BY ROLE {Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS['user']}: {self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"])}")
                 if (self.proc is not None and
                         (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, MultiIdentity))) and
                         (tm.time() - self._last_msg_time) > max_silence_seconds and
@@ -161,13 +162,8 @@ class WAgent(Agent):
 
         # Broadcaster will add usernames at the beginning of the message
         if self.get_current_role() == "broadcaster":
-            print("CALLBACK")
-            print(inputs)
             if self.behaving_in_world():
-                print("in world")
                 for i, _input in enumerate(inputs):
                     if isinstance(_input, str):
-                        print("altering " + str(_input))
                         inputs[i] = "**" + self._broadcaster_sender + ":** " + _input
-                        print("altered " + str(inputs[i]))
         return inputs
