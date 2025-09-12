@@ -1,4 +1,5 @@
 beautifulsoup4
+opencv-python
 Flask
 flask_cors
 graphviz

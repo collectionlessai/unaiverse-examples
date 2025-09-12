@@ -5,6 +5,7 @@
 | beautifulsoup4           | 4.13.5  | MIT License                                       | https://www.crummy.com/software/BeautifulSoup/bs4/ |
 | cycler                   | 0.12.1  | BSD License                                       | https://matplotlib.org/cycler/                     |
 | flask-cors               | 6.0.1   | MIT License                                       | https://corydolphin.github.io/flask-cors/          |
+| opencv-python            | 4.12.0  | Apache-2.0                                        | https://opencv.org/                                |
 | graphviz                 | 0.21    | MIT License                                       | https://github.com/xflr6/graphviz                  |
 | langchain                | 0.3.27  | MIT                                               | https://github.com/langchain-ai/langchain          |
 | langchain-core           | 0.3.75  | MIT                                               | https://github.com/langchain-ai/langchain          |
