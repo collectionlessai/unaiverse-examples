@@ -48,7 +48,7 @@ class WWorld(World):
             if proc_inputs is not None:
                 for proc_input in proc_inputs:
                     proc_input_props = DataProps.from_dict(proc_input)
-                    if proc_input_props.is_img() and not proc_input_props.is_public():
+                    if (proc_input_props.is_img() or proc_input_props.is_all()) and not proc_input_props.is_public():
                         in_img = True
                         break
 
@@ -56,14 +56,14 @@ class WWorld(World):
                 for proc_output in proc_outputs:
                     proc_output_props = DataProps.from_dict(proc_output)
                     if not proc_output_props.is_public():
-                        if (proc_output_props.is_text() or
+                        if (proc_output_props.is_text() or proc_output_props.is_all() or
                                 (proc_output_props.is_tensor() and proc_output_props.has_tensor_labels())):
                             out_text = True
                             break
 
             if in_img and out_text:
                 return "extractor"
-        return -1  # No role
+        return None  # No role
 
     def create_behav_files(self):
         """Create role-behavior JSON files: if you manually create the JSON files, no need to implement this method."""
