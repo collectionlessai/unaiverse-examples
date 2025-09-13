@@ -152,13 +152,14 @@ class WAgent(Agent):
                     stream_obj.disable()
 
         elif self.get_current_role() == "student":
-            self.add_streams([DataStream(props=DataProps(group="best_student_stream", name="images", public=False,
+            self.add_streams([DataStream(props=DataProps(group="best_student_stream", name="images",
+                                                         public=False, pubsub=True,
                                                          data_type="tensor",
                                                          data_desc="Batched images if this is the best student",
                                                          tensor_shape=(None, 1, 28, 28),
                                                          tensor_dtype=torch.float32)),
                               DataStream(props=DataProps(group="best_student_stream", name="labels", public=False,
-                                                         data_type="tensor",
+                                                         data_type="tensor", pubsub=True,
                                                          data_desc="Batched class-indices if this is the best student",
                                                          tensor_shape=(None,),
                                                          tensor_dtype=torch.long))])
