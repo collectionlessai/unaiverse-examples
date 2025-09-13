@@ -48,7 +48,7 @@ class WWorld(World):
         behav.add_transit("init", "ready",
                           action="connect_to_broadcaster", args={"role": "broadcaster"})
         behav.add_state("ready", action="check_messages",
-                        args={"max_silence_seconds": 20.0, "talk_probability": 0.33, "history_len": 3})
+                        args={"max_silence_seconds": 25.0, "talk_probability": 0.01, "history_len": 3})
         behav.add_transit("ready", "message_sent",
                           action="ask_gen", args={"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": True},
                           ready=False)

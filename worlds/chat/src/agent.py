@@ -40,8 +40,7 @@ class WAgent(Agent):
 
         if self._user_stream is None:
             self.err("Cannot find the processor stream for the current user")
-
-        assert self._user_stream is not None, "Processor stream not found"
+            return False
 
         if self.connect_by_role(role):
             self._engaged_agents = self._found_agents
@@ -69,9 +68,9 @@ class WAgent(Agent):
 
                 if (self.proc is not None and
                         (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, MultiIdentity))) and (
-                        self.get_name().lower() in msg.lower().split() or
+                        self.get_name().lower() in msg.lower().strip() or
                         self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) == 2 or
-                        random.random() < (1.0 - talk_probability))):
+                        random.random() < talk_probability)):
                     augmented_msg = (f"Generate a meaningful reply to the following conversation going on in chatroom "
                                      f"(just to let you know, your name is {self.get_name()}). "
                                      f"Please generate only the message to be sent in the chatroom,"
