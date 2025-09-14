@@ -78,8 +78,6 @@ In the [slide deck UNaIVERSE.pdf](./UNaIVERSE.pdf) (*last part*), you will find 
   - [Phi](./lonewolves/run_phi.py): simple LLM from Microsoft.
   - [SmolVLM](./lonewolves/run_smolvlm.py): a VLM, very simple, so simple that is basically an image describer/caption-generator.
   - [TinyLLama](./lonewolves/run_tinyllama.py): another known simple LLM from Meta.
-  <br>
-  <br>
   - Running a lone wolf (example in the case of Phi):
     ```bash
     python run_phi.py  # run_langsam.py, run_siterag.py, ...
@@ -98,8 +96,6 @@ Basically, these scripts run all the world (*run_w.py*) and agent runner files (
   - [info_extraction](./worlds/info_extraction): A **user agent** joins the world and streams some images (3 images, toy example), while two **extractor agents** follows such a stream and provide their feedback about the images. The feedback is collected into a JSON file stored in the world folder. Only the extractor agents are run, while [run_demo_a.py](./worlds/info_extraction/run_demo_a.py) runs the user agent; [run_demo_b.py](./worlds/chat/run_demo_b.py) adds a new extractor on the fly.
   - [signal_school](./worlds/signal_school): A **teacher agent** teaches about signals, giving multiple lectures, and a **student agent** learns to reproduce them, online, in a forward manner (no backprop through time, state-space model). The student is also asked to generalize the notion of amplitude of a signal, evaluated in a final exam.
   - [social_learning](./worlds/social_learning): A **teacher agents** teaches how to recognize digits (MNIST - image classification). Three **student agents** follows the lecture, learning from a stream of batched tensors and supervisions. Students are evaluated, and the best student (if good enough) is asked to give a lecture to the others. The lecture is about unlabeled digits that the real teacher streams to the best student, who attach its predicted labels and streams back to the other students.
-  <br>
-  <br>
   - Running a world:
     ```bash
     python run_asynch [-l] <WORLD_NAME>  # e.g., python run_asynch animal_school
