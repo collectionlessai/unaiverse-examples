@@ -101,11 +101,11 @@ Basically, these scripts run all the world (*run_w.py*) and agent runner files (
     ```bash
     python run_asynch.py [-l] <WORLD_NAME>  # e.g., python run_asynch.py animal_school
     ```
-    where the option flag is to activate clean logging, and
+    where the option flag is to activate clean logging (by default, only errors are shown/logged: set the env variable NODE_PRINT=1 to activate basic logging, and NODE_PRINT=2 to activate debug-level logging; set LOG_LIBP2P=1 to log also the lower-level network layer), and
     ```bash
     python run_synch.py <WORLD_NAME>  # e.g., python run_synch.py animal_school
     ```
-    here you can simply log the console output if you want, since they are synchronous.
+    here you can simply log the console output if you want, since they are synchronous (again, by default, only errors are shown/logged: set the env variable NODE_PRINT=1 to activate basic logging, and NODE_PRINT=2 to activate debug-level logging; set LOG_LIBP2P=1 to log also the lower-level network layer).
 
 ## 🛠 How to create a World and how to define the expected Behavior of those who live there?
 
