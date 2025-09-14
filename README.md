@@ -107,7 +107,7 @@ Basically, these scripts run all the world (*run_w.py*) and agent runner files (
     ```
     here you can simply log the console output if you want, since they are synchronous.
 
-# 🛠 How to create a World and how to define the expected Behavior of those who live there?
+## 🛠 How to create a World and how to define the expected Behavior of those who live there?
 
 Referring to the [examples of worlds](./worlds), every world folder contains a *src* sub-folder.
 Let us consider the case of [animal_school](./worlds/animal_school). In the [src](./worlds/animal_school/src) folder you will find two Python files, named [agent.py](./worlds/animal_school/agent.py) and [world.py](./worlds/animal_school/world.py).
