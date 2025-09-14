@@ -117,4 +117,51 @@ Let us consider the case of [animal_school](./worlds/animal_school). In the [src
 You can also create the file manually and skip this part. However, if you create them using code, you can also use the templates we share in the [behaviors](./behaviors) folder.
 As anticipated, this folder contains also the state machines associated to the different roles, JSON files [student.json](./worlds/animal_school/src/student.json) and [student.json](./worlds/animal_school/src/teacher.json).
 
-When an agent enters a world, the code in **agent.py** and the state machine of his role (**role.json**) are dynamically sent and exploited. You do not have to do anything to handle this! So your agent can join and leave different worlds, with a hot-swap mechanisms that enables new actions and behaviour to them. 
+When an agent enters a world, the code in **agent.py** and the state machine of his role (**role.json**) are dynamically sent and exploited. You do not have to do anything to handle this! So your agent can join and leave different worlds, with a hot-swap mechanisms that enables new actions and behaviour to them.
+
+Of course, it is common that you will have to develop your own code with actions to perform in your world.
+Let us refer to another example which includes more stuff, [social_learning](./worlds/social_learning).
+Have a look at [agent.py](./worlds/social_learning/src/agent.py) in the *src* folder there. In this case you will find override of some shared actions and also new actions specifically designed for this world.
+*Every action is simply a method returning True/False* (True if the action completes correctly).
+
+When designing the state machines in the JSON files, the action names are the names of the action methods (yes, the Python method shared or the ones your write as new actions), followed by their arguments.
+Follow the examples.
+
+In a nutshell, to create a new world just create a new sub-folder in [worlds](./worlds), then an *src* subfolder, with your **agent.py**, **world.py**, and a JSON-state-machine for each role (or create the JSON dynamically from the code in **world.py**).
+Start by copying one of the existing examples, and edit it!
+
+---
+
+## 📄 License
+
+This project is licensed under the Polyform Strict License 1.0.0.
+Commercial licence can be provided.
+See the [LICENSE](./LICENSE) file for details (research, etc.).
+
+This project includes third-party libraries. See [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) for details.
+
+---
+
+## 📚 Documentation
+
+Please refer to the main code repo [https://github.com/collectionlessai/unaiverse-src](https://github.com/collectionlessai/unaiverse-src).You can find an API reference in file [https://github.com/collectionlessai/unaiverse-src/blob/main/src/docs.html](https://github.com/collectionlessai/unaiverse-src/blob/main/src/docs.html), that you can visualize here:
+- [API Reference](https://collectionlessai.github.io/unaiverse-docs.github.io/)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome!  
+
+Please contact us in order to suggest changes, report bugs, and suggest ideas for novel applications based on UNaIVERSE!
+
+---
+
+## 👨‍💻 Authors
+
+- Stefano Melacci (Project Leader) [stefano.melacci@unisi.it](stefano.melacci@unisi.it)
+- Christian Di Maio [christian.dimaio@phd.unipi.it](christian.dimaio@phd.unipi.it)
+- Tommaso Guidi [tommaso.guidi.1998](tommaso.guidi.1998@gmail.com)
+- Marco Gori (Scientific Advisoring) [marco.gori@unisi.it](marco.gori@unisi.it)
+
+---
