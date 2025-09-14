@@ -72,7 +72,6 @@ Maybe you are coming from such a repo, that's fine 😄!
 
 In the [slide deck UNaIVERSE.pdf](./UNaIVERSE.pdf) (*last part*), you will find a description of some of the following lone-wolves and of all the included worlds, have a look at them!
 
-<br>
 
 - **Lone Wolves**: folder [lonewolves](./lonewolves). You can find a set of run scripts, each of them running a specific lone wolf agent about existing pretrained models (no credits to us at all here, just showcasing). If you run a script, your private instance of a lone wolf will be created (hidden to other, check the *hidden* parameter). *You can interact with them connecting through browser in the UNaIVERSE portal ([https://unaiverse.io](https://unaiverse.io)), or through Python ([run_tester.py](./lonewolves/run_tester.py))*.
   - [LangSAM](./lonewolves/run_langsam.py): image segmented based on Meta SAM2 (see the file for credits). Provide an image and a textual request about an image part, and get back a segmentation of the image part.
@@ -88,7 +87,7 @@ In the [slide deck UNaIVERSE.pdf](./UNaIVERSE.pdf) (*last part*), you will find 
     ```bash
     python run_tester.py
     ```
-    <br>
+
 
 - **Worlds**: folder [worlds](./worlds). Here you will find several examples of **worlds** and **agents** living in such worlds. In the root of this folder you will find two scripts to run worlds (command line), [run_asynch.py](./worlds/run_asynch.py) and [run_synch.py](./worlds/run_synch.py), that will run worlds and living-agents in an asynchronous or synchronous (debug only) manner.
 Basically, these scripts run all the world (*run_w.py*) and agent runner files (*run_1.py*, *run_2.py*, ...) contained in the world folder.
@@ -100,11 +99,11 @@ Basically, these scripts run all the world (*run_w.py*) and agent runner files (
   - [social_learning](./worlds/social_learning): A **teacher agents** teaches how to recognize digits (MNIST - image classification). Three **student agents** follows the lecture, learning from a stream of batched tensors and supervisions. Students are evaluated, and the best student (if good enough) is asked to give a lecture to the others. The lecture is about unlabeled digits that the real teacher streams to the best student, who attach its predicted labels and streams back to the other students.
   - Running a world:
     ```bash
-    python run_asynch [-l] <WORLD_NAME>  # e.g., python run_asynch animal_school
+    python run_asynch.py [-l] <WORLD_NAME>  # e.g., python run_asynch.py animal_school
     ```
     where the option flag is to activate clean logging, and
     ```bash
-    python run_synch <WORLD_NAME>  # e.g., python run_synch animal_school
+    python run_synch.py <WORLD_NAME>  # e.g., python run_synch.py animal_school
     ```
     here you can simply log the console output if you want, since they are synchronous.
 
