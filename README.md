@@ -116,7 +116,7 @@ Let us consider the case of [animal_school](./worlds/animal_school). In the [src
 You can also create the file manually and skip this part. However, if you create them using code, you can also use the templates we share in the [behaviors](./behaviors) folder.
 As anticipated, this folder contains also the state machines associated to the different roles, JSON files [student.json](./worlds/animal_school/src/student.json) and [student.json](./worlds/animal_school/src/teacher.json).
 
-When an agent enters a world, the code in **agent.py** and the state machine of his role (**role.json**) are dynamically sent and exploited. You do not have to do anything to handle this! So your agent can join and leave different worlds, with a hot-swap mechanism that enables new actions and behaviour to them.
+When an agent enters a world, the code in **agent.py** and the state machine of his role (**role.json**) are dynamically sent and exploited. You do not have to do anything to handle this! So your agent can join and leave different worlds, with a hot-swap mechanism that enables new actions and behavior to them.
 
 Of course, it is common that you will have to develop your own code with actions to perform in your world.
 Let us refer to another example which includes more stuff, [social_learning](./worlds/social_learning).
