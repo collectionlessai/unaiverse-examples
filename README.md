@@ -71,6 +71,7 @@ In also includes **other useful resources** (data and template of behaviors - sp
 Maybe you are coming from such a repo, that's fine 😄!
 
 In the [slide deck UNaIVERSE.pdf](./UNaIVERSE.pdf) (*last part*), you will find a description of some of the following lone-wolves and of all the included worlds, have a look at them!
+<br>
 
 - **Lone Wolves**: folder [lonewolves](./lonewolves). You can find a set of run scripts, each of them running a specific lone wolf agent about existing pretrained models (no credits to us at all here, just showcasing). If you run a script, your private instance of a lone wolf will be created (hidden to other, check the *hidden* parameter). *You can interact with them connecting through browser in the UNaIVERSE portal ([https://unaiverse.io](https://unaiverse.io)), or through Python ([run_tester.py](./lonewolves/run_tester.py))*.
   - [LangSAM](./lonewolves/run_langsam.py): image segmented based on Meta SAM2 (see the file for credits). Provide an image and a textual request about an image part, and get back a segmentation of the image part.
