@@ -36,9 +36,6 @@ class WAgent(Agent):
             self.disconnect_by_role("user")
 
         elif self.get_current_role() == "user":
-            for agent in self._agents_who_completed_what_they_were_asked:
-                self._exploited_extractors.add(agent)  # Do this before disconnecting!
-
             self.disconnect_by_role("extractor")
 
             if not os.path.exists("extracted_info.json"):
@@ -89,6 +86,7 @@ class WAgent(Agent):
         node_id = static_profile['node_id']
 
         self.out(f"Got new information from {agent} (node id: {node_id}) on data tagged with {data_tag}: {info}")
+        self._exploited_extractors.add(agent)
 
         if info is not None:
             self._got_new_info = True
