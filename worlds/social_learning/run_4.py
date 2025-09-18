@@ -4,7 +4,7 @@ from unaiverse.dataprops import Data4Proc
 from unaiverse.modules.networks import CNN
 from unaiverse.networking.node.node import Node
 
-# Agent (student 3)
+# Agent
 net = CNN(d_dim=10, in_channels=1, seed=62)
 net.transforms = lambda x: x  # Processing tensor data
 agent = Agent(proc=net,
