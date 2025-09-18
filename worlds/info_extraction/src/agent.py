@@ -24,7 +24,7 @@ class WAgent(Agent):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._exploited_extractors = set()
+        self.__exploited_extractors = set()  # it must start with "__" to avoid automatic agent clearing at removal
         self._extracted_info = {}
         self._first_check = True
         self._got_new_info = False
@@ -43,7 +43,7 @@ class WAgent(Agent):
 
                 # If we removed the JSON file, we assume we want to start over, so we re-enable all the extractors
                 self.out("Clearing all the information extracted so far and restarting")
-                self._exploited_extractors = set()
+                self.__exploited_extractors = set()
                 self._extracted_info = {}
 
                 # Creating an "empty" file (required to mark the start of the process)
@@ -74,7 +74,7 @@ class WAgent(Agent):
         filtered_addrs = []
         filtered_peer_ids = []
         for addr, peer_id in zip(addrs, peer_ids):
-            if peer_id not in self._exploited_extractors:
+            if peer_id not in self.__exploited_extractors:
                 filtered_addrs.append(addr)
                 filtered_peer_ids.append(peer_id)
         return filtered_addrs, filtered_peer_ids
@@ -86,7 +86,7 @@ class WAgent(Agent):
         node_id = static_profile['node_id']
 
         self.out(f"Got new information from {agent} (node id: {node_id}) on data tagged with {data_tag}: {info}")
-        self._exploited_extractors.add(agent)
+        self.__exploited_extractors.add(agent)
 
         if info is not None:
             self._got_new_info = True
