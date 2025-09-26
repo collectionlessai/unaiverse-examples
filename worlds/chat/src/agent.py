@@ -98,7 +98,7 @@ class WAgent(Agent):
             else:
                 if (self.proc is not None and
                         (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, MultiIdentity))) and
-                        (tm.time() - self._last_msg_time) > max_silence_seconds and
+                        ((tm.time() - self._last_msg_time) > max_silence_seconds) and
                         self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) > 1):
                     promote_prompt = (f"The conversation in a chatroom is simply silent, nobody is talking. "
                                       f"Generate a nice message to trigger the conversation of a topic that is "

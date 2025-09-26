@@ -14,7 +14,7 @@
         "user_engaged": {
             "ready": [
                 ["do_gen", {}, false, 1],
-                ["nop", {"delay": 60.0}, true, 2]
+                ["nop", {"delay": 90.0}, true, 2]
             ]
         }
     },

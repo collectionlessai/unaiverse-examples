@@ -32,12 +32,12 @@
             ]
         },
         "time_to_ask": {
-            "request_sent_to_available_providers": [["ask_gen", {"u_hashes": ["<agent>:<stream_name>"], "samples": "<stream_len>", "timeout": 60.0}, true, 7]]
+            "request_sent_to_available_providers": [["ask_gen", {"u_hashes": ["<agent>:<stream_name>"], "samples": "<stream_len>", "timeout": 90.0}, true, 7]]
         },
         "request_sent_to_available_providers": {
             "request_handled_by_a_provider": [["done_gen", {}, false, 8]],
             "request_sent_to_available_providers": [["received_some_asked_data", {"processing_fcn":  "<providers_data_processing_fcn>"}, true, 9]],
-            "ready": [["nop", {"delay":  60.0}, true, 10]]
+            "ready": [["nop", {"delay":  90.0}, true, 10]]
         },
         "request_handled_by_a_provider": {
             "request_handled_by_a_provider": [
@@ -45,7 +45,7 @@
                 ["done_gen", {}, false, 12]
             ],
             "ready": [
-                ["nop", {"delay":  60.0}, true, 13],
+                ["nop", {"delay":  90.0}, true, 13],
                 ["all_asked_finished", {}, true, 14]
             ]
         }

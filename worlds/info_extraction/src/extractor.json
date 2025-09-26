@@ -14,7 +14,7 @@
             "user_engaged": [["get_engagement", {"acceptable_role": "user"}, false, 1]]
         },
         "user_engaged": {
-            "ready": [["do_gen", {}, false, 2], ["nop", {"delay": 60.0}, true, 3]]
+            "ready": [["do_gen", {}, false, 2], ["nop", {"delay": 90.0}, true, 3]]
         },
         "init": {
             "ready": [["nop", {}, true, 4]]
