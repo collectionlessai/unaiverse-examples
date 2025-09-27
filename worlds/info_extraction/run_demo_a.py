@@ -15,9 +15,9 @@ agent = Agent(proc=None)
 data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'data', 'animals')
 
 stream = DataStream.create(group="animal_stream", public=False,
-                           stream=ImageFileStream(image_dir=data_path, show_images=True,
+                           stream=ImageFileStream(image_dir=data_path, show_images=True, circular=False,
                                                   list_of_image_files=data_path + "/first3c_1i.csv"))
-stream.props.delta = 2.0  # Send one image every two seconds by PubSub
+
 agent.add_stream(stream)
 agent.add_behav_wildcard("<stream_name>", "animal_stream")
 agent.add_behav_wildcard("<stream_len>", len(stream))
