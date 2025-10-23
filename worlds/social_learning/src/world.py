@@ -40,6 +40,29 @@ class WWorld(World):
             else:
                 return "student"
 
+    def create_stats_file(self):
+        """Create the JSON file world.stats.json with the stats the world will log: if you manually create the
+        JSON file world.stats.json, no need to implement this method."""
+
+        stats = {
+            "cur_best_student": {"desc": "Best student of the class", "type": "str"},
+            "best_exam_err": {"desc": "Best exam", "type": "number", "min": 0.0, "max": 1.0},
+            "overall_best_student": {"desc": "Best student of the class ever", "type": "str"},
+            "overall_best_exam_err": {"desc": "Best exam ever", "type": "number", "min": 0.0, "max": 1.0},
+            "mnist_err": {"desc": "Error rate on MNIST test set", "type": "number", "min": 0.0, "max": 1.0}
+        }
+
+        # Save to file, only if the contents changed
+        import json
+        stats_file = os.path.join(self.world_folder, "world.stats.json")
+        existing_stats_as_string = ""
+        if os.path.exists(stats_file):
+            with open(stats_file, 'r', encoding='utf-8') as file:
+                existing_stats_as_string = file.read()
+        if json.dumps(stats, indent=4) != existing_stats_as_string:
+            with open(stats_file, 'w', encoding='utf-8') as file:
+                json.dump(stats, file, indent=4)
+
     def create_behav_files(self):
         """Create role-behavior JSON files: if you manually create the JSON files, no need to implement this method."""
 
