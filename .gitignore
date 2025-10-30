@@ -60,11 +60,14 @@ addresses.txt
 interact_stdout.txt
 wolf_img.png
 
-*.pem
+# *.pem
+# *.key
 #unaiverse/networking/root/viewer/www/*
 unaiverse/networking/root/api/secret.json
 log
 mnist_data
 extracted_info.json
 stats.json
-*/unaiverse_nodes_identity/*
+**/unaiverse_nodes_identity/
+**/stats/
+**/*.pdf
