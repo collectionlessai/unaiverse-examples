@@ -99,7 +99,7 @@ if __name__ == "__main__":
             log_f = None
 
         proc = subprocess.Popen(
-            ["python3", "-u", script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+            [sys.executable, "-u", script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             bufsize=1
         )
         running_processes.append(proc)
