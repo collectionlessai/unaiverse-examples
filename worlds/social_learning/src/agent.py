@@ -25,6 +25,7 @@ from torch.utils.data import Subset
 from unaiverse.dataprops import DataProps
 from torchvision import datasets, transforms
 from unaiverse.streams import DataStream, Dataset
+from unaiverse.modules.utils import error_rate_mnist_test_set
 
 
 class WAgent(Agent):
@@ -38,17 +39,12 @@ class WAgent(Agent):
         self._batch_size = 32
         self._test_teach_and_unlabeled_data_streams = []
         self._seed = 1234
-        self._agent_folder_name = None
-        self._stats = {"cur_best_result": -1,
-                       "tot_best_result": -1,
-                       "cur_best_result_role": None,
-                       "tot_best_result_role": None,
-                       "cur_best_student": (None, None),
-                       "tot_best_student": (None, None),
-                       "cur_num_students": 0,
-                       "cur_num_students_isolated": 0,
-                       "tot_num_students": 0,
-                       "tot_num_students_isolated": 0}
+        # Guess the name of the folder containing the agent file
+        spec = importlib.util.find_spec("src.agent")
+        if spec is None or spec.origin is None:
+            raise ImportError("Module src.agent was not found")
+        self._agent_folder_name = os.path.dirname(os.path.abspath(spec.origin))
+        self._actual_best_student = None
 
     def get_num_rounds(self):
         return self._rounds
@@ -66,30 +62,6 @@ class WAgent(Agent):
         super().accept_new_role(role)
 
         if self.get_current_role() == "teacher":
-
-            # Guess the name of the folder containing this the agent file
-            spec = importlib.util.find_spec("src.agent")
-            if spec is None or spec.origin is None:
-                raise ImportError("Module src.agent was not found")
-            self._agent_folder_name = os.path.dirname(os.path.abspath(spec.origin))
-
-            # Loading stats
-            if not os.path.exists("stats.json"):
-                self.out(f"Creating new stats file stats.json...")
-                with open("stats.json", "w") as f:
-                    json.dump(self._stats, f, indent=4)
-            else:
-                self.out("Loading stats from stats.json...")
-                with open("stats.json") as f:
-                    self._stats = json.load(f)
-                    for k, v in self._stats.items():
-                        if k.startswith("cur_") or k.startswith("tot_"):
-                            try:
-                                self._stats[k] = float(v)
-                            except (ValueError, TypeError):
-                                self._stats[k] = v
-                self.out(f"Loaded stats:\n{self._stats}")
-
             # Getting MNIST data
             mnist_transform = transforms.Compose([
                 transforms.ToTensor(),
@@ -307,41 +279,43 @@ class WAgent(Agent):
             for stream_obj in stream_dict.values():
                 stream_obj.disable()
 
-    def count_students(self):
-        self.find_agents("student")
-        self._stats["cur_num_students"] = len(self._found_agents)
-        self._stats["tot_num_students"] += self._stats["cur_num_students"]
-        self.find_agents("student_isolated")
-        self._stats["cur_num_students_isolated"] = len(self._found_agents)
-        self._stats["tot_num_students_isolated"] += self._stats["cur_num_students_isolated"]
+    def evaluate(self, stream_hash: str, how: str, steps: int = 100, re_offset: bool = False):
+        # Generic evaluation request
+        if not super().evaluate(stream_hash, how, steps, re_offset):
+            return False
+        _t = self._node_clock.get_time_ms()
+        for _peer_id, _eval_result in self._eval_results.items():
+            self.stats.store_stat("exam_err", _eval_result, peer_id=_peer_id, timestamp=_t)
 
-        self.out(f"Saving to stats.json...")
-        with open("stats.json", "w") as f:
-            json.dump(self._stats, f, indent=4)
+    def get_disengagement(self, disconnect_too: bool = False, _requester: str | None = None):
+        if not super().get_disengagement(disconnect_too, _requester):
+            return False
+        
+        # we overload this so that each student, after class, takes the full mnist test set and evaluates itself
+        error_rate = error_rate_mnist_test_set(network=self.proc,
+                                               mnist_data_save_path=os.path.join(self._agent_folder_name, "mnist_data"))
+        _t = self._node_clock.get_time_ms()
+        _, _peer_id = self.get_peer_ids()
+        self.stats.store_stat("full_test_err", error_rate, peer_id=_peer_id, timestamp=_t)
+        return True
 
     def manage_best_of_class(self):
         if self.get_current_role() == "teacher":
             self.out(f"Managing the best of this class...")
             if len(self._valid_cmp_agents) > 0:
-                best_student = next(iter(self._valid_cmp_agents))  # This has length 1
-                best_student_name = self.all_agents[best_student].get_static_profile()['node_name']
-                best_student_role = self.ROLE_BITS_TO_STR[self._node_conn.get_role(best_student)]
-
+                # self.evaluate() populates self._eval_results[peer_id] = eval_result
+                # self._valid_cmp_agents is a set of peer_ids
+                best_student_peer_id = next(iter(self._valid_cmp_agents))  # This has length 1
                 badge_type = "intermediate"
                 badge_description = "Best student of a class, MNIST classification #ImageClassification #MNIST"
-                best_student_result = self._eval_results[best_student]
+                best_student_result = self._eval_results[best_student_peer_id]
 
                 if best_student_result >= 0:
-                    self.out(f"The best student is {best_student} with this result: {best_student_result})")
-
-                    self._stats["cur_best_result"] = best_student_result
-                    self._stats["cur_best_result_role"] = best_student_role
-                    self._stats["cur_best_student"] = (best_student_name, best_student)
-
-                    self.out(f"Saving to stats.json...")
-                    with open("stats.json", "w") as f:
-                        json.dump(self._stats, f, indent=4)
-                    return super().suggest_badges_to_world(agent=best_student, score=best_student_result,
+                    _t = self._node_clock.get_time_ms()
+                    self.out(f"The best student is {best_student_peer_id} with this result: {best_student_result})")
+                    # the agent store and then send the stat to the world with the peer_id of the best student
+                    self.stats.store_stat("best_exam_err_history", best_student_result, peer_id=best_student_peer_id, timestamp=_t)
+                    return super().suggest_badges_to_world(agent=best_student_peer_id, score=best_student_result,
                                                            badge_type=badge_type,
                                                            badge_description=badge_description)
                 else:
@@ -352,35 +326,4 @@ class WAgent(Agent):
             return True
 
     def manage_best_of_the_bests(self):
-        if self.get_current_role() == "teacher":
-            self.out(f"Managing the best of the bests, if any...")
-            if len(self._valid_cmp_agents) > 0:
-                best_student_name, best_student = self._stats["cur_best_student"]
-                best_student_result = self._stats["cur_best_result"]
-                best_student_role = self._stats["cur_best_result_role"]
-
-                if (best_student_result < 0. or
-                        (best_student_result > self._stats["tot_best_result"] >= 0)):
-                    self.out("The best of best results was not improved")
-                    return True
-                else:
-                    self.out(f"New best of best result by {best_student}, with role {best_student_role}! "
-                             f"Result: {best_student_result}")
-
-                    badge_type = "completed"
-                    badge_description = "World champion, MNIST classification #ImageClassification #MNIST"
-
-                    self._stats["tot_best_result"] = best_student_result
-                    self._stats["tot_best_result_role"] = best_student_role
-                    self._stats["tot_best_student"] = (best_student_name, best_student)
-
-                    self.out(f"Saving to stats.json...")
-                    with open("stats.json", "w") as f:
-                        json.dump(self._stats, f, indent=4)
-                    return super().suggest_badges_to_world(agent=best_student, score=best_student_result,
-                                                           badge_type=badge_type,
-                                                           badge_description=badge_description)
-            else:
-                return True
-        else:
-            return True
+        return True
