@@ -14,7 +14,6 @@
 """
 import os
 import math
-import json
 import copy
 import torch
 import random
@@ -141,12 +140,12 @@ class WAgent(Agent):
 
         self.update_streams_in_profile()
 
-    def ask_best_to_gen_ask_others_to_learn(self):
+    async def ask_best_to_gen_ask_others_to_learn(self):
         if self._valid_cmp_agents is None or len(self._valid_cmp_agents) == 0:
             self.err("There is no best student to ask for the next lecture")
             return False
 
-        self.find_agents("student")
+        await self.find_agents("student")
         all_students = copy.deepcopy(self._engaged_agents)
         not_isolated_students = copy.deepcopy(self._found_agents)
         _, teacher = self.get_peer_ids()
@@ -166,7 +165,7 @@ class WAgent(Agent):
         # Storing the list of agents who were asked multiple things
         agents_who_were_asked = set()
 
-        if not self.ask_subscribe(stream_hashes=[best_student_stream_hash]):
+        if not (await self.ask_subscribe(stream_hashes=[best_student_stream_hash])):
             self.err("Unable to tell students to listen to what the best student is going to say")
             self._engaged_agents = all_students
             return False
@@ -175,10 +174,10 @@ class WAgent(Agent):
         agents_who_were_asked |= self._agents_who_were_asked
 
         # Asking them to learn from the best student
-        if self.ask_learn(u_hashes=[f"{best_student}:best_student_stream"],
-                          yhat_hashes=[f"{best_student}:best_student_stream"],
-                          samples=self.get_unlabeled_steps(),
-                          timeout=30.0):
+        if await self.ask_learn(u_hashes=[f"{best_student}:best_student_stream"],
+                                yhat_hashes=[f"{best_student}:best_student_stream"],
+                                samples=self.get_unlabeled_steps(),
+                                timeout=30.0):
 
             # Remembering who we asked
             agents_who_were_asked |= self._agents_who_were_asked
@@ -187,11 +186,11 @@ class WAgent(Agent):
             ref_uuid = self.last_ref_uuid
 
             # Asking the best student to label the data
-            if not self.ask_gen(best_student,
-                                u_hashes=[f"{teacher}:unlabeled"],
-                                samples=self.get_unlabeled_steps(),
-                                timeout=30.0,
-                                ask_uuid=ref_uuid):
+            if not (await self.ask_gen(best_student,
+                                       u_hashes=[f"{teacher}:unlabeled"],
+                                       samples=self.get_unlabeled_steps(),
+                                       timeout=30.0,
+                                       ask_uuid=ref_uuid)):
                 self.err("Unable to ask the best student to for the next lecture")
                 self._engaged_agents = all_students
                 return False
@@ -219,13 +218,14 @@ class WAgent(Agent):
             self._engaged_agents = all_students
             return False
 
-    def do_gen(self, u_hashes: list[str] | None = None,
+    async def do_gen(self, u_hashes: list[str] | None = None,
                samples: int = 100, time: float = -1., timeout: float = -1.,
                _requester: str | list | None = None, _request_time: float = -1., _request_uuid: str | None = None,
                _completed: bool = False):
 
         # Generic generation request
-        if not super().do_gen(u_hashes, samples, time, timeout, _requester, _request_time, _request_uuid, _completed):
+        if not (await super().do_gen(u_hashes, samples, time, timeout,
+                                     _requester, _request_time, _request_uuid, _completed)):
             return False
 
         # If the teacher asked to label its unlabeled data, then load the data and predictions in the apposite stream
@@ -266,15 +266,15 @@ class WAgent(Agent):
             return False
         return True
 
-    def shuffle_and_stop_streaming(self):
+    async def shuffle_and_stop_streaming(self):
         self._seed += 1
         for stream_dict in self._test_teach_and_unlabeled_data_streams:
             for stream_obj in stream_dict.values():
                 stream_obj.shuffle_buffer(seed=self._seed)
 
-        self.stop_streaming()
+        await self.stop_streaming()
 
-    def stop_streaming(self):
+    async def stop_streaming(self):
         for stream_dict in self._test_teach_and_unlabeled_data_streams:
             for stream_obj in stream_dict.values():
                 stream_obj.disable()
@@ -299,7 +299,7 @@ class WAgent(Agent):
         self.stats.store_stat("full_test_err", error_rate, peer_id=_peer_id, timestamp=_t)
         return True
 
-    def manage_best_of_class(self):
+    async def manage_best_of_class(self):
         if self.get_current_role() == "teacher":
             self.out(f"Managing the best of this class...")
             if len(self._valid_cmp_agents) > 0:
@@ -314,10 +314,11 @@ class WAgent(Agent):
                     _t = self._node_clock.get_time_ms()
                     self.out(f"The best student is {best_student_peer_id} with this result: {best_student_result})")
                     # the agent store and then send the stat to the world with the peer_id of the best student
-                    self.stats.store_stat("best_exam_err_history", best_student_result, peer_id=best_student_peer_id, timestamp=_t)
-                    return super().suggest_badges_to_world(agent=best_student_peer_id, score=best_student_result,
-                                                           badge_type=badge_type,
-                                                           badge_description=badge_description)
+                    self.stats.store_stat("best_exam_err_history", best_student_result, peer_id=best_student_peer_id,
+                                          timestamp=_t)
+                    return await super().suggest_badges_to_world(agent=best_student_peer_id, score=best_student_result,
+                                                                 badge_type=badge_type,
+                                                                 badge_description=badge_description)
                 else:
                     return True
             else:
@@ -325,5 +326,5 @@ class WAgent(Agent):
         else:
             return True
 
-    def manage_best_of_the_bests(self):
+    async def manage_best_of_the_bests(self):
         return True
