@@ -279,16 +279,16 @@ class WAgent(Agent):
             for stream_obj in stream_dict.values():
                 stream_obj.disable()
 
-    def evaluate(self, stream_hash: str, how: str, steps: int = 100, re_offset: bool = False):
+    async def evaluate(self, stream_hash: str, how: str, steps: int = 100, re_offset: bool = False):
         # Generic evaluation request
-        if not super().evaluate(stream_hash, how, steps, re_offset):
+        if not (await super().evaluate(stream_hash, how, steps, re_offset)):
             return False
         _t = self._node_clock.get_time_ms()
         for _peer_id, _eval_result in self._eval_results.items():
             self.stats.store_stat("exam_err", _eval_result, peer_id=_peer_id, timestamp=_t)
 
-    def get_disengagement(self, disconnect_too: bool = False, _requester: str | None = None):
-        if not super().get_disengagement(disconnect_too, _requester):
+    async def get_disengagement(self, disconnect_too: bool = False, _requester: str | None = None):
+        if not (await super().get_disengagement(disconnect_too, _requester)):
             return False
         
         # we overload this so that each student, after class, takes the full mnist test set and evaluates itself
