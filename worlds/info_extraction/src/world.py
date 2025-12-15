@@ -13,6 +13,7 @@
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
 import os
+from .stats import WStats
 from unaiverse.world import World
 from unaiverse.dataprops import DataProps
 from unaiverse.hsm import HybridStateMachine
@@ -22,7 +23,9 @@ from unaiverse.networking.node.profile import NodeProfile
 class WWorld(World):
 
     def __init__(self, **kwargs):
-        super().__init__(world_folder=os.path.dirname(os.path.abspath(__file__)), **kwargs)
+        world_folder = os.path.dirname(os.path.abspath(__file__))
+        stats = WStats(is_world=True, db_path=f"{world_folder}/stats/world_stats.db")
+        super().__init__(world_folder=world_folder, stats=stats, **kwargs)
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         dynamic_profile = profile.get_dynamic_profile()

@@ -3,6 +3,7 @@ from unaiverse.networking.node.node import Node
 
 # World
 world = WWorld()
+# world.debug_stats_dashboard()
 
 # Node hosting world
 node = Node(node_id="Test0", hosted=world, hidden=True, clock_delta=1. / 1000.,

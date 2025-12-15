@@ -179,13 +179,13 @@ class WStats(Stats):
         except Exception as e:
             self._err(f"Failed to load static stats from DB: {e}")
     
-    def plot(self) -> str | None:
+    def plot(self, since_timestamp: int = 0) -> str | None:
         """
         Implementation of the specific Dashboard.
         Uses the `Stats` toolbox methods to populate `WorldSidebarDash`.
         """
         # 1. Get Data view
-        view = self.get_view() if self._is_world else self._world_view
+        view = self.get_view(since_timestamp) if self._is_world else self._world_view
         if not view:
             return None
         
