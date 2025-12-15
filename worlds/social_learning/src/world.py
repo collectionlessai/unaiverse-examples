@@ -186,6 +186,6 @@ class WWorld(World):
                     }
                 self.add_badge(**badge)
             
-            # the custom stat was succesfully handled
+            # the custom stat was successfully handled
             return True
         return False
