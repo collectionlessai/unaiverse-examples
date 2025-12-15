@@ -32,7 +32,8 @@ class WWorld(World):
 
             for environmental_stream in environmental_streams:
                 environmental_stream_props = DataProps.from_dict(environmental_stream)
-                if environmental_stream_props.is_img() and not environmental_stream_props.is_public():
+                if (environmental_stream_props.get_group() != "processor_in" and
+                        environmental_stream_props.is_img() and not environmental_stream_props.is_public()):
                     offers_img_stream = True
                     break
 

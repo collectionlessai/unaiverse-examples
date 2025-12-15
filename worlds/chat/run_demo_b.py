@@ -11,8 +11,5 @@ agent = Agent(proc=None,
 # Node hosting agent
 node = Node(node_name="Test1", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
-# Telling agent to join world
-node.ask_to_join_world(node_name="ChatRoom")
-
 # Running node
-node.run(interact_mode_opts={})  # The presence of "interact_mode_opts" tells we want to jump into the interactive mode
+node.run(join_world="ChatRoom", interact_mode=True)

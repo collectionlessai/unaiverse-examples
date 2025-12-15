@@ -11,6 +11,7 @@ files_to_skip = {"run_synch.py", "run_asynch.py", "run_demo.py", "run_demo_a.py"
 initial_code = """
 import os
 import sys
+import asyncio
 from unaiverse.utils.server import Server
 from unaiverse.networking.node.node import NodeSynchronizer
 
@@ -25,14 +26,12 @@ node_synchronizer.add_node(node)
 """
 
 code_after_every_agent = """
-# Tell agent to join the world
-node.ask_to_join_world(addresses=node_addresses)
 node_synchronizer.add_node(node)
 """
 
 final_code = """
 # Running
-node_synchronizer.run()
+asyncio.run(node_synchronizer.run(addresses=node_addresses))
 """
 methods_to_skip = {"run", "ask_to_join_world", "save_node_addresses_to_file"}  # Method calls to skip
 

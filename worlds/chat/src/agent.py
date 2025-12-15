@@ -29,8 +29,8 @@ class WAgent(Agent):
         self._last_msg_time = None
         self._last_turns = []
 
-    def connect_to_broadcaster(self, role: str):
-        """Connecting to the broadcaster."""
+    async def connect_to_broadcaster(self, role: str):
+        """Connecting to the broadcaster (async)."""
 
         for net_hash, stream_dict in self.proc_streams.items():
             for stream_obj in stream_dict.values():
@@ -42,7 +42,7 @@ class WAgent(Agent):
             self.err("Cannot find the processor stream for the current user")
             return False
 
-        if self.connect_by_role(role):
+        if await self.connect_by_role(role):
             self._engaged_agents = self._found_agents
             self._broadcaster_peer_id = next(iter(self._found_agents))  # Takes the first broadcaster
             self._last_msg_time = tm.time()
@@ -50,7 +50,8 @@ class WAgent(Agent):
         else:
             return False
 
-    def check_messages(self, max_silence_seconds: float = 10.0, talk_probability: float = 0.333, history_len: int = 3):
+    async def check_messages(self, max_silence_seconds: float = 10.0, talk_probability: float = 0.333,
+                             history_len: int = 3):
         if self.get_current_role() != "user":
             return False
 
@@ -127,10 +128,10 @@ class WAgent(Agent):
             self.err("Cannot find the processor stream of the broadcaster")
             return False
 
-    def do_gen(self, u_hashes: list[str] | None = None,
-               samples: int = 100, time: float = -1., timeout: float = -1.,
-               _requester: str | list | None = None, _request_time: float = -1., _request_uuid: str | None = None,
-               _completed: bool = False) -> bool:
+    async def do_gen(self, u_hashes: list[str] | None = None,
+                     samples: int = 100, time: float = -1., timeout: float = -1.,
+                     _requester: str | list | None = None, _request_time: float = -1., _request_uuid: str | None = None,
+                     _completed: bool = False) -> bool:
         """Broadcast the result of the generation to all the agents in this world (excluding the sender)."""
 
         if self.get_current_role() == "broadcaster":
@@ -151,9 +152,9 @@ class WAgent(Agent):
                     self.err("Broadcaster is skipping the generation procedure, since no recipients would be there")
                     return False
 
-        return super().do_gen(u_hashes, samples, time, timeout,
-                              _requester=_requester, _request_time=_request_time, _request_uuid=_request_uuid,
-                              _completed=False)
+        return await super().do_gen(u_hashes, samples, time, timeout,
+                                    _requester=_requester, _request_time=_request_time, _request_uuid=_request_uuid,
+                                    _completed=False)
 
     def proc_callback_inputs(self, inputs):
         inputs = super().proc_callback_inputs(inputs)

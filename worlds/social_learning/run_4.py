@@ -20,8 +20,5 @@ agent = Agent(proc=net,
 # Node hosting agent
 node = Node(node_name="DigitClassifier4", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
-# Telling agent to join world
-node.ask_to_join_world(node_name="DigitSocialLearning", role_preference="student_isolated")  # Role suggestion
-
 # Running node
-node.run()
+node.run(join_world="DigitSocialLearning", role_preference="student_isolated")  # Role suggestion

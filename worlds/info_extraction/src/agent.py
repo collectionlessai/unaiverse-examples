@@ -29,14 +29,14 @@ class WAgent(Agent):
         self._first_check = True
         self._got_new_info = False
 
-    def check_status(self):
-        self.disengage_all()
+    async def check_status(self):
+        await self.disengage_all()
 
         if self.get_current_role() == "extractor":
-            self.disconnect_by_role("user")
+            await self.disconnect_by_role("user")
 
         elif self.get_current_role() == "user":
-            self.disconnect_by_role("extractor")
+            await self.disconnect_by_role("extractor")
 
             if not os.path.exists("extracted_info.json"):
                 self._first_check = False

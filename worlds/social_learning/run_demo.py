@@ -33,17 +33,12 @@ agent = Agent(proc=net,
 # Node hosting agent
 node = Node(node_name="Test0", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
-# Telling agent to join world
-if node.ask_to_join_world(node_name="DigitSocialLearning") is None:
-    print("Connection error!")
-    sys.exit(0)
-
 # Starting countdown
 living_seconds = 90
 c = countdown_start(living_seconds, msg="Living")
 
 # Running node
-node.run(max_time=living_seconds)
+node.run(join_world="DigitSocialLearning", max_time=living_seconds)
 
 # Evaluating after 'living
 error_rate_final = error_rate_mnist_test_set(net, mnist_data_save_path=save_path)
