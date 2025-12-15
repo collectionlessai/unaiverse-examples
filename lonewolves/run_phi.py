@@ -10,7 +10,7 @@ agent = Agent(proc=Phi(),
               proc_opts={})
 
 # Node hosting agent
-node_agent = Node(node_id="Phi", hosted=agent, hidden=True, clock_delta=1. / 10.)
+node_agent = Node(node_name="Phi", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Running node
 node_agent.run()

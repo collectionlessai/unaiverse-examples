@@ -13,6 +13,7 @@
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
 import os
+from .stats import WStats
 from unaiverse.world import World
 from unaiverse.hsm import HybridStateMachine
 from unaiverse.networking.node.profile import NodeProfile
@@ -20,7 +21,9 @@ from unaiverse.networking.node.profile import NodeProfile
 
 class WWorld(World):
     def __init__(self, **kwargs):
-        super().__init__(world_folder=os.path.dirname(os.path.abspath(__file__)), **kwargs)
+        world_folder = os.path.dirname(os.path.abspath(__file__))
+        stats = WStats(is_world=True, db_path=f"{world_folder}/stats/world_stats.db", cache_window_hours=1.0)
+        super().__init__(world_folder=world_folder, stats=stats, **kwargs)
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         if is_world_master:
@@ -39,29 +42,6 @@ class WWorld(World):
                     return "student"
             else:
                 return "student"
-
-    def create_stats_file(self):
-        """Create the JSON file world.stats.json with the stats the world will log: if you manually create the
-        JSON file world.stats.json, no need to implement this method."""
-
-        stats = {
-            "cur_best_student": {"desc": "Best student of the class", "type": "str"},
-            "best_exam_err": {"desc": "Best exam", "type": "number", "min": 0.0, "max": 1.0},
-            "overall_best_student": {"desc": "Best student of the class ever", "type": "str"},
-            "overall_best_exam_err": {"desc": "Best exam ever", "type": "number", "min": 0.0, "max": 1.0},
-            "mnist_err": {"desc": "Error rate on MNIST test set", "type": "number", "min": 0.0, "max": 1.0}
-        }
-
-        # Save to file, only if the contents changed
-        import json
-        stats_file = os.path.join(self.world_folder, "world.stats.json")
-        existing_stats_as_string = ""
-        if os.path.exists(stats_file):
-            with open(stats_file, 'r', encoding='utf-8') as file:
-                existing_stats_as_string = file.read()
-        if json.dumps(stats, indent=4) != existing_stats_as_string:
-            with open(stats_file, 'w', encoding='utf-8') as file:
-                json.dump(stats, file, indent=4)
 
     def create_behav_files(self):
         """Create role-behavior JSON files: if you manually create the JSON files, no need to implement this method."""
@@ -93,7 +73,7 @@ class WWorld(World):
                              "<cmp_thres>": 0.5})
 
         # Counting
-        behav.add_state("engagement_complete", action="count_students")
+        behav.add_state("engagement_complete")
 
         # Forcing shuffle of all the round-related datasets and unlabeled data
         behav.add_state("begin_teaching", action="shuffle_and_stop_streaming")
@@ -121,7 +101,7 @@ class WWorld(World):
         behav.add_wildcards({"<learn_exam_timeout>": 15.0})
 
         # Providing a badge to all the agents that were the best of the world
-        behav.add_state("finished_teaching", action="manage_best_of_the_bests")
+        behav.add_state("finished_teaching")
 
         # Send disengagement and wait a bit before going ahead (where it will disconnect, making others remove this
         # agent from their pools and possibly discard the disengagement message)
@@ -171,3 +151,41 @@ class WWorld(World):
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'student.json'), only_if_changed=dummy_agent)
         behav.save(os.path.join(self.world_folder, 'student_isolated.json'), only_if_changed=dummy_agent)
+    
+    def _process_custom_stat(self, stat_name, value, peer_id, timestamp):
+        # handle the special case of best_exam_err_history
+        if stat_name == 'best_exam_err_history':
+            # the world will store this stat as an ungrouped one, substituting its own peer_id
+            # store the new value (this stat will be ungrouped in the world)
+            world_peer_id = self.get_peer_ids()[1]
+            self.stats.store_stat('best_exam_err_history', value, peer_id=world_peer_id, timestamp=timestamp)
+            # retrieve peer role and node_id from the profile
+            # _role = self.all_agents[peer_id].get_dynamic_profile()['connections']['role']
+            # _role_without_flag = self.ROLE_STR_TO_BITS[_role] & ~(self.ROLE_WORLD_MASTER | self.ROLE_WORLD_AGENT)
+            # _role_without_flag_str = self.ROLE_BITS_TO_STR[_role_without_flag]
+            _role = self.all_agents[peer_id].get_dynamic_profile()['connections']['role'].split('~')[-1]
+            self.stats.store_stat('best_student_role_history', _role, peer_id=world_peer_id, timestamp=timestamp)
+            self.stats.store_stat('best_student_history', peer_id, peer_id=world_peer_id, timestamp=timestamp)
+            
+            # check if this is the new overall best and update it
+            overall_best_err = self.stats.get_last_value('overall_best_exam_err')
+            if overall_best_err == -1.0 or value < overall_best_err:
+                # New overall best found
+                self.stats.store_stat('overall_best_exam_err', value, peer_id=world_peer_id, timestamp=timestamp)
+                self.stats.store_stat('overall_best_student', peer_id, peer_id=world_peer_id, timestamp=timestamp)
+                self.stats.store_stat('overall_best_student_role', _role, peer_id=world_peer_id, timestamp=timestamp)
+                self.deb(f"[WStats] New overall best exam error: {value} by {peer_id} ({_role})")
+                
+                # add the badge for the bast overall
+                badge = {
+                    'peer_id': peer_id,
+                    'score': value,
+                    'badge_type': "completed",
+                    'badge_description': "World champion, MNIST classification #ImageClassification #MNIST",
+                    'agent_token': self._node_conn.get_last_token(peer_id)
+                    }
+                self.add_badge(**badge)
+            
+            # the custom stat was succesfully handled
+            return True
+        return False

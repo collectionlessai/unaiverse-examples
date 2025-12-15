@@ -10,7 +10,7 @@
         "can_engage": [null, null, 2, true, false],
         "engagement_sent": [null, null, 3, true, false],
         "engaged_one": [null, null, 4, true, false],
-        "engagement_complete": ["count_students", {}, 5, true, false],
+        "engagement_complete": [null, null, 5, true, false],
         "init": [null, null, 6, false, 0.0],
         "begin_teaching": ["shuffle_and_stop_streaming", {}, 7, true, false],
         "lecture_in_progress": [null, null, 8, true, true],
@@ -22,7 +22,7 @@
         "best_found": ["manage_best_of_class", {}, 14, true, false],
         "best_not_found": [null, null, 15, true, false],
         "change_lecture": ["next_pref_stream", {}, 16, true, false],
-        "finished_teaching": ["manage_best_of_the_bests", {}, 17, true, false],
+        "finished_teaching": [null, null, 17, true, false],
         "best_teaching": [null, null, 18, false, 0.0],
         "wait_for_disengagement": [null, null, 19, true, 3.0]
     },
@@ -78,8 +78,8 @@
             "best_not_found": [["nop", {}, true, 28]]
         },
         "best_found": {
-            "best_teaching": [["ask_best_to_gen_ask_others_to_learn", {}, true, 39]],
-            "change_lecture": [["nop", {}, true, 40]]
+            "best_teaching": [["ask_best_to_gen_ask_others_to_learn", {}, true, 38]],
+            "change_lecture": [["nop", {}, true, 39]]
         },
         "best_not_found": {
             "change_lecture": [["nop", {}, true, 30]]
@@ -89,14 +89,14 @@
             "finished_teaching": [["check_pref_stream", {"what": "first"}, true, 32]]
         },
         "finished_teaching": {
-            "wait_for_disengagement": [["send_disengagement", {"send_disconnection_too": true}, true, 46]]
+            "wait_for_disengagement": [["send_disengagement", {"send_disconnection_too": true}, true, 44]]
         },
         "best_teaching": {
-            "best_teaching": [["done_gen", {}, false, 41], ["done_learn", {}, false, 42]],
-            "change_lecture": [["all_asked_finished", {}, true, 43], ["nop", {"delay": 15.0}, true, 44]]
+            "best_teaching": [["done_gen", {}, false, 40], ["done_learn", {}, false, 41]],
+            "change_lecture": [["all_asked_finished", {}, true, 42], ["nop", {"delay": 15.0}, true, 43]]
         },
         "wait_for_disengagement": {
-            "init": [["nop", {}, true, 47]]
+            "init": [["nop", {}, true, 45]]
         }
     },
     "cur_action": null
