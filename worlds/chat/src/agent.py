@@ -15,7 +15,7 @@
 import random
 import time as tm
 from unaiverse.agent import Agent
-from unaiverse.modules.utils import MultiIdentity
+from unaiverse.modules.utils import HumanModule
 
 
 class WAgent(Agent):
@@ -68,7 +68,7 @@ class WAgent(Agent):
             if msg is not None:
 
                 if (self.proc is not None and
-                        (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, MultiIdentity))) and (
+                        (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, HumanModule))) and (
                         self.get_name().lower() in msg.lower().strip() or
                         self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) == 2 or
                         random.random() < talk_probability)):
