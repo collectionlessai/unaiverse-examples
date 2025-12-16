@@ -31,7 +31,7 @@ class WAgent(Agent):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._rounds = 4
+        self._rounds = 2
         self._eval_per_class = 20
         self._teach_per_class = 50
         self._unlabeled_per_class = 100
