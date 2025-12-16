@@ -9,7 +9,3 @@ node = Node(node_name="InfoExtraction", hidden=True, hosted=world, clock_delta=1
 
 # Running node
 node.run()
-
-
-
-
