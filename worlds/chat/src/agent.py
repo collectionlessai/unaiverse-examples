@@ -108,21 +108,21 @@ class WAgent(Agent):
                                       f"Please generate only the message to be sent in the chatroom,"
                                       f"no other texts or preambles.\n")
 
-                    self.behav_lone_wolf.enable(False)
-                    self.behav.enable(True)
-                    [msg_to_send], _ = self.generate(input_net_hashes=None, inputs=[promote_prompt])
-                    self._user_stream.set(msg_to_send)
-                    self.behav.enable(False)
+                    # Assuming the processor is such that it takes only 1 input (str) and generates 1 output (str)
+                    proc_outputs, data_tag = self.generate(input_net_hashes=None, inputs=[promote_prompt])
+                    if proc_outputs is not None and len(proc_outputs) == 1:
+                        msg_to_send = proc_outputs[0]
+                        self._user_stream.set(msg_to_send)
 
-                    self.behav.request_action(action_name="ask_gen",
-                                              args={},
-                                              signature=self._broadcaster_peer_id,
-                                              timestamp=self._node_clock.get_time(),
-                                              uuid=None)
+                        self.behav.request_action(action_name="ask_gen",
+                                                  args={},
+                                                  signature=self._broadcaster_peer_id,
+                                                  timestamp=self._node_clock.get_time(),
+                                                  uuid=None)
 
-                    self._last_msg_time = tm.time()
-                    self._last_turns.append(msg)
-                    self._last_turns = self._last_turns[1:history_len]
+                        self._last_msg_time = tm.time()
+                        self._last_turns.append(msg)
+                        self._last_turns = self._last_turns[1:history_len]
             return True
         else:
             self.err("Cannot find the processor stream of the broadcaster")
