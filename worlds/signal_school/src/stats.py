@@ -10,7 +10,7 @@ class WStats(Stats):
     def _deb(self, msg: str):
         """Prints a debug message if enabled."""
         if self.DEBUG:
-            prefix = "[DEBUG " + ("WORLD" if self._is_world else "AGENT") + "]"
+            prefix = "[DEBUG " + ("WORLD" if self.is_world else "AGENT") + "]"
             self._out(f"{prefix} [WStats] {msg}")
 
     def _err(self, msg: str):
