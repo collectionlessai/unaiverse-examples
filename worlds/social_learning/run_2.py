@@ -1,8 +1,24 @@
 import torch
+import wandb
 from unaiverse.agent import Agent
 from unaiverse.dataprops import Data4Proc
 from unaiverse.modules.networks import CNN
 from unaiverse.networking.node.node import Node
+
+
+def my_wandb_logger(node: Node):
+    # Define a callback to log yo wandb every N cycles
+    if node.clock.get_cycle() % 100 != 0:
+        return
+
+    metrics = {
+        "cycle": node.clock.get_cycle(),
+        "state": node.hosted.behav.get_state_name(),
+        "action": node.hosted.behav.get_action_name(),
+        "last_completed_action": node.hosted.behav.get_last_completed_action_name(),
+    }
+    print(metrics)
+    # wandb.log(metrics)
 
 # Agent
 net = CNN(d_dim=10, in_channels=1, seed=42)
@@ -18,7 +34,11 @@ agent = Agent(proc=net,
               buffer_generated_by_others="none")
 
 # Node hosting agent
-node = Node(node_name="DigitClassifier2", hosted=agent, hidden=True, clock_delta=1. / 10.)
+node = Node(node_name="DigitClassifier2", hosted=agent, hidden=True, clock_delta=1. / 10.,
+            run_hook=my_wandb_logger)
+
+# Init wandb
+# wandb.init(project="social_learning_example", name="DigitClassifier2")
 
 # Running node
 node.run(join_world="DigitSocialLearning")
