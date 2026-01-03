@@ -1,0 +1,140 @@
+"""
+       █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
+      ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░ 
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████   
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█   
+       ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
+       ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░ 
+                 A Collectionless AI Project (https://collectionless.ai)
+                 Registration/Login: https://unaiverse.io
+                 Code Repositories:  https://github.com/collectionlessai/
+                 Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
+"""
+import os
+from .stats import WStats
+from unaiverse.world import World
+from unaiverse.hsm import HybridStateMachine
+from unaiverse.networking.node.profile import NodeProfile
+
+
+class WWorld(World):
+
+    def __init__(self, **kwargs):
+        world_folder = os.path.dirname(os.path.abspath(__file__))
+        stats = WStats(is_world=True, db_path=os.path.join(world_folder, "stats", "world_stats.db"))
+        super().__init__(world_folder=world_folder, stats=stats, **kwargs)
+
+    def assign_role(self, profile: NodeProfile, is_world_master: bool):
+        if is_world_master:
+            if len(self.world_masters) <= 1:
+                return "manager"
+            else:
+                return "participant"
+        else:
+            return "participant"
+
+    def create_behav_files(self):
+        """Create role-behavior JSON files: if you manually create the JSON files, no need to implement this method."""
+
+        # Creating a dummy agent to check actions
+        import sys
+        sys.path.append(self.world_folder)
+        from agent import WAgent
+        dummy_agent = WAgent(proc=None)
+
+        # Custom parameters
+        test_duration = WAgent.test_duration  # Seconds
+        survey_reply_time = WAgent.survey_reply_time  # Seconds
+
+        # ROLE 1/2: participant
+        behav = HybridStateMachine(dummy_agent)
+        behav.set_role("participant")
+
+        behav.add_state("init", action="init", blocking=False, msg="📋 Welcome, please fill the form!")
+        behav.add_state("ready", blocking=False, msg="👍 Ready")
+        behav.add_state("hall", blocking=False, msg="🏢 In the hall: waiting to be checked-in")
+        behav.add_state("in_room", blocking=False,
+                        msg="🚪 In your room: waiting for the other guests to join")
+        behav.add_state("ready_to_chat", action="ready_to_chat", blocking=False)
+        behav.add_state("chatting", action="get_messages", blocking=True, msg="🚪 Getting messages (if any)")
+        behav.add_state("message_prepared", action="message_prepared", blocking=False)
+        behav.add_state("ready_for_survey", blocking=False)
+        behav.add_state("replied_to_survey", blocking=False)
+        behav.add_transit("init", "ready",
+                          action="do_gen", args={"u_hashes": ["<agent>:processor_in"], "samples": 1}, ready=True,
+                          avoid_changing_ready=True,
+                          msg="📩 Waiting for your confirmation...")
+        behav.add_transit("init", "hall", action="connect_to_manager", args={"role": "manager"},
+                          msg="🔗 Connecting to manager...")
+        behav.add_transit("hall", "init", action="disconnected", args={"delay": 5.0})
+        behav.add_transit("hall", "in_room", action="join_room", args={}, ready=False,
+                          msg="🚪 Joining room")
+        behav.add_transit("in_room", "hall", action="leave_room", ready=False,
+                          msg="🚪 Leaving room")
+        behav.add_transit("in_room", "chatting", action="start", ready=False,
+                          msg="🚪 Starting the chat")
+        behav.add_transit("chatting", "message_prepared",
+                          action="do_gen", args={"u_hashes": ["<agent>:processor_in"], "samples": 1}, ready=True,
+                          avoid_changing_ready=True,
+                          msg="📩 Preparing my own message")
+        behav.add_transit("chatting", "ready_for_survey", action="stop", ready=False,
+                          msg="📋 Ready to receive the final survey")
+        behav.add_transit("ready_for_survey", "replied_to_survey",
+                          action="do_gen", args={"u_hashes": ["<manager_processor>"], "samples": 1}, ready=False,
+                          msg="📋 Trying to fill the final survey (if received)")
+        behav.add_transit("message_prepared", "ready_to_chat",
+                          action="ask_gen", args={"u_hashes": ["<agent>:processor"], "samples": 1,
+                                                  "from_state": "collect_messages", "ask_uuid": "s4m344ll"},
+                          msg="✉️ Sending my own message")
+        behav.add_transit("ready_to_chat", "chatting", action="nop")
+        behav.add_transit("replied_to_survey", "hall", action="leave_room", ready=False,
+                          msg="🚪 Leaving room")
+        behav.add_transit("replied_to_survey", "hall",
+                          action="nop", args={"delay": survey_reply_time + 20.},
+                          msg="🏢 Back to hall (fallback)")
+        behav.add_transit("chatting", "hall", action="nop", args={"delay": test_duration + 20.},
+                          msg="🏢 Back to hall (fallback)")
+        behav.add_transit("chatting", "hall", action="leave_room", ready=False,
+                          msg="🚪 Leaving room")
+        behav.add_transit("ready_for_survey", "hall", action="leave_room", ready=False,
+                          msg="🚪 Leaving room")
+        behav.add_transit("ready_for_survey", "hall",
+                          action="nop", args={"delay": survey_reply_time + 20.},
+                          msg="🏢 Back to hall (fallback)")
+
+        # Saving to file
+        behav.save(os.path.join(self.world_folder, 'participant.json'), only_if_changed=dummy_agent)
+
+        # ROLE 2/2: manager
+        behav = HybridStateMachine(dummy_agent)
+        behav.set_role("manager")
+
+        behav.add_state("sending_messages", blocking=True, msg="🚚 Sending collected messages and surveys")
+        behav.add_state("rooms_assigned", blocking=False)
+        behav.add_state("rooms_checked", blocking=False)
+        behav.add_state("collect_messages", blocking=False, msg="📦 Collecting and preparing messages")
+        behav.add_state("ready_to_send", action="ready_to_send", blocking=False,
+                        msg="📋 Ready to send the collected messages and/or surveys (got feedbacks too, if any)")
+        behav.add_state("survey_requests_sent", action="survey_requests_sent", blocking=False,
+                        msg="📋 Survey requests sent")
+        behav.add_transit("sending_messages", "rooms_assigned", action="assign_to_rooms",
+                          msg="🚪 Assigning guests to rooms")
+        behav.add_transit("rooms_assigned", "rooms_checked", action="check_rooms",
+                          msg="🚪 Checking rooms")
+        behav.add_transit("rooms_checked", "collect_messages", action="nop")
+        behav.add_transit("collect_messages", "collect_messages",
+                          action="do_gen", args={"samples": 1}, ready=False)
+        behav.add_transit("collect_messages", "ready_to_send",
+                          action="prepare_surveys_and_get_feedbacks",
+                          msg="📋 Preparing surveys and taking notes of the received feedbacks (if any)")
+        behav.add_transit("ready_to_send", "survey_requests_sent",
+                          action="ask_gen",
+                          args={"u_hashes": ["<agent>:processor"], "samples": 1, "from_state": "ready_for_survey"},
+                          msg="🚚 Sending requests for surveys (if any)")
+        behav.add_transit("ready_to_send", "sending_messages", action="nop")
+        behav.add_transit("survey_requests_sent", "sending_messages", action="nop")
+
+        # Saving to file
+        behav.save(os.path.join(self.world_folder, 'manager.json'), only_if_changed=dummy_agent)

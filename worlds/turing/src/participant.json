@@ -1,0 +1,51 @@
+{
+    "initial_state": "init",
+    "state": "init",
+    "role": "participant",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "init": ["init", {}, 0, false, 0.0, "&#128203; Welcome, please fill the form!"],
+        "ready": [null, null, 1, false, 0.0, "&#128077; Ready"],
+        "hall": [null, null, 2, false, 0.0, "&#127970; In the hall: waiting to be checked-in"],
+        "in_room": [null, null, 3, false, 0.0, "&#128682; In your room: waiting for the other guests to join"],
+        "ready_to_chat": ["ready_to_chat", {}, 4, false, 0.0],
+        "chatting": ["get_messages", {}, 5, true, 0.0, "&#128682; Getting messages (if any)"],
+        "message_prepared": ["message_prepared", {}, 6, false, 0.0],
+        "ready_for_survey": [null, null, 7, false, 0.0],
+        "replied_to_survey": [null, null, 8, false, 0.0]
+    },
+    "transitions": {
+        "init": {
+            "ready": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 4, "&#128233; Waiting for your confirmation..."]],
+            "hall": [["connect_to_manager", {"role": "manager"}, true, 5, "&#128279; Connecting to manager..."]]
+        },
+        "hall": {
+            "init": [["disconnected", {"delay": 5.0}, true, 6]],
+            "in_room": [["join_room", {}, false, 7, "&#128682; Joining room"]]
+        },
+        "in_room": {
+            "hall": [["leave_room", {}, false, 8, "&#128682; Leaving room"]],
+            "chatting": [["start", {}, false, 9, "&#128682; Starting the chat"]]
+        },
+        "chatting": {
+            "message_prepared": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 10, "&#128233; Preparing my own message"]],
+            "ready_for_survey": [["stop", {}, false, 11, "&#128203; Ready to receive the final survey"]],
+            "hall": [["nop", {"delay": 30.0}, true, 17, "&#127970; Back to hall (fallback)"], ["leave_room", {}, false, 18, "&#128682; Leaving room"]]
+        },
+        "message_prepared": {
+            "ready_to_chat": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "from_state": "collect_messages", "ask_uuid": "s4m344ll"}, true, 13, "&#9993;&#65039; Sending my own message"]]
+        },
+        "ready_for_survey": {
+            "replied_to_survey": [["do_gen", {"u_hashes": ["<manager_processor>"], "samples": 1}, false, 12, "&#128203; Trying to fill the final survey (if received)"]],
+            "hall": [["leave_room", {}, false, 19, "&#128682; Leaving room"], ["nop", {"delay": 80.0}, true, 20, "&#127970; Back to hall (fallback)"]]
+        },
+        "replied_to_survey": {
+            "hall": [["leave_room", {}, false, 15, "&#128682; Leaving room"], ["nop", {"delay": 80.0}, true, 16, "&#127970; Back to hall (fallback)"]]
+        },
+        "ready_to_chat": {
+            "chatting": [["nop", {}, true, 14]]
+        }
+    },
+    "cur_action": null
+}

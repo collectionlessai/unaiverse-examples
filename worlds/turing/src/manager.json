@@ -1,0 +1,38 @@
+{
+    "initial_state": "sending_messages",
+    "state": "sending_messages",
+    "role": "manager",
+    "prev_state": null,
+    "limbo_state": null,
+    "state_actions": {
+        "sending_messages": [null, null, 0, true, 0.0, "&#128666; Sending collected messages and surveys"],
+        "rooms_assigned": [null, null, 1, false, 0.0],
+        "rooms_checked": [null, null, 2, false, 0.0],
+        "collect_messages": [null, null, 3, false, 0.0, "&#128230; Collecting and preparing messages"],
+        "ready_to_send": ["ready_to_send", {}, 4, false, 0.0, "&#128203; Ready to send the collected messages and/or surveys (got feedbacks too, if any)"],
+        "survey_requests_sent": ["survey_requests_sent", {}, 5, false, 0.0, "&#128203; Survey requests sent"]
+    },
+    "transitions": {
+        "sending_messages": {
+            "rooms_assigned": [["assign_to_rooms", {}, true, 2, "&#128682; Assigning guests to rooms"]]
+        },
+        "rooms_assigned": {
+            "rooms_checked": [["check_rooms", {}, true, 3, "&#128682; Checking rooms"]]
+        },
+        "rooms_checked": {
+            "collect_messages": [["nop", {}, true, 4]]
+        },
+        "collect_messages": {
+            "collect_messages": [["do_gen", {"samples": 1}, false, 5]],
+            "ready_to_send": [["prepare_surveys_and_get_feedbacks", {}, true, 6, "&#128203; Preparing surveys and taking notes of the received feedbacks (if any)"]]
+        },
+        "ready_to_send": {
+            "survey_requests_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "from_state": "ready_for_survey"}, true, 7, "&#128666; Sending requests for surveys (if any)"]],
+            "sending_messages": [["nop", {}, true, 8]]
+        },
+        "survey_requests_sent": {
+            "sending_messages": [["nop", {}, true, 9]]
+        }
+    },
+    "cur_action": null
+}
