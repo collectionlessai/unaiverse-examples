@@ -36,7 +36,7 @@ class WAgent(Agent):
     manager_fake_name = "MANAGER"
     sender_prefix = "**"
     sender_suffix = ":** "  # Do not forget the final space here
-    init_message = (f"WELCOME TO THE TURING TEST HOTEL 🏨 (Your email: <email>)!<br/><br/> "
+    init_message = (f"WELCOME TO THE TURING TEST HOTEL 🏨 (Your email: <email>)!<br/><br/>"
                     f"This is a unique destination "
                     f"composed of rooms that implement the multi-agent Turing Test, where you will act as both "
                     f"the judge ⚖️ and a conversation partner 🗣️! You will judge others to detect who is human, "
