@@ -2,7 +2,6 @@ import os
 from unaiverse.agent import Agent
 from unaiverse.dataprops import Data4Proc
 from unaiverse.networking.node.node import Node
-from unaiverse.modules.networks import TinyLLama
 from unaiverse.modules.utils import LoggerModule
 from unaiverse.utils.misc import PolicyFilterSelfGen
 
