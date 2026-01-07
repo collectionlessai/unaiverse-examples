@@ -46,6 +46,9 @@ class WWorld(World):
 
         # ROLE 1/2: user
         behav = HybridStateMachine(dummy_agent)
+        behav.set_welcome_message("🗯️ This world implements a simple chatroom where you can talk to humans and AIs."
+                                  "AI-based agents, when joining this world, inherit the skill of promoting the "
+                                  "conversation if there is too much 'silence' in the chat.")
         behav.set_role("user")
 
         behav.add_transit("init", "ready",
