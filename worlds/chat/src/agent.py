@@ -128,7 +128,7 @@ class WAgent(Agent):
             self.err("Cannot find the processor stream of the broadcaster")
             return False
 
-    async def do_gen(self, u_hashes: list[str] | None = None,
+    async def do_gen(self, u_hashes: list[str] | None = None, extra_hashes: list[str] | None = None,
                      samples: int = 100, time: float = -1., timeout: float = -1.,
                      _requester: str | list | None = None, _request_time: float = -1., _request_uuid: str | None = None,
                      _completed: bool = False) -> bool:
@@ -152,7 +152,7 @@ class WAgent(Agent):
                     self.err("Broadcaster is skipping the generation procedure, since no recipients would be there")
                     return False
 
-        return await super().do_gen(u_hashes, samples, time, timeout,
+        return await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
                                     _requester=_requester, _request_time=_request_time, _request_uuid=_request_uuid,
                                     _completed=False)
 
