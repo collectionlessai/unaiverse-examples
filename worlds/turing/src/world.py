@@ -76,7 +76,7 @@ class WWorld(World):
         behav.add_transit("in_room", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
         behav.add_transit("in_room", "chatting", action="start", ready=False,
-                          msg="🚪 Start the chat")
+                          msg="🚪 Starting the chat (wait for the message from the manager)")
         behav.add_transit("chatting", "hall", action="nop", args={"delay": test_duration + 20.},
                           msg="🏢 Back to hall (fallback)")
         behav.add_transit("chatting", "chatting", action="wait_for_intro")
@@ -94,14 +94,14 @@ class WWorld(World):
         behav.add_transit("replied_to_survey", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
         behav.add_transit("replied_to_survey", "hall",
-                          action="nop", args={"delay": survey_reply_time + 20.},
+                          action="nop", args={"delay": survey_reply_time + 10.},
                           msg="🏢 Back to hall (fallback)")
         behav.add_transit("chatting", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
         behav.add_transit("ready_for_survey", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
         behav.add_transit("ready_for_survey", "hall",
-                          action="nop", args={"delay": survey_reply_time + 20.},
+                          action="nop", args={"delay": survey_reply_time + 10.},
                           msg="🏢 Back to hall (fallback)")
 
         # Saving to file

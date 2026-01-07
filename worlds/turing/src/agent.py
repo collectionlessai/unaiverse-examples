@@ -29,7 +29,7 @@ class WAgent(Agent):
     # Generic options to configure the Turing Test Hotel
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
-    test_duration = 30  # Seconds
+    test_duration = 10  # Seconds
     survey_reply_time = 1 * 60  # Seconds
     guests_per_room = 2
     tot_rooms = 3
@@ -45,16 +45,13 @@ class WAgent(Agent):
                     f"starting this experience; you only need to do it once: <a href='{profile_link}'>Click Here!</a>. "
                     f"REPLY TO THIS MESSAGE ONCE YOU HAVE FILLED OUT THE FORM (for example, say 'yes' or any "
                     f"other response to continue 😀).")
-    start_message = (f"THANKS FOR CHECKING IN! "
-                     f"You are now in a room of the Turing Test Hotel. "
-                     f"You were named <YOUR_NAME> and the other "
+    start_message = (f"You were named <YOUR_NAME> and the other "
                      f"guests are <OTHER_NAMES>. Start chatting and keep it going for "
-                     f"{test_duration} seconds, try to guess who is human and who is a machine. "
-                     f"Act like a human, don't let the others think you might be a machine.")
-    survey_message = ("IT'S SURVEY TIME! You have interacted with <OTHER_NAMES>. "
+                     f"{test_duration} seconds.")
+    survey_message = ("Dear <YOUR_NAME>, you have interacted with <OTHER_NAMES>. "
                       "Each was either a human or an AI. "
                       "PLEASE LIST THE ONES YOU THINK WERE HUMANS "
-                      "(separated by commas or even just spaces, as you like). "
+                      "(separated by commas or even just spaces, as you prefer). "
                       "After having written down the list, you can keep writing on the same message to"
                       " add optional comments, explaining why you made your choice,"
                       " and every extra feedback about this experience (warning: LIST AND COMMENTS GO ALL IN A "
@@ -488,7 +485,7 @@ class WAgent(Agent):
         for room in self._mana_hotel.rooms:
             kicked_all_out = False
             self.print(f"Room ID {room.id_in_hotel}, UUID {room.uuid}, {len(room.guests)} guests: "
-                     f"{list(room.guests.keys())}")
+                       f"{list(room.guests.keys())}")
 
             # Activating a room that has the right number of guests
             if room.is_room_full() and not room.is_active() and room.is_editable():
@@ -505,7 +502,7 @@ class WAgent(Agent):
 
                 if len(lost_guests) > 0:
                     self.print(f"Cannot activate room ID {room.id_in_hotel}, UUID {room.uuid}, "
-                             f"these guests couldn't be reached out to start the chat: {lost_guests}")
+                               f"these guests couldn't be reached out to start the chat: {lost_guests}")
                 else:
                     # Activating the room: notice that we will postpone the actual activation by a few seconds, to let
                     # the 'start' signal reach all the guests
@@ -674,9 +671,6 @@ class WAgent(Agent):
             # Getting the UUID of the 'ask_gen' request, that the manager used to send the survey and ask for a reply
             tag = self._mana_guests_who_got_the_survey[guest]
 
-            print(f"guests={guest}")
-            print(f"tag={tag}")
-
             # Getting the processor stream of the guest (that is where the feedback will be placed)
             net_hash = DataProps.build_net_hash(guest, pubsub=False, name_or_group="processor")
             stream_dict = self.known_streams[net_hash]
@@ -685,7 +679,9 @@ class WAgent(Agent):
 
                     # Checking if this is actually the requested feedback
                     if tag != stream_obj.get_tag():
-                        print(f"NOOOOOO stream_obj.get_tag()={stream_obj.get_tag()} != {tag}")
+                        self.print(
+                            f"Got something (expected feedback) "
+                            f"from from {guest}, but with wrong tag ({stream_obj.get_tag()} vs {tag})")
                         continue
 
                     # Getting feedback
@@ -798,6 +794,24 @@ class WAgent(Agent):
                     self.print(f"Broadcast it to: {broadcast_to}")
             return True
 
+        if self.get_current_role() == "participant" and self.behaving_in_world() and _requester is not None:
+
+            # First of all, let's stop every attempt to 'do_gen' if the requester is not the manager
+            if _requester != self._part_manager_peer_id:
+                return True
+
+            # The only case in which a participant falls here is to handle the survey.
+            # We have to provide him with the whole context of the conversation.
+            survey_message = self._part_manager_stream.get()
+            if survey_message is not None and survey_message.startswith(WAgent.sender_prefix):
+
+                # Adding to history and generating the long string saved in self._part_conversation_as_str
+                self.__add_to_history(formatted_msg=survey_message)
+
+                # Alter message, preserve data tag
+                self._part_manager_stream.set(self._part_conversation_as_str,
+                                              data_tag=self._part_manager_stream.get_tag())
+
         # In all other cases (public network, participant-related stuff, ..., revert to the usual do_gen
         return await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
                                     _requester, _request_time, _request_uuid, _completed)
@@ -852,24 +866,37 @@ class WAgent(Agent):
                 pos = WAgent.start_message.find("<YOUR_NAME>")
                 sub = WAgent.start_message[0:pos]
                 self._part_fake_name = msg[msg.find(sub) + len(sub):].split(" ")[0]
+
+                pos_o = WAgent.start_message.find("<OTHER_NAMES>")
+                sub = WAgent.start_message[pos + len("<YOUR_NAME>"):pos_o]
+                other_fake_names = msg[msg.find(sub) + len(sub):].split(".")[0]
+
+                self._part_conversation.append(f"In the following transcript, "
+                                               f"your identity is: {self._part_fake_name}. Respond naturally.")
+                self._part_conversation.append("")
+                self._part_conversation.append("### PARTICIPANTS")
+                self._part_conversation.append(self._part_fake_name + " (YOU), " + WAgent.manager_fake_name + ", " +
+                                               other_fake_names)
+                self._part_conversation.append("")
+                self._part_conversation.append("### TRANSCRIPT")
+
+                msg = WAgent.__format_message(WAgent.manager_fake_name, f"Dear {self._part_fake_name}, "
+                                                                        "we are in the context of a test where "
+                                                                        "your way of talking must look as the one of a "
+                                                                        "human.")
             else:
                 raise GenException(f"The first message was expected to be the welcome/start message from the "
                                    f"manager, but it seems that it is not like that (message: {msg})")
 
         # Adding the received message to the message history, to create the context we will pass to our processor
+        continuation = ""
         if msg is not None and add_to_history:
-            timestamp = self._part_room_stream.get_timestamp()
-            self._part_conversation.append((timestamp, msg))
-            self._part_conversation.sort(key=lambda x: x[0])  # Ensure sorted by timestamp (it should be already)
 
-            # Convert the conversation to a single, long, string
-            self._part_conversation_as_str = "\n".join([
-                f"[{datetime.fromtimestamp(timestamp).strftime('%H:%M:%S.%f')[:-2]}] {msg}"
-                for timestamp, msg in self._part_conversation
-            ])
+            # Add to history and convert the conversation to a single, long, string, self._part_conversation_as_str
+            self.__add_to_history(formatted_msg=msg)
 
         # Keep the input stream of our processor up-to-date
-        self.set_proc_input(self._part_conversation_as_str)
+        self.set_proc_input(self._part_conversation_as_str)   # Here it can be None, and that's fine
         self.out(f"Conversation so far:\n{self._part_conversation_as_str}")
         return True
 
@@ -979,19 +1006,12 @@ class WAgent(Agent):
         # later (so the conversations are not exactly the same on all sides), but that's expected
         if my_own_prepared_message is not None:
 
-            # Creating the formatted message, as the manager does
-            msg = WAgent.__format_message(self._part_fake_name, my_own_prepared_message)
+            # Formatting as expected
+            my_own_prepared_message = WAgent.__format_message(self._part_fake_name, my_own_prepared_message)
 
-            # Saving to history
-            timestamp = self._part_proc_output_stream.get_timestamp()
-            self._part_conversation.append((timestamp, msg))
-            self._part_conversation.sort(key=lambda x: x[0])  # Ensure sorted by timestamp (it should be already)
-
-            # Convert the conversation to a single, long, string
-            self._part_conversation_as_str = "\n".join([
-                f"[{datetime.fromtimestamp(timestamp).strftime('%H:%M:%S.%f')[:-2]}] {msg}"
-                for timestamp, msg in self._part_conversation
-            ])
+            # Add to history adn convert the conversation to a single, long, string,
+            # saved in self._part_conversation_as_str
+            self.__add_to_history(formatted_msg=my_own_prepared_message)
 
         return True
 
@@ -1110,11 +1130,58 @@ class WAgent(Agent):
         if room.id_in_hotel in self._mana_rooms_ready_for_start_message:
             del self._mana_rooms_ready_for_start_message[room.id_in_hotel]
 
+    def __add_to_history(self, formatted_msg: str):
+
+        # Expected message like "**A:** Hi mate."
+        sender, msg_only = WAgent.__unformat_message(formatted_msg)
+
+        # Removing newlines
+        msg_only = msg_only.replace("\n", " ").strip()
+
+        # "**A:** Hi mate." received at 17:30:14 becomes:
+        # --------------
+        # (17:30:14) A:
+        # Hi mate.
+        #
+        # --------------
+        timestamp = self._part_room_stream.get_timestamp() \
+            if sender != self._part_fake_name else self._part_proc_output_stream.get_timestamp()
+        timestamp = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
+        self._part_conversation.append(f"({timestamp}) {sender}:")
+        self._part_conversation.append(msg_only)
+        self._part_conversation.append("")
+
+        # Convert the conversation to a single, long, string
+        self._part_conversation_as_str = "\n".join(self._part_conversation)
+
+        # Continuation
+        timestamp = self._node_clock.get_time()
+        timestamp = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
+        continuation = (f"\n### CONTINUATION\nContinue the conversation as {self._part_fake_name}. "
+                        f"Write only one message as {self._part_fake_name}. "
+                        f"Do not generate dialogue for other participants. "
+                        f"Respond in a casual, conversational tone consistent with a human participant."
+                        f"\n\n({timestamp}) {self._part_fake_name}:")
+
+        self._part_conversation_as_str += continuation
+
     @staticmethod
     def __format_message(sender_name: str, msg: str):
         """Format a message by adding the sender name."""
 
         return WAgent.sender_prefix + sender_name + WAgent.sender_suffix + msg
+
+    @staticmethod
+    def __unformat_message(msg: str) -> list[str]:
+        """Get the message-only-part and the sender from a formatted message."""
+
+        return msg[len(WAgent.sender_prefix):].split(WAgent.sender_suffix, 1)
+
+    @staticmethod
+    def __get_message_from_formatted_message(msg: str):
+        """Get the message-only-part from a formatted message."""
+
+        return msg[len(WAgent.sender_prefix):].split(WAgent.sender_suffix, 1)[1]
 
     @staticmethod
     def __get_sender_from_formatted_message(msg: str):
