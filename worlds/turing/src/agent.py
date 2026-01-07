@@ -19,27 +19,32 @@ import time as ttime
 from datetime import datetime
 from unaiverse.agent import Agent
 from unaiverse.dataprops import DataProps
-from unaiverse.utils.misc import GenException
 from unaiverse.networking.node.profile import NodeProfile
 from unaiverse.streams import DataStream, BufferedDataStream
+from unaiverse.utils.misc import GenException, has_human_processor
 
 
 class WAgent(Agent):
 
     # Generic options to configure the Turing Test Hotel
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
-                    "viewform?usp=pp_url&entry.1591917462=<YOUR_EMAIL>")
-    test_duration = 10  # Seconds
+                    "viewform?usp=pp_url&entry.1591917462=<email>")
+    test_duration = 30  # Seconds
     survey_reply_time = 1 * 60  # Seconds
     guests_per_room = 2
     tot_rooms = 3
     manager_fake_name = "MANAGER"
     sender_prefix = "**"
     sender_suffix = ":** "  # Do not forget the final space here
-    init_message = (f"WELCOME TO THE TURING TEST HOTEL <YOUR_EMAIL>! Did you already fill your profile info? "
-                    f"If yes, tell me so, and go ahead. If not, do it before starting this experience, "
-                    f"you just have to do it once: {profile_link}. Reply to this message "
-                    f"WHEN YOU ARE DONE FILLING THE FORM (say whatever you want, just reply :))")
+    init_message = (f"WELCOME TO THE TURING TEST HOTEL 🏨 (Your email: <email>)!<br/><br/> "
+                    f"This is a unique destination "
+                    f"composed of rooms that implement the multi-agent Turing Test, where you will act as both "
+                    f"the judge ⚖️ and a conversation partner 🗣️! You will judge others to detect who is human, "
+                    f"while others judge whether you are a human 🧑 or a machine 🤖 (remember to act human).<br/><br/>"
+                    f"<strong>Have you already completed your profile?</strong> If not, please do so before "
+                    f"starting this experience; you only need to do it once: <a href='{profile_link}'>Click Here!</a>. "
+                    f"REPLY TO THIS MESSAGE ONCE YOU HAVE FILLED OUT THE FORM (for example, say 'yes' or any "
+                    f"other response to continue 😀).")
     start_message = (f"THANKS FOR CHECKING IN! "
                      f"You are now in a room of the Turing Test Hotel. "
                      f"You were named <YOUR_NAME> and the other "
@@ -74,7 +79,7 @@ class WAgent(Agent):
             self.uuid = uuid.uuid4().hex[:8]
             self.target_guests = target_guests
             self.id_in_hotel = id_in_hotel
-            
+
             self.guests: dict[str, NodeProfile] = {}  # peer ID -> profile (ALL guests)
             self.human_guests: dict[str, NodeProfile] = {}  # peer ID -> profile (HUMAN guests only)
             self.artificial_guests: dict[str, NodeProfile] = {}  # peer ID -> profile (ARTIFICIAL guests only)
@@ -341,13 +346,14 @@ class WAgent(Agent):
         self._mana_peer_id: str | None = None  # The peer ID of our agent
         self._mana_sender_peer_id: str | None = None  # The peer ID of the agent who sent a message we are broadcasting
         self._mana_guests_ready_to_get_the_survey: set[str] | None = None  # Guests that will be asked for a feedback
-        self._mana_guests_who_got_the_survey: dict[str, str] | None = None  # The UUID of the ask requests
+        self._mana_guests_who_got_the_survey: dict[str, int] | None = None  # The data tags of the survey requests
         self._mana_proc_output_stream: DataStream | None = None  # Our output stream that will store messages we send
         self._mana_rooms_ready_for_start_message: dict | None = None  # The dict of rooms just set as active
         self._mana_streams_of_rooms: list | None = None  # The data streams associated to the rooms
         self._mana_streams_of_rooms_net_hashes: list | None = None  # The net hashes of the room streams
         self._mana_streams_of_rooms_buffered_recipients: list[list[list[str]]] | None = None
         self._mana_streams_of_rooms_tags: list[int] | None = None
+        self._mana_do_gen_called: int | None = None
 
     def accept_new_role(self, role: int):
         super().accept_new_role(role)
@@ -360,6 +366,7 @@ class WAgent(Agent):
                                             max_stay_seconds=WAgent.test_duration,
                                             known_profiles_dict=self.world_agents)
             self._mana_peer_id = self.get_peer_ids()[1]
+            self._mana_do_gen_called = 0
             self._mana_guests_ready_to_get_the_survey = set()
             self._mana_guests_who_got_the_survey = {}
             self._mana_rooms_ready_for_start_message = {}
@@ -425,13 +432,13 @@ class WAgent(Agent):
             all_hotel_guests = [a for a in self._found_agents if not self._mana_hotel.already_in_a_hotel_room(a)]
         else:
             all_hotel_guests = []
-        self.out(f"Guests in the hall: {all_hotel_guests}")
+        self.print(f"Guests in the hall: {all_hotel_guests}")
 
         # Assign to rooms the ones that are not already in some rooms
         checked_in, cannot_check_in, updated_rooms = self._mana_hotel.check_in(all_hotel_guests)
-        self.out(f"Guests checked-in: {checked_in}")
-        self.out(f"Guests that cannot be checked-in: {cannot_check_in}")
-        self.out(f"Updated rooms IDs: {[room.id_in_hotel for room in updated_rooms]}")
+        self.print(f"Guests checked-in: {checked_in}")
+        self.print(f"Guests that cannot be checked-in: {cannot_check_in}")
+        self.print(f"Updated rooms IDs: {[room.id_in_hotel for room in updated_rooms]}")
 
         # Discarding those that for some weird reasons could be checked in
         for guest in cannot_check_in:
@@ -447,7 +454,7 @@ class WAgent(Agent):
                 await self.disconnect(guest)  # Killing the ones that are not reachable anymore
             else:
                 checked_in_and_reached_out.append(guest)
-        self.out(f"Guests that were correctly asked to join their room: {checked_in_and_reached_out}")
+        self.print(f"Guests that were correctly asked to join their room: {checked_in_and_reached_out}")
 
         # We send a room update event for all the rooms that got a new guest in
         for room in updated_rooms:
@@ -480,12 +487,12 @@ class WAgent(Agent):
         # For each room of the hotel...
         for room in self._mana_hotel.rooms:
             kicked_all_out = False
-            self.out(f"Room ID {room.id_in_hotel}, UUID {room.uuid}, {len(room.guests)} guests: "
+            self.print(f"Room ID {room.id_in_hotel}, UUID {room.uuid}, {len(room.guests)} guests: "
                      f"{list(room.guests.keys())}")
 
             # Activating a room that has the right number of guests
             if room.is_room_full() and not room.is_active() and room.is_editable():
-                self.out(f"Activating room ID {room.id_in_hotel}, UUID {room.uuid}, telling guests to start the chat")
+                self.print(f"Activating room ID {room.id_in_hotel}, UUID {room.uuid}, telling guests to start the chat")
 
                 # Telling the guests the conversation can start
                 lost_guests = []
@@ -497,7 +504,7 @@ class WAgent(Agent):
                         lost_guests.append(guest)
 
                 if len(lost_guests) > 0:
-                    self.out(f"Cannot activate room ID {room.id_in_hotel}, UUID {room.uuid}, "
+                    self.print(f"Cannot activate room ID {room.id_in_hotel}, UUID {room.uuid}, "
                              f"these guests couldn't be reached out to start the chat: {lost_guests}")
                 else:
                     # Activating the room: notice that we will postpone the actual activation by a few seconds, to let
@@ -554,16 +561,16 @@ class WAgent(Agent):
             if not kicked_all_out:
                 for guest in room.guests:
                     if guest not in self.world_agents:
-                        self.out(f"Guest {guest} is not connected to me anymore, kicking all out form "
-                                 f"room ID {room.id_in_hotel}, UUID {room.uuid}")
+                        self.print(f"Guest {guest} is not connected to me anymore, kicking all out form "
+                                   f"room ID {room.id_in_hotel}, UUID {room.uuid}")
                         await self.__kick_all_guests(room)  # Telling to "leave_room"...
                         kicked_all_out = True
                         break
 
             # Kicking out all the guest who did not answer in time to the feedback request
             if not kicked_all_out and room.get_passed_seconds_since_deactivation() >= WAgent.survey_reply_time:
-                self.out(f"Too much time passed waiting for survey feedback from {room.guests.keys()}, "
-                         f"room ID {room.id_in_hotel}, UUID {room.uuid}, kicking all out")
+                self.print(f"Too much time passed waiting for survey feedback from {room.guests.keys()}, "
+                           f"room ID {room.id_in_hotel}, UUID {room.uuid}, kicking all out")
                 await self.__kick_all_guests(room)  # Telling to "leave_room"...
 
             # Reset empty rooms (only those that were "used" before, using the activation_timestamp to discriminate)
@@ -606,15 +613,16 @@ class WAgent(Agent):
             return False
 
         # We reached this state by an "ask_gen" that sent the surveys and automatically prepared the list of agents
-        # that were correctly asked for a feedback, populating the attribute "self._agents_who_were_asked",
-        # and saving the request UUID to "self.last_ref_uuid". We remember this information here, so that when we will
+        # that were asked for a feedback, i.e., we sent to "self._engaged_agents"
+        # and saved the request UUID to "self.last_ref_uuid". We remember this information here, so that when we will
         # get a message from a guest, we will be able to detect if it is a feedback in response to the survey or not.
-        for asked in self._agents_who_were_asked:
+        for asked in self._engaged_agents:
             self._mana_guests_ready_to_get_the_survey.discard(asked)  # Removing, since here we know he got the survey
-            self._mana_guests_who_got_the_survey[asked] = self.last_ref_uuid  # Adding and saving the UUID
+            self._mana_guests_who_got_the_survey[asked] = self._mana_proc_output_stream.get_tag()  # Saving the tag
+        await self.set_engaged_partner(None)  # Clearing
 
-        self.out(f"Guests who correctly got the survey and that are expected to send a feedback: "
-                 f"{list(self._mana_guests_who_got_the_survey.keys())}")
+        self.print(f"Guests who correctly got the survey and that are expected to send a feedback: "
+                   f"{list(self._mana_guests_who_got_the_survey.keys())}")
         return True
 
     async def prepare_surveys_and_get_feedbacks(self):
@@ -629,7 +637,7 @@ class WAgent(Agent):
         # For each deactivated/locked room, we get its guests and save them to the list of those that will receive
         # our final survey
         for room in rooms_that_were_deactivated:
-            self.out(f"Deactivated room ID {room.id_in_hotel}, UUID {room.uuid}, saving guest list to send survey")
+            self.print(f"Deactivated room ID {room.id_in_hotel}, UUID {room.uuid}, saving guest list to send survey")
 
             # Let's stop circulating messages
             self.__reset_room_stream(room)
@@ -657,29 +665,34 @@ class WAgent(Agent):
 
         # Let's copy this dictionary, since we will modify it in the loop below
         guests_who_got_the_survey = {k: v for k, v in self._mana_guests_who_got_the_survey.items()}
+        print(f"guests_who_got_the_survey={guests_who_got_the_survey}")
 
         # Checking the data produced guests that got the survey: if they replied, we store their feedback and remove
         # them from the list of guests who got the survey
         for guest in guests_who_got_the_survey:
 
             # Getting the UUID of the 'ask_gen' request, that the manager used to send the survey and ask for a reply
-            ask_uuid = self._mana_guests_who_got_the_survey[guest]
+            tag = self._mana_guests_who_got_the_survey[guest]
+
+            print(f"guests={guest}")
+            print(f"tag={tag}")
 
             # Getting the processor stream of the guest (that is where the feedback will be placed)
             net_hash = DataProps.build_net_hash(guest, pubsub=False, name_or_group="processor")
             stream_dict = self.known_streams[net_hash]
             for stream_name, stream_obj in stream_dict.items():
-                if not stream_obj.props.is_public() and stream_obj.props.is_text:
+                if not stream_obj.props.is_public() and stream_obj.props.is_text():
 
-                    # If the UUID on the guest's stream is NOT the one of the manager's request for feedback...
-                    if stream_obj.get_uuid() != ask_uuid:
+                    # Checking if this is actually the requested feedback
+                    if tag != stream_obj.get_tag():
+                        print(f"NOOOOOO stream_obj.get_tag()={stream_obj.get_tag()} != {tag}")
                         continue
 
                     # Getting feedback
                     guest_feedback = stream_obj.get("prepare_surveys_and_get_feedbacks")
 
                     # Kicking out
-                    self.out(f"Got feedback from {guest}, kicking the guest out of the room, nothing more to do here")
+                    self.print(f"Got feedback from {guest}, kicking the guest out of the room, nothing more to do here")
                     room = self._mana_hotel.get_room(guest)
                     await self.__kick_guest(guest, room)
 
@@ -762,7 +775,7 @@ class WAgent(Agent):
 
                     # Getting the formatted message (do not put any arguments in get())
                     sample_to_broadcast = self._mana_proc_output_stream.get()  # No arguments here (important!)
-                    self.out(f"Sample to broadcast (wildcards not handled yet): {sample_to_broadcast}")
+                    self.print(f"Sample to broadcast (wildcards not handled yet): {sample_to_broadcast}")
 
                     # Manual tag management
                     sample_tag = self._mana_streams_of_rooms_tags[room_id]
@@ -782,7 +795,7 @@ class WAgent(Agent):
                     # one that will be sent, and the oldest saved recipients are the ones who are expected to receive it
                     broadcast_to = set(self._mana_hotel.rooms[room_id].guests.keys()) - {self._mana_sender_peer_id}
                     self._mana_streams_of_rooms_buffered_recipients[room_id].append(list(broadcast_to))
-                    self.out(f"Broadcast it to: {broadcast_to}")
+                    self.print(f"Broadcast it to: {broadcast_to}")
             return True
 
         # In all other cases (public network, participant-related stuff, ..., revert to the usual do_gen
@@ -811,9 +824,17 @@ class WAgent(Agent):
             return False
 
         # Clearing the UUID on the manager stream, since the 'ask_gen' that activated this state will be answered in
-        # the room stream , and not in the manager stream (that will be used for surveys, hence we want it clear)
+        # the room stream, and not in the manager stream (that will be used for surveys, hence we want it clear)
         self._part_manager_stream.clear_uuid()
         return True
+
+    async def wait_for_intro(self):
+        """Wait for the manager to send the introduction message before allowing to send chat data."""
+
+        if self.get_current_role() != "participant":
+            return False
+
+        return self._part_fake_name is None  # It becomes non-None when the intro message arrives
 
     async def get_messages(self, add_to_history: bool = True):
         """Get new messages from the manager, and load the whole conversation in the input stream of our processor."""
@@ -852,21 +873,23 @@ class WAgent(Agent):
         self.out(f"Conversation so far:\n{self._part_conversation_as_str}")
         return True
 
-    async def init(self):
-        """Puts the initial profile filling message in the processor's output."""
+    async def set_email(self):
+        """Saves the user email into a wildcard."""
 
         if self.get_current_role() != "participant":
             return False
 
-        # Putting your email in the message and formatting it as sent by the manager
-        init_message = (
-            WAgent.init_message.replace("<YOUR_EMAIL>", self.get_profile().get_static_profile()['email']))
-        init_message = WAgent.__format_message(WAgent.manager_fake_name, init_message)
-
-        # Setting the message to the output stream of your processor
-        self._part_proc_output_stream.clear_uuid()  # Just for safety
-        self._part_proc_output_stream.set(init_message)
+        # Getting your email address and putting it in the HSM
+        self.behav.add_wildcards({"<email>": self.get_profile().get_static_profile()['email']})
         return True
+
+    async def skip_confirmation(self):
+        """Skips the filled-profile confirmation for artificial agents."""
+
+        if self.get_current_role() != "participant":
+            return False
+
+        return not has_human_processor(self)
 
     async def join_room(self, room_id: int = -1):
         """Join a room (find the room stream and the manager stream)."""
@@ -880,6 +903,7 @@ class WAgent(Agent):
         # Setting up
         self._part_conversation = []
         self._part_conversation_as_str = None
+        self._part_fake_name = None
 
         # Finding the room stream, where messages will be located
         net_hash_to_stream_dict = self.find_streams(self._part_manager_peer_id,
@@ -899,7 +923,6 @@ class WAgent(Agent):
                 if not stream_obj.props.is_public() and stream_obj.props.is_text():
                     self._part_manager_stream = stream_obj
                     self._part_manager_stream.clear_uuid()   # Resetting UUIDs on the guest side (important!)
-                    self.behav.add_wildcards({"<manager_processor>": net_hash})  # HSM wildcard handled here
                     break
 
         # If the manager is not as expected (i.e., we cannot find the room stream and the manager output stream)
@@ -922,6 +945,7 @@ class WAgent(Agent):
         self._part_conversation_as_str = None
         self._part_manager_stream = None
         self._part_room_stream = None
+        self._part_fake_name = None
         return True
 
     async def start(self):
@@ -936,6 +960,10 @@ class WAgent(Agent):
 
         if self.get_current_role() != "participant":
             return False
+
+        # Some previous, possibly not completed, "ask_gen" might have left a marker in the manager's processor output
+        # stream, better clear the marker to avoid further resets when receiving the survey
+        self._part_manager_stream.clear_uuid_if_marked_as_clearable()
         return True
 
     async def message_prepared(self):
@@ -1003,7 +1031,7 @@ class WAgent(Agent):
 
         # Let's avoid considering communications that are not about hotel rooms
         if not self._mana_hotel.already_in_a_hotel_room(recipient):
-            self.out(f"Sending (not  about hotel rooms) message {msg} to {recipient}...")
+            self.out(f"Sending (not about hotel rooms) message {msg} to {recipient}...")
             return msg
 
         # Getting sender info
@@ -1038,7 +1066,7 @@ class WAgent(Agent):
     async def __kick_guest(self, guest, room):
         """Kicks a single guest of a room (telling him to "leave_room")."""
 
-        self.out(f"Kicking guest {guest} from room ID {room.id_in_hotel}, UUID {room.uuid}")
+        self.print(f"Kicking guest {guest} from room ID {room.id_in_hotel}, UUID {room.uuid}")
 
         # Kicking out from the guest list
         room.remove_if_present(guest, ignore_editable_flag=True)
@@ -1057,7 +1085,7 @@ class WAgent(Agent):
     async def __kick_all_guests(self, room: Room):
         """Kicks all guests of a room (telling them to "leave_room")."""
 
-        self.out(f"Kicking all guests from room ID {room.id_in_hotel}, UUID {room.uuid}")
+        self.print(f"Kicking all guests from room ID {room.id_in_hotel}, UUID {room.uuid}")
         current_guests = list(room.guests)
         for guest in current_guests:
             await self.__kick_guest(guest, room)
@@ -1074,7 +1102,7 @@ class WAgent(Agent):
     def __reset_room(self, room):
         """Reset a room and clear the related data structures."""
 
-        self.out(f"Resetting room ID {room.id_in_hotel}, UUID {room.uuid}")
+        self.print(f"Resetting room ID {room.id_in_hotel}, UUID {room.uuid}")
         room.reset()  # Resetting the room guests, status, and timestamps
         self.__reset_room_stream(room)  # Resetting the room stream
 

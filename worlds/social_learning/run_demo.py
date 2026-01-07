@@ -31,7 +31,7 @@ agent = Agent(proc=net,
               buffer_generated_by_others="none")
 
 # Node hosting agent
-node = Node(node_name="Test0", hosted=agent, hidden=True, clock_delta=1. / 10.)
+node = Node(node_name="Test1", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Starting countdown
 living_seconds = 90

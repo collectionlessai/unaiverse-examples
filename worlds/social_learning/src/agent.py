@@ -18,16 +18,18 @@ import copy
 import torch
 import random
 import numpy as np
-import importlib.util
 from unaiverse.agent import Agent
 from torch.utils.data import Subset
 from unaiverse.dataprops import DataProps
 from torchvision import datasets, transforms
+from unaiverse.utils.misc import prepare_app_dir
 from unaiverse.streams import DataStream, Dataset
 from unaiverse.modules.utils import error_rate_mnist_test_set
 
 
 class WAgent(Agent):
+    student_learn_time = 7.5
+    student_exam_time = 5.0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,12 +40,10 @@ class WAgent(Agent):
         self._batch_size = 32
         self._test_teach_and_unlabeled_data_streams = []
         self._seed = 1234
-        # Guess the name of the folder containing the agent file
-        spec = importlib.util.find_spec("src.agent")
-        if spec is None or spec.origin is None:
-            raise ImportError("Module src.agent was not found")
-        self._agent_folder_name = os.path.dirname(os.path.abspath(spec.origin))
+        self._agent_folder_name = os.path.join(prepare_app_dir(), "social_learning")
         self._actual_best_student = None
+
+        os.makedirs(self._agent_folder_name, exist_ok=True)
 
     def get_num_rounds(self):
         return self._rounds
@@ -177,7 +177,8 @@ class WAgent(Agent):
         if await self.ask_learn(u_hashes=[f"{best_student}:best_student_stream"],
                                 yhat_hashes=[f"{best_student}:best_student_stream"],
                                 samples=self.get_unlabeled_steps(),
-                                timeout=30.0):
+                                time=WAgent.student_learn_time * 2.,
+                                timeout=WAgent.student_learn_time / 3.0):
 
             # Remembering who we asked
             agents_who_were_asked |= self._agents_who_were_asked
@@ -218,13 +219,13 @@ class WAgent(Agent):
             self._engaged_agents = all_students
             return False
 
-    async def do_gen(self, u_hashes: list[str] | None = None,
-               samples: int = 100, time: float = -1., timeout: float = -1.,
-               _requester: str | list | None = None, _request_time: float = -1., _request_uuid: str | None = None,
-               _completed: bool = False):
+    async def do_gen(self, u_hashes: list[str] | None = None, extra_hashes: list[str] | None = None,
+                     samples: int = 100, time: float = -1., timeout: float = -1.,
+                     _requester: str | list | None = None, _request_time: float = -1., _request_uuid: str | None = None,
+                     _completed: bool = False):
 
         # Generic generation request
-        if not (await super().do_gen(u_hashes, samples, time, timeout,
+        if not (await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
                                      _requester, _request_time, _request_uuid, _completed)):
             return False
 

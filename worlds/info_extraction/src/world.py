@@ -77,9 +77,13 @@ class WWorld(World):
         sys.path.append(self.world_folder)
         from agent import WAgent
         dummy_agent = WAgent(proc=None)
+        welcome_msg = "Welcome to the world of Information Extraction. There are two types of citizens: " \
+                      "'users' 👤 who stream images (through an environmental stream) and 'extractors' ✍️ who " \
+                      "provide a textual feedback about the streamed images. You joined as: '<role>'."
 
         # ROLE 1/2: user
         behav = HybridStateMachine(dummy_agent)
+        behav.set_welcome_message(welcome_msg)
         behav.set_role("user")
 
         # Let's wait a little bit before moving from init to the ready state of the service_requester.json, so that,
@@ -105,6 +109,7 @@ class WWorld(World):
 
         # ROLE 2/2: extractor
         behav = HybridStateMachine(dummy_agent)
+        behav.set_welcome_message(welcome_msg)
         behav.set_role("extractor")
 
         behav.add_transit("init",

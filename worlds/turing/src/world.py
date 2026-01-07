@@ -52,49 +52,49 @@ class WWorld(World):
         behav = HybridStateMachine(dummy_agent)
         behav.set_role("participant")
 
-        behav.add_state("init", action="init", blocking=False, msg="📋 Welcome, please fill the form!")
-        behav.add_state("ready", blocking=False, msg="👍 Ready")
+        behav.add_state("set_email", action="set_email", blocking=False)
+        behav.add_state("init_message", blocking=False, msg=WAgent.init_message)
+        behav.add_state("ready", blocking=False)
         behav.add_state("hall", blocking=False, msg="🏢 In the hall: waiting to be checked-in")
         behav.add_state("in_room", blocking=False,
                         msg="🚪 In your room: waiting for the other guests to join")
         behav.add_state("ready_to_chat", action="ready_to_chat", blocking=False)
-        behav.add_state("chatting", action="get_messages", blocking=True, msg="🚪 Getting messages (if any)")
+        behav.add_state("chatting", action="get_messages", blocking=True)
         behav.add_state("message_prepared", action="message_prepared", blocking=False)
         behav.add_state("ready_for_survey", blocking=False)
         behav.add_state("replied_to_survey", blocking=False)
-        behav.add_transit("init", "ready",
+        behav.add_transit("set_email", "init_message", action="nop")
+        behav.add_transit("init_message", "ready",
                           action="do_gen", args={"u_hashes": ["<agent>:processor_in"], "samples": 1}, ready=True,
-                          avoid_changing_ready=True,
-                          msg="📩 Waiting for your confirmation...")
-        behav.add_transit("init", "hall", action="connect_to_manager", args={"role": "manager"},
+                          avoid_changing_ready=True)
+        behav.add_transit("init_message", "ready", action="skip_confirmation")
+        behav.add_transit("ready", "hall", action="connect_to_manager", args={"role": "manager"},
                           msg="🔗 Connecting to manager...")
-        behav.add_transit("hall", "init", action="disconnected", args={"delay": 5.0})
+        behav.add_transit("hall", "init_message", action="disconnected", args={"delay": 5.0})
         behav.add_transit("hall", "in_room", action="join_room", args={}, ready=False,
                           msg="🚪 Joining room")
         behav.add_transit("in_room", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
         behav.add_transit("in_room", "chatting", action="start", ready=False,
-                          msg="🚪 Starting the chat")
+                          msg="🚪 Start the chat")
+        behav.add_transit("chatting", "hall", action="nop", args={"delay": test_duration + 20.},
+                          msg="🏢 Back to hall (fallback)")
+        behav.add_transit("chatting", "chatting", action="wait_for_intro")
         behav.add_transit("chatting", "message_prepared",
                           action="do_gen", args={"u_hashes": ["<agent>:processor_in"], "samples": 1}, ready=True,
-                          avoid_changing_ready=True,
-                          msg="📩 Preparing my own message")
-        behav.add_transit("chatting", "ready_for_survey", action="stop", ready=False,
-                          msg="📋 Ready to receive the final survey")
+                          avoid_changing_ready=True)
+        behav.add_transit("chatting", "ready_for_survey", action="stop", ready=False)
         behav.add_transit("ready_for_survey", "replied_to_survey",
-                          action="do_gen", args={"u_hashes": ["<manager_processor>"], "samples": 1}, ready=False,
-                          msg="📋 Trying to fill the final survey (if received)")
+                          action="do_gen", args={"samples": 1}, ready=False,
+                          msg="📋 Provide your feedback to the final survey")
         behav.add_transit("message_prepared", "ready_to_chat",
                           action="ask_gen", args={"u_hashes": ["<agent>:processor"], "samples": 1,
-                                                  "from_state": "collect_messages", "ask_uuid": "s4m344ll"},
-                          msg="✉️ Sending my own message")
+                                                  "from_state": "collect_messages", "ask_uuid": "s4m344ll"})
         behav.add_transit("ready_to_chat", "chatting", action="nop")
         behav.add_transit("replied_to_survey", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
         behav.add_transit("replied_to_survey", "hall",
                           action="nop", args={"delay": survey_reply_time + 20.},
-                          msg="🏢 Back to hall (fallback)")
-        behav.add_transit("chatting", "hall", action="nop", args={"delay": test_duration + 20.},
                           msg="🏢 Back to hall (fallback)")
         behav.add_transit("chatting", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
@@ -109,6 +109,8 @@ class WWorld(World):
 
         # ROLE 2/2: manager
         behav = HybridStateMachine(dummy_agent)
+        behav.set_welcome_message("Welcome to the Turing Hotel 🏨, we always need more managers, "
+                                  "happy to have you here!")
         behav.set_role("manager")
 
         behav.add_state("sending_messages", blocking=True, msg="🚚 Sending collected messages and surveys")

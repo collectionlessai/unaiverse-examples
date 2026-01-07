@@ -4,6 +4,7 @@
     "role": "manager",
     "prev_state": null,
     "limbo_state": null,
+    "welcome_msg": "Welcome to the Turing Hotel &#127976;, we always need more managers, happy to have you here!",
     "state_actions": {
         "sending_messages": [null, null, 0, true, 0.0, "&#128666; Sending collected messages and surveys"],
         "rooms_assigned": [null, null, 1, false, 0.0],

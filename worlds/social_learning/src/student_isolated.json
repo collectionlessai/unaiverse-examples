@@ -1,9 +1,10 @@
 {
     "initial_state": "init",
     "state": "init",
-    "role": "student",
+    "role": "student_isolated",
     "prev_state": null,
     "limbo_state": null,
+    "welcome_msg": "&#127891; Welcome to the world of Social Learning, you joined as a student (isolated)",
     "state_actions": {
         "init": [null, null, 0, false, 0.0, "&#9203; Waiting for the next set of lectures to start"],
         "teacher_engaged": [null, null, 1, false, 0.0, "&#128276; Ready for the lecture"],

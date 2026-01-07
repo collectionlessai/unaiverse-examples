@@ -17,7 +17,7 @@ def my_wandb_logger(node: Node):
         "action": node.hosted.behav.get_action_name(),
         "last_completed_action": node.hosted.behav.get_last_completed_action_name(),
     }
-    print(metrics)
+    # print(metrics)
     # wandb.log(metrics)
 
 # Agent

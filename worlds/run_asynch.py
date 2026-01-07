@@ -2,10 +2,11 @@ import os
 import re
 import sys
 import glob
+import time
 import shutil
+import argparse
 import threading
 import subprocess
-import time
 
 # Config
 world_file_runner = "run_w.py"
@@ -47,22 +48,21 @@ def terminate_all_processes():
 
 
 if __name__ == "__main__":
-    if (len(sys.argv) != 2 and len(sys.argv) != 3) or \
-            (len(sys.argv) == 3 and sys.argv[1] != "-l" and sys.argv[1] != "--log"):
-        script_name = os.path.basename(sys.argv[0])
-        print(f"Usage: python {script_name} [-l or --log] <world-name>")
-        print(f"Flags: -l or --log: activate logging ('log' folder inside the world folder)")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Run the world script.")
+    parser.add_argument("world_name", help="Name of the world to run")
+    parser.add_argument("-l", "--log", action="store_true", help="Activate logging")
+    parser.add_argument("--max_run", type=int, default=-1,
+                        help="Max number of runner to execute (default: no-limits)")
 
-    if len(sys.argv) == 3:
-        log_to_file = True
-        world_name = sys.argv[2]
-    else:
-        log_to_file = False
-        world_name = sys.argv[1]
+    args = parser.parse_args()
+
+    # Access your variables like this:
+    world_name = args.world_name
+    log_to_file = args.log
+    max_run = args.max_run
 
     main_dir = os.path.dirname(os.path.abspath(__file__))
-    script_dir = os.path.join(main_dir, world_name)
+    script_dir = str(os.path.join(main_dir, world_name))
 
     # Collect scripts
     scripts = [os.path.join(script_dir, world_file_runner)]
@@ -73,6 +73,8 @@ if __name__ == "__main__":
             continue
         if pattern.match(filename):
             scripts.append(filename)
+        if 0 < max_run <= len(scripts):
+            break
 
     threads = []
 

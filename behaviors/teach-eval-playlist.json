@@ -18,35 +18,35 @@
     },
     "transitions": {
         "begin_teaching": {
-            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": "<learn_steps>", "timeout": 60.0}, true, 0]]
+            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": "<learn_steps>", "time": "<learn_time>", "timeout": "<learn_timeout>"}, true, 0]]
         },
         "lecture_in_progress": {
             "student_finished_following": [
                 ["done_learn", {}, false, 1],
-                ["nop", {"delay": "<learn_exam_timeout>"}, true, 2]
+                ["nop", {"delay": "<learn_time>"}, true, 2]
             ]
         },
         "student_finished_following": {
             "student_finished_following": [["done_learn", {}, false, 3]],
             "exam_time": [
                 ["all_asked_finished", {}, true, 4],
-                ["nop", {"delay":  "<learn_exam_timeout>"}, true, 17]
+                ["nop", {"delay":  "<others_learn_exam_timeout>"}, true, 17]
             ]
         },
         "exam_time": {
-            "exam_in_progress": [["ask_gen", {"u_hashes": ["<agent>:eval"], "samples": "<eval_steps>", "timeout": 5.0}, true, 5]]
+            "exam_in_progress": [["ask_gen", {"u_hashes": ["<agent>:eval"], "samples": "<eval_steps>", "time": "<exam_time>", "timeout": "<exam_timeout>"}, true, 5]]
         },
         "exam_in_progress": {
             "student_finished_exam": [
                 ["done_gen", {}, false, 6],
-                ["nop", {"delay": "<learn_exam_timeout>"}, true, 7]
+                ["nop", {"delay": "<exam_time>"}, true, 7]
             ]
         },
         "student_finished_exam": {
             "student_finished_exam": [["done_gen", {}, false, 8]],
             "compare_time": [
                 ["all_asked_finished", {}, true, 9],
-                ["nop", {"delay":  "<learn_exam_timeout>"}, true, 16]
+                ["nop", {"delay":  "<others_learn_exam_timeout>"}, true, 16]
             ]
         },
         "compare_time": {

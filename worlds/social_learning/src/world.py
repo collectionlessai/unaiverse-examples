@@ -54,6 +54,7 @@ class WWorld(World):
 
         # ROLE 1/3: teacher
         behav = HybridStateMachine(dummy_agent)
+        behav.set_welcome_message("🍎 Welcome to the world of Social Learning, you joined as a teacher")
         behav.set_role("teacher")
 
         # Connecting to students and isolated students, ensuring that at least a student is found
@@ -73,17 +74,27 @@ class WWorld(World):
                              "<cmp_thres>": 0.5})
 
         # Counting
-        behav.add_state("engagement_complete")
+        behav.add_state("engagement_complete", msg="🔔 Ready for the lecture")
 
         # Forcing shuffle of all the round-related datasets and unlabeled data
-        behav.add_state("begin_teaching", action="shuffle_and_stop_streaming")
+        behav.add_state("begin_teaching", action="shuffle_and_stop_streaming", msg="📗 Starting to teach")
 
         # Providing a badge to all the agents that were the best ones in a lecture
-        behav.add_state("best_found", action="manage_best_of_class")
+        behav.add_state("best_found", action="manage_best_of_class", msg="🏆 Found the best of class")
 
         # Stop streams at the end of the lecture/exam
-        behav.add_state("student_finished_following", action="stop_streaming")
-        behav.add_state("student_finished_exam", action="stop_streaming")
+        behav.add_state("student_finished_following", action="stop_streaming",
+                        msg="📗 End of the lecture")
+        behav.add_state("student_finished_exam", action="stop_streaming", msg="✏️ End of the exam")
+        behav.add_state("compare_time", msg="✏️ Correcting exams")
+
+        behav.add_state("searching", msg="🔍 Searching for students...")
+        behav.add_state("connected", msg="🤝 Started to connect to one or more students")
+        behav.add_state("can_engage", msg="✅ Connection confirmed by one or more students, ready to engage")
+        behav.add_state("exam_in_progress", msg="✏️ Exam in progress")
+        behav.add_state("best_not_found", msg="❌ The best of class was not found")
+        behav.add_state("best_teaching", msg="📕 The best of class is now teaching")
+        behav.add_state("wait_for_disengagement", msg="🔚 Waiting while students leave...")
 
         # Telling the best student to teach and the other to listen to the best student
         behav.transitions["best_found"] = {}  # Clearing existing transitions, loaded from the template
@@ -94,11 +105,17 @@ class WWorld(World):
         behav.add_transit("best_teaching", "best_teaching", action="done_learn")
         behav.add_transit("best_teaching", "change_lecture", action="all_asked_finished")
         behav.add_transit("best_teaching", "change_lecture", action="nop",
-                          args={"delay": "<learn_exam_timeout>"})
+                          args={"delay": "<others_learn_exam_timeout>"}, msg="⏰ Timeout!")
+        behav.transitions["lecture_in_progress"]['student_finished_following'][1].set_msg("⏰ Timeout!")
+        behav.transitions["exam_in_progress"]['student_finished_exam'][1].set_msg("⏰ Timeout!")
         behav.states["best_teaching"].set_blocking(False)
 
         # Last wildcard from the loaded machine
-        behav.add_wildcards({"<learn_exam_timeout>": 15.0})
+        behav.add_wildcards({"<learn_time>": WAgent.student_learn_time})
+        behav.add_wildcards({"<learn_timeout>": WAgent.student_learn_time / 3.0})
+        behav.add_wildcards({"<exam_time>": WAgent.student_exam_time})
+        behav.add_wildcards({"<exam_timeout>": WAgent.student_exam_time / 2.0})
+        behav.add_wildcards({"<others_learn_exam_timeout>": 2.5})
 
         # Providing a badge to all the agents that were the best of the world
         behav.add_state("finished_teaching")
@@ -115,8 +132,9 @@ class WWorld(World):
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'teacher.json'), only_if_changed=dummy_agent)
 
-        # ROLE 2/3 and 3/3 (same): student and student isolated
+        # ROLE 2/3: student
         behav = HybridStateMachine(dummy_agent)
+        behav.set_welcome_message("🎓 Welcome to the world of Social Learning, you joined as a student")
         behav.set_role("student")
 
         # Getting engagement
@@ -150,6 +168,10 @@ class WWorld(World):
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'student.json'), only_if_changed=dummy_agent)
+
+        # ROLE 3/3: student isolated (reusing the machine for role student)
+        behav.set_welcome_message("🎓 Welcome to the world of Social Learning, you joined as a student (isolated)")
+        behav.set_role("student_isolated")
         behav.save(os.path.join(self.world_folder, 'student_isolated.json'), only_if_changed=dummy_agent)
     
     def _process_custom_stat(self, stat_name, value, peer_id, timestamp):
