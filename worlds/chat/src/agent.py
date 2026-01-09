@@ -65,6 +65,7 @@ class WAgent(Agent):
 
         if self._broadcaster_stream is not None:
             msg = self._broadcaster_stream.get("check_messages")
+            print(f"MESSAGE: {msg}")
             if msg is not None:
 
                 if (self.proc is not None and
@@ -83,7 +84,9 @@ class WAgent(Agent):
                     augmented_msg += msg
 
                     self.behav.enable(True)
+                    print(f"@@@ {tm.time()} GENERATING A RESPONSE TO {msg}")
                     [msg_to_send], _ = self.generate(input_net_hashes=None, inputs=[augmented_msg])
+                    print(f"@@@ {tm.time()} DONE!")
                     self._user_stream.set(msg_to_send)
                     self.behav.enable(False)
 
@@ -109,7 +112,9 @@ class WAgent(Agent):
                                       f"no other texts or preambles.\n")
 
                     # Assuming the processor is such that it takes only 1 input (str) and generates 1 output (str)
+                    print(f"@@@ {tm.time()} GENERATING A MESSAGE TO PROMOTE CONVERSATION...")
                     proc_outputs, data_tag = self.generate(input_net_hashes=None, inputs=[promote_prompt])
+                    print(f"@@@ {tm.time()} DONE!")
                     if proc_outputs is not None and len(proc_outputs) == 1:
                         msg_to_send = proc_outputs[0]
                         self._user_stream.set(msg_to_send)

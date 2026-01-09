@@ -53,7 +53,7 @@ agent = Agent(proc=HumanModule(),
               policy_filter=PolicyFilterHuman())
 
 # Node hosting agent
-node_agent = Node(node_name="Test0", hosted=agent, hidden=True, clock_delta=1./25.)  # TODO set name as Tester
+node_agent = Node(node_name="Test0", hosted=agent, hidden=True, clock_delta=1.)  # TODO set name as Tester
 
 # Running node
 try:

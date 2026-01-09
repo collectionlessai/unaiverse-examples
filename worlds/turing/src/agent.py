@@ -889,7 +889,6 @@ class WAgent(Agent):
                                    f"manager, but it seems that it is not like that (message: {msg})")
 
         # Adding the received message to the message history, to create the context we will pass to our processor
-        continuation = ""
         if msg is not None and add_to_history:
 
             # Add to history and convert the conversation to a single, long, string, self._part_conversation_as_str
