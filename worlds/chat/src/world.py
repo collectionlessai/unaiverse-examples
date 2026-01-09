@@ -51,13 +51,18 @@ class WWorld(World):
                                   "conversation if there is too much 'silence' in the chat.")
         behav.set_role("user")
 
-        behav.add_transit("init", "ready",
+        behav.add_state("waiting_handshake", blocking=False)
+        behav.add_state("sef_generated", blocking=False)
+        behav.add_state("message_sent", blocking=False)
+
+        behav.add_transit("init", "waiting",
                           action="connect_to_broadcaster", args={"role": "broadcaster"},
                           msg="🔗 Connecting to the room...")
+        behav.add_transit("waiting_handshake", "ready",
+                          action="connected", args={"handshake_completed": True})
         behav.add_state("ready", action="check_messages",
                         args={"max_silence_seconds": 25.0, "talk_probability": 0.01, "history_len": 3},
                         msg="👍 Ready!")
-        behav.add_state("sef_generated", blocking=False)
         behav.add_transit("ready", "message_sent",
                           action="ask_gen", args={"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": True},
                           ready=False)
