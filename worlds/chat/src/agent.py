@@ -26,6 +26,7 @@ class WAgent(Agent):
         self._broadcaster_stream = None
         self._broadcaster_sender = None
         self._user_stream = None
+        self._user_stream_net_hash = None
         self._last_msg_time = None
         self._last_turns = []
 
@@ -36,6 +37,7 @@ class WAgent(Agent):
             for stream_obj in stream_dict.values():
                 if stream_obj.props.is_text() and not stream_obj.props.is_public():
                     self._user_stream = stream_obj
+                    self._user_stream_net_hash = net_hash
                     break
 
         if self._user_stream is None:
@@ -97,6 +99,7 @@ class WAgent(Agent):
                     [msg_to_send], _ = self.generate(input_net_hashes=None, inputs=[augmented_msg])
                     print(f"@@@ {tm.time()} DONE! msg_to_send={msg_to_send}")
                     self._user_stream.set(msg_to_send)
+                    self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
                     self.behav.enable(False)
 
                     self.behav.request_action(action_name="ask_gen",
@@ -127,6 +130,7 @@ class WAgent(Agent):
                     if proc_outputs is not None and len(proc_outputs) == 1:
                         msg_to_send = proc_outputs[0]
                         self._user_stream.set(msg_to_send)
+                        self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
 
                         self.behav.request_action(action_name="ask_gen",
                                                   args={},
