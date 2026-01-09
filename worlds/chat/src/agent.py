@@ -95,7 +95,7 @@ class WAgent(Agent):
                     self.behav.enable(True)
                     print(f"@@@ {tm.time()} GENERATING A RESPONSE TO {msg}")
                     [msg_to_send], _ = self.generate(input_net_hashes=None, inputs=[augmented_msg])
-                    print(f"@@@ {tm.time()} DONE!")
+                    print(f"@@@ {tm.time()} DONE! msg_to_send={msg_to_send}")
                     self._user_stream.set(msg_to_send)
                     self.behav.enable(False)
 
