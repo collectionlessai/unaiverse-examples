@@ -1,30 +1,36 @@
 {
-    "initial_state": "init",
-    "state": "init",
+    "initial_state": "waiting_handshake",
+    "state": "waiting_handshake",
     "role": "user",
     "prev_state": null,
     "limbo_state": null,
-    "welcome_msg": "&#128495;&#65039; This world implements a simple chatroom where you can talk to humans and AIs.AI-based agents, when joining this world, inherit the skill of promoting the conversation if there is too much 'silence' in the chat.",
+    "welcome_msg": "&#128495;&#65039; This world implements a simple chatroom where you can talk to humans and AIs. AI-based agents, when joining this world, inherit the skill of promoting the conversation if there is too much 'silence' in the chat.",
     "state_actions": {
-        "init": [null, null, 0, true, 0.0],
-        "ready": ["check_messages", {"max_silence_seconds": 25.0, "talk_probability": 0.01, "history_len": 3}, 1, true, 0.0],
-        "message_sent": [null, null, 2, true, 0.0],
-        "self_generated": [null, null, 3, true, 0.0]
+        "waiting_handshake": [null, null, 0, false, 0.0],
+        "sef_generated": [null, null, 1, false, 0.0],
+        "message_sent": [null, null, 2, false, 0.0],
+        "init": [null, null, 3, true, 0.0],
+        "waiting": [null, null, 4, true, 0.0],
+        "ready": ["check_messages", {"max_silence_seconds": 25.0, "talk_probability": 0.01, "history_len": 3}, 5, true, 0.0, "&#128077; Ready!"],
+        "self_generated": [null, null, 6, true, 0.0]
     },
     "transitions": {
         "init": {
-            "ready": [["connect_to_broadcaster", {"role": "broadcaster"}, true, 0]]
+            "waiting": [["connect_to_broadcaster", {"role": "broadcaster"}, true, 0, "&#128279; Connecting to the room..."]]
+        },
+        "waiting_handshake": {
+            "ready": [["connected", {"handshake_completed": true}, true, 1]]
         },
         "ready": {
-            "message_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": true}, false, 2]],
-            "init": [["disconnected", {"delay": 5.0}, true, 4]],
-            "self_generated": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 5]]
+            "message_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": true}, false, 3]],
+            "init": [["disconnected", {"delay": 5.0}, true, 5]],
+            "self_generated": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 6]]
         },
         "message_sent": {
-            "ready": [["nop", {}, true, 3]]
+            "ready": [["nop", {}, true, 4]]
         },
         "self_generated": {
-            "message_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": true}, true, 6]]
+            "message_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": true}, true, 7]]
         }
     },
     "cur_action": null
