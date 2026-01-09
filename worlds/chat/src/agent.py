@@ -55,6 +55,8 @@ class WAgent(Agent):
         if self.get_current_role() != "user":
             return False
 
+        print("@@@ CHECKING MESSAGES")
+
         if self._broadcaster_stream is None:
             net_hash_to_stream_dict = self.find_streams(self._broadcaster_peer_id, "processor")
             for _, stream_dict in net_hash_to_stream_dict.items():
@@ -65,7 +67,7 @@ class WAgent(Agent):
 
         if self._broadcaster_stream is not None:
             msg = self._broadcaster_stream.get("check_messages")
-            print(f"MESSAGE: {msg}")
+            print(f"@@@ MESSAGE: {msg}")
             if msg is not None:
 
                 if (self.proc is not None and
@@ -128,8 +130,10 @@ class WAgent(Agent):
                         self._last_msg_time = tm.time()
                         self._last_turns.append(msg)
                         self._last_turns = self._last_turns[1:history_len]
+            print(f"@@@ RETURNING TRUE")
             return True
         else:
+            print(f"@@@ NO STREAM OF BROADCASTER?")
             self.err("Cannot find the processor stream of the broadcaster")
             return False
 
