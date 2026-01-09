@@ -67,14 +67,21 @@ class WAgent(Agent):
 
         if self._broadcaster_stream is not None:
             msg = self._broadcaster_stream.get("check_messages")
-            print(f"@@@ MESSAGE: {msg}")
+            print(f"@@@ {tm.time()} MESSAGE: {msg}")
             if msg is not None:
+                my_rand = random.random()
+                print(f"@@@ Counting: {self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS['user'])}")
+                print(f"@@@ Random number: {my_rand} (talk_probability={talk_probability})")
+                print(f"@@@ Cond 0: {self.proc is not None and (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, HumanModule)))}")
+                print(f"@@@ Cond 1: {self.get_name().lower() in msg.lower().strip()}")
+                print(f"@@@ Cond 2: {self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS['user']) == 2}")
+                print(f"@@@ Cond 3: {(my_rand < talk_probability)}")
 
-                if (self.proc is not None and
-                        (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, HumanModule))) and (
-                        self.get_name().lower() in msg.lower().strip() or
-                        self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) == 2 or
-                        random.random() < talk_probability)):
+                if (self.proc is not None and (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, HumanModule))) and
+                        ((self.get_name().lower() in msg.lower().strip()) or
+                         (self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT |
+                                                        self.ROLE_STR_TO_BITS["user"]) == 2) or
+                         (my_rand < talk_probability))):
                     augmented_msg = (f"Generate a meaningful reply to the following conversation going on in chatroom "
                                      f"(just to let you know, your name is {self.get_name()}). "
                                      f"Please generate only the message to be sent in the chatroom,"
