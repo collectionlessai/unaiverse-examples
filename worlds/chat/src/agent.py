@@ -57,8 +57,6 @@ class WAgent(Agent):
         if self.get_current_role() != "user":
             return False
 
-        print("@@@ CHECKING MESSAGES")
-
         if self._broadcaster_stream is None:
             net_hash_to_stream_dict = self.find_streams(self._broadcaster_peer_id, "processor")
             for _, stream_dict in net_hash_to_stream_dict.items():
@@ -69,17 +67,11 @@ class WAgent(Agent):
 
         if self._broadcaster_stream is not None:
             msg = self._broadcaster_stream.get("check_messages")
-            print(f"@@@ {tm.time()} MESSAGE: {msg}")
             if msg is not None:
                 my_rand = random.random()
-                print(f"@@@ Counting: {self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS['user'])}")
-                print(f"@@@ Random number: {my_rand} (talk_probability={talk_probability})")
-                print(f"@@@ Cond 0: {self.proc is not None and (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, HumanModule)))}")
-                print(f"@@@ Cond 1: {self.get_name().lower() in msg.lower().strip()}")
-                print(f"@@@ Cond 2: {self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS['user']) == 2}")
-                print(f"@@@ Cond 3: {(my_rand < talk_probability)}")
 
-                if (self.proc is not None and (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, HumanModule))) and
+                if (self.proc is not None and (not (hasattr(self.proc, 'module') and
+                                                    isinstance(self.proc.module, HumanModule))) and
                         ((self.get_name().lower() in msg.lower().strip()) or
                          (self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT |
                                                         self.ROLE_STR_TO_BITS["user"]) == 2) or
@@ -95,9 +87,7 @@ class WAgent(Agent):
                     augmented_msg += msg
 
                     self.behav.enable(True)
-                    print(f"@@@ {tm.time()} GENERATING A RESPONSE TO {msg}")
                     [msg_to_send], _ = self.generate(input_net_hashes=None, inputs=[augmented_msg])
-                    print(f"@@@ {tm.time()} DONE! msg_to_send={msg_to_send}")
                     self._user_stream.set(msg_to_send)
                     self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
                     self.behav.enable(False)
@@ -124,9 +114,7 @@ class WAgent(Agent):
                                       f"no other texts or preambles.\n")
 
                     # Assuming the processor is such that it takes only 1 input (str) and generates 1 output (str)
-                    print(f"@@@ {tm.time()} GENERATING A MESSAGE TO PROMOTE CONVERSATION...")
                     proc_outputs, data_tag = self.generate(input_net_hashes=None, inputs=[promote_prompt])
-                    print(f"@@@ {tm.time()} DONE!")
                     if proc_outputs is not None and len(proc_outputs) == 1:
                         msg_to_send = proc_outputs[0]
                         self._user_stream.set(msg_to_send)
@@ -141,10 +129,8 @@ class WAgent(Agent):
                         self._last_msg_time = tm.time()
                         self._last_turns.append(msg)
                         self._last_turns = self._last_turns[1:history_len]
-            print(f"@@@ RETURNING TRUE")
             return True
         else:
-            print(f"@@@ NO STREAM OF BROADCASTER?")
             self.err("Cannot find the processor stream of the broadcaster")
             return False
 

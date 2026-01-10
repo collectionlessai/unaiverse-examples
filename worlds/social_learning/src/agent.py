@@ -162,16 +162,10 @@ class WAgent(Agent):
             best_student_stream_hash = net_hash
             break
 
-        # Storing the list of agents who were asked multiple things
-        agents_who_were_asked = set()
-
         if not (await self.ask_subscribe(stream_hashes=[best_student_stream_hash])):
             self.err("Unable to tell students to listen to what the best student is going to say")
             self._engaged_agents = all_students
             return False
-
-        # Remembering who we asked
-        agents_who_were_asked |= self._agents_who_were_asked
 
         # Asking them to learn from the best student
         if await self.ask_learn(u_hashes=[f"{best_student}:best_student_stream"],
@@ -179,9 +173,6 @@ class WAgent(Agent):
                                 samples=self.get_unlabeled_steps(),
                                 time=WAgent.student_learn_time * 2.,
                                 timeout=WAgent.student_learn_time / 3.0):
-
-            # Remembering who we asked
-            agents_who_were_asked |= self._agents_who_were_asked
 
             # Getting the UUID of the request
             ref_uuid = self.last_ref_uuid
@@ -203,14 +194,7 @@ class WAgent(Agent):
                     for name, stream_obj in stream_dict.items():
 
                         # Forcing UUID
-                        stream_obj.set_uuid(None, expected=True)
-                        stream_obj.set_uuid(ref_uuid, expected=False)
-
-                # Remembering who we asked
-                agents_who_were_asked |= self._agents_who_were_asked
-
-                # Overwriting the internal set of asked peers with the merged one
-                self._agents_who_were_asked = agents_who_were_asked
+                        stream_obj.set_uuid(ref_uuid)
 
                 self._engaged_agents = all_students
                 return True
@@ -248,8 +232,7 @@ class WAgent(Agent):
                 for name, stream_obj in stream_dict.items():
 
                     # Forcing UUID
-                    stream_obj.set_uuid(None, expected=True)
-                    stream_obj.set_uuid(_request_uuid, expected=False)
+                    stream_obj.set_uuid(_request_uuid)
 
                     # Setting up the stream data
                     if name == "images":

@@ -444,8 +444,8 @@ class WAgent(Agent):
         # Telling the newly checked in guests to join their room
         checked_in_and_reached_out = []
         for guest in checked_in:
-            ret = await self.set_next_action(agent=guest, action="join_room",
-                                             args={"room_id": self._mana_hotel.get_room(guest).id_in_hotel})
+            ret = await self.request_action(agent=guest, action="join_room",
+                                            args={"room_id": self._mana_hotel.get_room(guest).id_in_hotel})
             if not ret:
                 self._mana_hotel.get_room(guest).remove_if_present(guest)
                 await self.disconnect(guest)  # Killing the ones that are not reachable anymore
@@ -494,7 +494,7 @@ class WAgent(Agent):
                 # Telling the guests the conversation can start
                 lost_guests = []
                 for guest in room.guests.keys():
-                    ret = await self.set_next_action(agent=guest, action="start")
+                    ret = await self.request_action(agent=guest, action="start")
                     if not ret:
                         self._mana_hotel.get_room(guest).remove_if_present(guest)
                         await self.disconnect(guest)  # Killing the ones that are not reachable anymore
@@ -650,7 +650,7 @@ class WAgent(Agent):
 
             # Saving guests into the list of those who will be expected to reply to the request we are going to make
             for guest in room.guests:
-                ret = await self.set_next_action(agent=guest, action="stop")
+                ret = await self.request_action(agent=guest, action="stop")
                 if not ret:
                     await self.__kick_all_guests(room)
                     break
@@ -1092,7 +1092,7 @@ class WAgent(Agent):
         self._mana_hotel.check_out(guest)
 
         # Telling the guest to "leave_room"
-        ret = await self.set_next_action(agent=guest, action="leave_room")
+        ret = await self.request_action(agent=guest, action="leave_room")
         if not ret:
             await self.disconnect(guest)  # Disconnecting other lost-in-action guests
 
