@@ -24,7 +24,7 @@ class WWorld(World):
 
     def __init__(self, **kwargs):
         world_folder = os.path.dirname(os.path.abspath(__file__))
-        stats = WStats(is_world=True, db_path=f"{world_folder}/stats/world_stats.db")
+        stats = WStats(is_world=True, db_path=os.path.join(world_folder, "stats", "world_stats.db"))
         super().__init__(world_folder=world_folder, stats=stats, **kwargs)
 
         # Adding streams
@@ -103,7 +103,13 @@ class WWorld(World):
 
         # Wildcards present in the template
         behav.add_wildcards({"<role_to_connect>": "student",
-                             "<learn_steps>": 40, "<eval_steps>": 30, "<cmp_thres>": 0.45})
+                             "<learn_steps>": 40, "<eval_steps>": 30, "<cmp_thres>": 0.65})
+
+        # Adding default messages
+        behav.generate_auto_messages()
+        behav.show_marks_in_blocking_state_messages(True)
+        behav.show_ticks_in_action_messages(True)
+        behav.show_request_info_in_action_messages(True)
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'teacher.json'), only_if_changed=dummy_agent)
@@ -120,6 +126,12 @@ class WWorld(World):
 
         # When the teacher will send the student back home
         behav.add_transit("teacher_engaged", "init", action="get_disengagement")
+
+        # Adding default messages
+        behav.generate_auto_messages()
+        behav.show_marks_in_blocking_state_messages(True)
+        behav.show_ticks_in_action_messages(True)
+        behav.show_request_info_in_action_messages(True)
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'student.json'), only_if_changed=dummy_agent)

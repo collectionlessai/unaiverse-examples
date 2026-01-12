@@ -61,6 +61,7 @@ class WWorld(World):
                           msg="🔗 Connecting to the room...")
         behav.add_transit("waiting_handshake", "ready",
                           action="connected", args={"handshake_completed": True})
+        behav.add_transit("waiting_handshake", "init", action="disconnected", args={"delay": 5.0})
         behav.add_state("ready", action="check_messages",
                         args={"max_silence_seconds": 25.0, "talk_probability": 0.01, "history_len": 3},
                         msg="👍 Ready!")

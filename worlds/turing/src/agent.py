@@ -444,8 +444,8 @@ class WAgent(Agent):
         # Telling the newly checked in guests to join their room
         checked_in_and_reached_out = []
         for guest in checked_in:
-            ret = await self.request_action(agent=guest, action="join_room",
-                                            args={"room_id": self._mana_hotel.get_room(guest).id_in_hotel})
+            ret = await self.set_next_action(agent=guest, action="join_room",
+                                             args={"room_id": self._mana_hotel.get_room(guest).id_in_hotel})
             if not ret:
                 self._mana_hotel.get_room(guest).remove_if_present(guest)
                 await self.disconnect(guest)  # Killing the ones that are not reachable anymore
@@ -494,7 +494,7 @@ class WAgent(Agent):
                 # Telling the guests the conversation can start
                 lost_guests = []
                 for guest in room.guests.keys():
-                    ret = await self.request_action(agent=guest, action="start")
+                    ret = await self.set_next_action(agent=guest, action="start")
                     if not ret:
                         self._mana_hotel.get_room(guest).remove_if_present(guest)
                         await self.disconnect(guest)  # Killing the ones that are not reachable anymore
@@ -518,16 +518,16 @@ class WAgent(Agent):
                     ttime.monotonic() >= self._mana_rooms_ready_for_start_message[room.id_in_hotel]['send_message_at']
                     and not self._mana_rooms_ready_for_start_message[room.id_in_hotel]['requested_action']):
 
-                # The manager asks ("ask_gen", well, actually using request_action) himself to generate ("do_gen")
+                # The manager asks ("ask_gen", well, actually using set_next_action) himself to generate ("do_gen")
                 # the message, that will be sent to all the guest since the "do_gen" of the manager is prepared to do.
                 # Before doing anything, we set in the input stream of the manager's processor the "welcome/start"
                 # message, assuming the processor acts like an identity function
                 self.set_proc_input(WAgent.start_message, uuid="s4m344ll")
-                if not self.behav.request_action(signature=self._mana_peer_id,
-                                                 action_name="do_gen",
-                                                 args={"u_hashes": [f'{self._mana_peer_id}:processor_in'],
-                                                       "samples": 1},
-                                                 uuid="s4m344ll", from_state="collect_messages"):
+                if not self.behav.set_next_action(signature=self._mana_peer_id,
+                                                  action_name="do_gen",
+                                                  args={"u_hashes": [f'{self._mana_peer_id}:processor_in'],
+                                                        "samples": 1},
+                                                  uuid="s4m344ll", from_state="collect_messages"):
 
                     # This thing below is really not expected to happen, since the manager asked himself... (safety)
                     await self.__kick_all_guests(room)  # Telling to "leave_room"...
@@ -650,7 +650,7 @@ class WAgent(Agent):
 
             # Saving guests into the list of those who will be expected to reply to the request we are going to make
             for guest in room.guests:
-                ret = await self.request_action(agent=guest, action="stop")
+                ret = await self.set_next_action(agent=guest, action="stop")
                 if not ret:
                     await self.__kick_all_guests(room)
                     break
@@ -662,7 +662,6 @@ class WAgent(Agent):
 
         # Let's copy this dictionary, since we will modify it in the loop below
         guests_who_got_the_survey = {k: v for k, v in self._mana_guests_who_got_the_survey.items()}
-        print(f"guests_who_got_the_survey={guests_who_got_the_survey}")
 
         # Checking the data produced guests that got the survey: if they replied, we store their feedback and remove
         # them from the list of guests who got the survey
@@ -1092,7 +1091,7 @@ class WAgent(Agent):
         self._mana_hotel.check_out(guest)
 
         # Telling the guest to "leave_room"
-        ret = await self.request_action(agent=guest, action="leave_room")
+        ret = await self.set_next_action(agent=guest, action="leave_room")
         if not ret:
             await self.disconnect(guest)  # Disconnecting other lost-in-action guests
 

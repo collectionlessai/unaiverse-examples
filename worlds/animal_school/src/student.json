@@ -4,26 +4,30 @@
     "role": "student",
     "prev_state": null,
     "limbo_state": null,
+    "welcome_msg": null,
+    "highlight_blocking_states_in_messages": true,
+    "show_action_ticks_after_messages": true,
+    "show_action_request_after_messages": true,
     "state_actions": {
-        "teacher_engaged": [null, null, 0, true, 0.0],
-        "done_learn": [null, null, 1, true, 0.0],
-        "done_gen": [null, null, 2, true, 0.0],
-        "init": [null, null, 3, true, 0.0]
+        "teacher_engaged": [null, null, 0, true, 0.0, "&#128205; Teacher engaged"],
+        "done_learn": [null, null, 1, true, 0.0, "&#128205; Done learn"],
+        "done_gen": [null, null, 2, true, 0.0, "&#128205; Done gen"],
+        "init": [null, null, 3, true, 0.0, "&#128205; Init"]
     },
     "transitions": {
         "teacher_engaged": {
-            "done_learn": [["do_learn", {}, false, 0]],
-            "done_gen": [["do_gen", {}, false, 1]],
-            "init": [["get_disengagement", {}, false, 5]]
+            "done_learn": [["do_learn", {}, false, 0, "&#128640; Do learn"]],
+            "done_gen": [["do_gen", {}, false, 1, "&#128640; Do gen"]],
+            "init": [["get_disengagement", {}, false, 5, "&#128640; Get disengagement"]]
         },
         "done_learn": {
-            "teacher_engaged": [["nop", {}, true, 2]]
+            "teacher_engaged": [["nop", {}, true, 2, "&#128640; Nop"]]
         },
         "done_gen": {
-            "teacher_engaged": [["nop", {}, true, 3]]
+            "teacher_engaged": [["nop", {}, true, 3, "&#128640; Nop"]]
         },
         "init": {
-            "teacher_engaged": [["get_engagement", {"acceptable_role": "teacher"}, false, 4]]
+            "teacher_engaged": [["get_engagement", {"acceptable_role": "teacher"}, false, 4, "&#128640; Get engagement"]]
         }
     },
     "cur_action": null

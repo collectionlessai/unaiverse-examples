@@ -5,7 +5,7 @@
     "limbo_state": null,
     "state_actions": {
         "looking_for_peers": [null, null, 7],
-        "looking_for_students": ["find_agents", {"role": "<role_to_connect>"}, 0],
+        "looking_for_students": ["find_agents", {"role": "<role_to_connect>"}, 0, 5.0],
         "student_found": [null, null, 1, 5.0],
         "student_engaged": [null, null, 2, 5.0],
         "teaching_time": [null, null, 3],

@@ -162,7 +162,7 @@ class WAgent(Agent):
             best_student_stream_hash = net_hash
             break
 
-        if not (await self.ask_subscribe(stream_hashes=[best_student_stream_hash])):
+        if best_student_stream_hash is None or not (await self.ask_subscribe(stream_hashes=[best_student_stream_hash])):
             self.err("Unable to tell students to listen to what the best student is going to say")
             self._engaged_agents = all_students
             return False

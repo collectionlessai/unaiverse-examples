@@ -1,15 +1,15 @@
 {
-    "initial_state": "waiting_handshake",
-    "state": "waiting_handshake",
+    "initial_state": "init",
+    "state": "init",
     "role": "user",
     "prev_state": null,
     "limbo_state": null,
     "welcome_msg": "&#128495;&#65039; This world implements a simple chatroom where you can talk to humans and AIs. AI-based agents, when joining this world, inherit the skill of promoting the conversation if there is too much 'silence' in the chat.",
     "state_actions": {
-        "waiting_handshake": [null, null, 0, false, 0.0],
-        "self_generated": [null, null, 1, false, 0.0],
-        "message_sent": [null, null, 2, false, 0.0],
-        "init": [null, null, 3, true, 0.0],
+        "init": [null, null, 0, true, 0.0],
+        "waiting_handshake": [null, null, 1, false, 0.0],
+        "self_generated": [null, null, 2, false, 0.0],
+        "message_sent": [null, null, 3, false, 0.0],
         "ready": ["check_messages", {"max_silence_seconds": 25.0, "talk_probability": 0.01, "history_len": 3}, 4, true, 0.0, "&#128077; Ready!"]
     },
     "transitions": {

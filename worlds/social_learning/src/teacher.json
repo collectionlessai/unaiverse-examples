@@ -5,6 +5,9 @@
     "prev_state": null,
     "limbo_state": null,
     "welcome_msg": "&#127822; Welcome to the world of Social Learning, you joined as a teacher",
+    "highlight_blocking_states_in_messages": false,
+    "show_action_ticks_after_messages": false,
+    "show_action_request_after_messages": false,
     "state_actions": {
         "searching": ["disconnect_by_role", {"role": ["student", "student_isolated"]}, 0, false, 5.0, "&#128269; Searching for students..."],
         "connected": [null, null, 1, true, true, "&#129309; Started to connect to one or more students"],

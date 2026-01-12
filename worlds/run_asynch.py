@@ -4,6 +4,7 @@ import sys
 import glob
 import time
 import shutil
+import signal
 import argparse
 import threading
 import subprocess
@@ -20,6 +21,8 @@ stop_event = threading.Event()
 def stream_output(my_proc, _script_name, log_file=None):
     """Read process stdout line by line and print (and optionally log)."""
     for line in my_proc.stdout:
+        if stop_event.is_set():
+            break
         sys.stdout.write(f"[{_script_name}] {line}")
         sys.stdout.flush()
         if log_file:
@@ -29,7 +32,6 @@ def stream_output(my_proc, _script_name, log_file=None):
 
     # If the process failed, signal to stop others
     if my_proc.returncode != 0:
-        print(f"[{_script_name}] ERROR: Exited with code {my_proc.returncode}")
         stop_event.set()
         terminate_all_processes()
 
@@ -78,10 +80,6 @@ if __name__ == "__main__":
 
     threads = []
 
-    # Clear addresses.txt
-    if os.path.exists(os.path.join(script_dir, "addresses.txt")):
-        os.remove(os.path.join(script_dir, "addresses.txt"))
-
     log_dir = os.path.join(script_dir, "log")
     if log_to_file:
         if os.path.exists(log_dir) and os.path.isdir(log_dir):
@@ -90,28 +88,36 @@ if __name__ == "__main__":
 
     os.chdir(script_dir)  # Working folder
 
-    for i, script in enumerate(scripts):
-        if stop_event.is_set():
-            break
+    try:
+        for i, script in enumerate(scripts):
+            if stop_event.is_set():
+                break
 
-        if log_to_file:
-            log_path = os.path.join(log_dir, f"{os.path.basename(script)}.log")
-            log_f = open(log_path, "w+")
-        else:
-            log_f = None
+            if log_to_file:
+                log_path = os.path.join(log_dir, f"{os.path.basename(script)}.log")
+                log_f = open(log_path, "w+")
+            else:
+                log_f = None
 
-        proc = subprocess.Popen(
-            [sys.executable, "-u", script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-            bufsize=1
-        )
-        running_processes.append(proc)
+            proc = subprocess.Popen(
+                [sys.executable, "-u", script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                bufsize=1
+            )
+            running_processes.append(proc)
 
-        t = threading.Thread(target=stream_output, args=(proc, os.path.basename(script), log_f))
-        t.start()
-        if i == 0:
-            time.sleep(10.)  # Running world, wait a bit for role/node creation (or the other agents will not find it)
-        threads.append(t)
+            t = threading.Thread(target=stream_output, args=(proc, os.path.basename(script), log_f), daemon=True)
+            t.start()
+            if i == 0:
+                time.sleep(10.)  # Running world, wait a bit for node creation (or the other agents will not find it)
+            threads.append(t)
 
-    # Wait for all threads to finish
-    for t in threads:
-        t.join()
+        # Wait for all threads to finish
+        for t in threads:
+            t.join()
+
+    except KeyboardInterrupt:
+        print("\nDetected Ctrl+C! Exiting (not necessarily gracefully)...")
+        stop_event.set()
+        terminate_all_processes()
+        for t in threads:
+            t.join()
