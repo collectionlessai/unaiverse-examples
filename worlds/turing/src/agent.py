@@ -964,6 +964,7 @@ class WAgent(Agent):
                 if not stream_obj.props.is_public() and stream_obj.props.is_text():
                     self._part_room_stream = stream_obj
                     self._part_room_stream.clear_uuid()  # Resetting UUIDs on the guest side (important!)
+                    self._part_room_stream.enabled()  # Enabling
                     break
 
         # Finding the stream associated to the output of the manager's processor, where the final survey will be sent
