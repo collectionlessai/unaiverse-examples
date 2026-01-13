@@ -5,6 +5,9 @@
     "prev_state": null,
     "limbo_state": null,
     "welcome_msg": null,
+    "highlight_blocking_states_in_messages": false,
+    "show_action_ticks_after_messages": false,
+    "show_action_request_after_messages": false,
     "state_actions": {
         "set_email": ["set_email", {}, 0, false, 0.0],
         "init_message": [null, null, 1, false, 0.0, "WELCOME TO THE TURING TEST HOTEL &#127976; (Your email: <email>)!<br/><br/>This is a unique destination composed of rooms that implement the multi-agent Turing Test, where you will act as both the judge &#9878;&#65039; and a conversation partner &#128483;&#65039;! You will judge others to detect who is human, while others judge whether you are a human &#129489; or a machine &#129302; (remember to act human).<br/><br/><strong>Have you already completed your profile?</strong> If not, please do so before starting this experience; you only need to do it once: <a href='https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/viewform?usp=pp_url&entry.1591917462=<email>'>Click Here!</a>. REPLY TO THIS MESSAGE ONCE YOU HAVE FILLED OUT THE FORM (for example, say 'yes' or any other response to continue &#128512;)."],

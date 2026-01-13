@@ -427,6 +427,7 @@ class WAgent(Agent):
         # Looking for all current known guests of the whole hotel, being them in rooms or not
         if await self.find_agents("participant"):
             all_hotel_guests = [a for a in self._found_agents if not self._mana_hotel.already_in_a_hotel_room(a)]
+            self._found_agents.clear()  # Clear this, otherwise it will become the default argument in involved agents
         else:
             all_hotel_guests = []
         self.print(f"Guests in the hall: {all_hotel_guests}")
@@ -673,23 +674,33 @@ class WAgent(Agent):
             # Getting the processor stream of the guest (that is where the feedback will be placed)
             net_hash = DataProps.build_net_hash(guest, pubsub=False, name_or_group="processor")
             stream_dict = self.known_streams[net_hash]
+            stop_loop = False
             for stream_name, stream_obj in stream_dict.items():
+                if stop_loop:
+                    break
+
                 if not stream_obj.props.is_public() and stream_obj.props.is_text():
 
                     # Getting feedback
                     guest_feedback = stream_obj.get("prepare_surveys_and_get_feedbacks")
                     if guest_feedback is None:
+                        self.print(
+                            f"Got nothing (expected feedback) from {guest}")
+                        stop_loop = True
                         continue
 
                     # Checking if this is actually the requested feedback
                     if tag != stream_obj.get_tag():
                         self.print(
                             f"Got something (expected feedback) "
-                            f"from {guest}, but with wrong tag ({stream_obj.get_tag()} vs {tag})")
+                            f"from {guest}, but with wrong tag ({stream_obj.get_tag()} vs {tag}). "
+                            f"Got: {guest_feedback}")
+                        stop_loop = True
                         continue
 
                     # Kicking out
-                    self.print(f"Got feedback from {guest}, kicking the guest out of the room, nothing more to do here")
+                    self.print(f"Got feedback from {guest}, kicking the guest out of the room, nothing more to do "
+                               f"here. Got: {guest_feedback}")
                     room = self._mana_hotel.get_room(guest)
                     await self.__kick_guest(guest, room)
 
