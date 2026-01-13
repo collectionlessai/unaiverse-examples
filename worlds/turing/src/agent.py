@@ -929,6 +929,19 @@ class WAgent(Agent):
 
         return not has_human_processor(self)
 
+    async def hall(self):
+        """Clear the status."""
+
+        # Blocking all pending conversations (if any)
+        self.__disable_and_clear_all_room_streams()
+
+        # Clearing whatever was set when joining the room
+        self._part_conversation = []
+        self._part_conversation_as_str = None
+        self._part_manager_stream = None
+        self._part_room_stream = None
+        self._part_fake_name = None
+
     async def join_room(self, room_id: int = -1):
         """Join a room (find the room stream and the manager stream)."""
 
@@ -973,17 +986,10 @@ class WAgent(Agent):
         return True
 
     async def leave_room(self):
-        """Leaving a room (nothing special happens, just clearing whatever was set when joining the room)."""
+        """Leaving a room (nothing special happens)."""
 
         if self.get_current_role() != "participant":
             return False
-
-        # Clearing whatever was set when joining the room
-        self._part_conversation = []
-        self._part_conversation_as_str = None
-        self._part_manager_stream = None
-        self._part_room_stream = None
-        self._part_fake_name = None
         return True
 
     async def start(self):
@@ -1002,6 +1008,9 @@ class WAgent(Agent):
         # Some previous, possibly not completed, "ask_gen" might have left a marker in the manager's processor output
         # stream, better clear the marker to avoid further resets when receiving the survey
         self._part_manager_stream.clear_uuid_if_marked_as_clearable()
+
+        # Blocking all pending conversations (if any)
+        self.__disable_and_clear_all_room_streams()
         return True
 
     async def message_prepared(self):
@@ -1176,6 +1185,20 @@ class WAgent(Agent):
 
         self._part_conversation_as_str += continuation
 
+    def __disable_and_clear_all_room_streams(self):
+        """Disable all room-related streams."""
+
+        # Finding the room stream, where messages will be located
+        for room_id in range(0, WAgent.tot_rooms):
+            net_hash_to_stream_dict = self.find_streams(self._part_manager_peer_id,
+                                                        f"stream_of_room_id_{room_id}")
+            for net_hash, stream_dict in net_hash_to_stream_dict.items():
+                for _, stream_obj in stream_dict.items():
+                    if not stream_obj.props.is_public() and stream_obj.props.is_text():
+                        stream_obj.clear_uuid()  # Resetting UUIDs on the guest side (important!)
+                        stream_obj.set(None)  # Setting a None to clear pending messages
+                        stream_obj.disable()
+
     @staticmethod
     def __format_message(sender_name: str, msg: str):
         """Format a message by adding the sender name."""
@@ -1199,3 +1222,4 @@ class WAgent(Agent):
         """Get the sender name from a formatted message."""
 
         return msg[len(WAgent.sender_prefix):].split(WAgent.sender_suffix)[0]
+

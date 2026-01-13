@@ -55,7 +55,7 @@ class WWorld(World):
         behav.add_state("set_email", action="set_email", blocking=False)
         behav.add_state("init_message", blocking=False, msg=WAgent.init_message)
         behav.add_state("ready", blocking=False)
-        behav.add_state("hall", blocking=False, msg="🏢 In the hall: waiting to be checked-in")
+        behav.add_state("hall", blocking=False, action="hall", msg="🏢 In the hall: waiting to be checked-in")
         behav.add_state("in_room", blocking=False,
                         msg="🚪 In your room: waiting for the other guests to join")
         behav.add_state("ready_to_chat", action="ready_to_chat", blocking=False)
