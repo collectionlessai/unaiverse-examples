@@ -17,7 +17,7 @@
         "ready_to_chat": ["ready_to_chat", {}, 5, false, 0.0],
         "chatting": ["get_messages", {}, 6, true, 0.0],
         "message_prepared": ["message_prepared", {}, 7, false, 0.0],
-        "ready_for_survey": [null, null, 8, false, 0.0],
+        "ready_for_survey": [null, null, 8, false, 0.0, "&#128203; You will be able to provide your feedback to the final survey shortly (wait for the request from the manager)"],
         "replied_to_survey": [null, null, 9, false, 0.0]
     },
     "transitions": {
@@ -48,7 +48,7 @@
             "ready_to_chat": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "from_state": "collect_messages", "ask_uuid": "s4m344ll"}, true, 17]]
         },
         "ready_for_survey": {
-            "replied_to_survey": [["do_gen", {"samples": 1}, false, 16, "&#128203; Provide your feedback to the final survey"]],
+            "replied_to_survey": [["do_gen", {"samples": 1}, false, 16]],
             "hall": [["leave_room", {}, false, 22, "&#128682; Leaving room"], ["nop", {"delay": 70.0}, true, 23, "&#127970; Back to hall (fallback)"]]
         },
         "replied_to_survey": {
