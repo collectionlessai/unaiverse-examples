@@ -676,15 +676,17 @@ class WAgent(Agent):
             for stream_name, stream_obj in stream_dict.items():
                 if not stream_obj.props.is_public() and stream_obj.props.is_text():
 
+                    # Getting feedback
+                    guest_feedback = stream_obj.get("prepare_surveys_and_get_feedbacks")
+                    if guest_feedback is None:
+                        continue
+
                     # Checking if this is actually the requested feedback
                     if tag != stream_obj.get_tag():
                         self.print(
                             f"Got something (expected feedback) "
-                            f"from from {guest}, but with wrong tag ({stream_obj.get_tag()} vs {tag})")
+                            f"from {guest}, but with wrong tag ({stream_obj.get_tag()} vs {tag})")
                         continue
-
-                    # Getting feedback
-                    guest_feedback = stream_obj.get("prepare_surveys_and_get_feedbacks")
 
                     # Kicking out
                     self.print(f"Got feedback from {guest}, kicking the guest out of the room, nothing more to do here")

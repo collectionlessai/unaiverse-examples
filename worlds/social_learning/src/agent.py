@@ -140,6 +140,8 @@ class WAgent(Agent):
 
         self.update_streams_in_profile()
 
+        self.behav.set_debug_messages_active(True)  # TODO remove this
+
     async def ask_best_to_gen_ask_others_to_learn(self):
         if self._valid_cmp_agents is None or len(self._valid_cmp_agents) == 0:
             self.err("There is no best student to ask for the next lecture")
