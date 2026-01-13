@@ -20,4 +20,4 @@ agent.proc_outputs[1].set_tensor_labels(["albatross", "cheetah", "giraffe"])
 node = Node(node_name="Test2", hosted=agent, hidden=True, clock_delta=1. / 100.)
 
 # Running node
-node.run(join_world="Test0")
+node.run(join_world="TestWorld0")
