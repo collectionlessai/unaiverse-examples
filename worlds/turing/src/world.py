@@ -61,7 +61,9 @@ class WWorld(World):
         behav.add_state("ready_to_chat", action="ready_to_chat", blocking=False)
         behav.add_state("chatting", action="get_messages", blocking=True)
         behav.add_state("message_prepared", action="message_prepared", blocking=False)
-        behav.add_state("ready_for_survey", blocking=False)
+        behav.add_state("ready_for_survey", blocking=False,
+                        msg="📋 You will be able to provide your feedback to the final survey shortly "
+                            "(wait for the request from the manager)")
         behav.add_state("replied_to_survey", blocking=False)
         behav.add_transit("set_email", "init_message", action="nop")
         behav.add_transit("init_message", "ready",
@@ -85,8 +87,7 @@ class WWorld(World):
                           avoid_changing_ready=True)
         behav.add_transit("chatting", "ready_for_survey", action="stop", ready=False)
         behav.add_transit("ready_for_survey", "replied_to_survey",
-                          action="do_gen", args={"samples": 1}, ready=False,
-                          msg="📋 Provide your feedback to the final survey")
+                          action="do_gen", args={"samples": 1}, ready=False)
         behav.add_transit("message_prepared", "ready_to_chat",
                           action="ask_gen", args={"u_hashes": ["<agent>:processor"], "samples": 1,
                                                   "from_state": "collect_messages", "ask_uuid": "s4m344ll"})
