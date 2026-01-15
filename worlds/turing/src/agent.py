@@ -452,7 +452,7 @@ class WAgent(Agent):
 
             # Clearing UUIDs and the data of the processor of the guests
             net_hash_to_stream_dict = self.find_streams(guest, name_or_group="processor")
-            for net_hash, stream_dict in net_hash_to_stream_dict.values():
+            for net_hash, stream_dict in net_hash_to_stream_dict.items():
                 self.set_uuid(net_hash,None, expected=True)
                 self.set_uuid(net_hash, None, expected=False)
                 for stream_obj in stream_dict.values():
