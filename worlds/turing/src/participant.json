@@ -12,7 +12,7 @@
         "set_email": ["set_email", {}, 0, false, 0.0],
         "init_message": [null, null, 1, false, 0.0, "WELCOME TO THE TURING TEST HOTEL &#127976; (Your email: <email>)!<br/><br/>This is a unique destination composed of rooms that implement the multi-agent Turing Test, where you will act as both the judge &#9878;&#65039; and a conversation partner &#128483;&#65039;! You will judge others to detect who is human, while others judge whether you are a human &#129489; or a machine &#129302; (remember to act human).<br/><br/><strong>Have you already completed your profile?</strong> If not, please do so before starting this experience; you only need to do it once: <a href='https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/viewform?usp=pp_url&entry.1591917462=<email>'>Click Here!</a>. REPLY TO THIS MESSAGE ONCE YOU HAVE FILLED OUT THE FORM (for example, say 'yes' or any other response to continue &#128512;)."],
         "ready": [null, null, 2, false, 0.0],
-        "hall": [null, null, 3, false, 0.0, "&#127970; In the hall: waiting to be checked-in"],
+        "hall": ["hall", {}, 3, false, 0.0, "&#127970; In the hall: waiting to be checked-in"],
         "in_room": [null, null, 4, false, 0.0, "&#128682; In your room: waiting for the other guests to join"],
         "ready_to_chat": ["ready_to_chat", {}, 5, false, 0.0],
         "chatting": ["get_messages", {}, 6, true, 0.0],
@@ -22,40 +22,40 @@
     },
     "transitions": {
         "set_email": {
-            "init_message": [["nop", {}, true, 4]]
+            "init_message": [["nop", {}, true, 5]]
         },
         "init_message": {
-            "ready": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 5], ["skip_confirmation", {}, true, 6]]
+            "ready": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 6], ["skip_confirmation", {}, true, 7]]
         },
         "ready": {
-            "hall": [["connect_to_manager", {"role": "manager"}, true, 7, "&#128279; Connecting to manager..."]]
+            "hall": [["connect_to_manager", {"role": "manager"}, true, 8, "&#128279; Connecting to manager..."]]
         },
         "hall": {
-            "init_message": [["disconnected", {"delay": 5.0}, true, 8]],
-            "in_room": [["join_room", {}, false, 9, "&#128682; Joining room"]]
+            "init_message": [["disconnected", {"delay": 5.0}, true, 9]],
+            "in_room": [["join_room", {}, false, 10, "&#128682; Joining room"]]
         },
         "in_room": {
-            "hall": [["leave_room", {}, false, 10, "&#128682; Leaving room"]],
-            "chatting": [["start", {}, false, 11, "&#128682; Starting the chat (wait for the message from the manager)"]]
+            "hall": [["leave_room", {}, false, 11, "&#128682; Leaving room"]],
+            "chatting": [["start", {}, false, 12, "&#128682; Starting the chat (wait for the message from the manager)"]]
         },
         "chatting": {
-            "hall": [["nop", {"delay": 30.0}, true, 12, "&#127970; Back to hall (fallback)"], ["leave_room", {}, false, 21, "&#128682; Leaving room"]],
-            "chatting": [["wait_for_intro", {}, true, 13]],
-            "message_prepared": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 14]],
-            "ready_for_survey": [["stop", {}, false, 15]]
+            "hall": [["nop", {"delay": 30.0}, true, 13, "&#127970; Back to hall (fallback)"], ["leave_room", {}, false, 22, "&#128682; Leaving room"]],
+            "chatting": [["wait_for_intro", {}, true, 14]],
+            "message_prepared": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 15]],
+            "ready_for_survey": [["stop", {}, false, 16]]
         },
         "message_prepared": {
-            "ready_to_chat": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "from_state": "collect_messages", "ask_uuid": "s4m344ll"}, true, 17]]
+            "ready_to_chat": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "from_state": "collect_messages", "ask_uuid": "s4m344ll"}, true, 18]]
         },
         "ready_for_survey": {
-            "replied_to_survey": [["do_gen", {"samples": 1}, false, 16]],
-            "hall": [["leave_room", {}, false, 22, "&#128682; Leaving room"], ["nop", {"delay": 70.0}, true, 23, "&#127970; Back to hall (fallback)"]]
+            "replied_to_survey": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, false, 17]],
+            "hall": [["leave_room", {}, false, 23, "&#128682; Leaving room"], ["nop", {"delay": 40.0}, true, 24, "&#127970; Back to hall (fallback)"]]
         },
         "replied_to_survey": {
-            "hall": [["leave_room", {}, false, 19, "&#128682; Leaving room"], ["nop", {"delay": 70.0}, true, 20, "&#127970; Back to hall (fallback)"]]
+            "hall": [["leave_room", {}, false, 20, "&#128682; Leaving room"], ["nop", {"delay": 40.0}, true, 21, "&#127970; Back to hall (fallback)"]]
         },
         "ready_to_chat": {
-            "chatting": [["nop", {}, true, 18]]
+            "chatting": [["nop", {}, true, 19]]
         }
     },
     "cur_action": null

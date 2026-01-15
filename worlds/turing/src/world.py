@@ -61,9 +61,7 @@ class WWorld(World):
         behav.add_state("ready_to_chat", action="ready_to_chat", blocking=False)
         behav.add_state("chatting", action="get_messages", blocking=True)
         behav.add_state("message_prepared", action="message_prepared", blocking=False)
-        behav.add_state("ready_for_survey", blocking=False,
-                        msg="📋 You will be able to provide your feedback to the final survey shortly "
-                            "(wait for the request from the manager)")
+        behav.add_state("ready_for_survey", blocking=False)
         behav.add_state("replied_to_survey", blocking=False)
         behav.add_transit("set_email", "init_message", action="nop")
         behav.add_transit("init_message", "ready",
@@ -85,9 +83,16 @@ class WWorld(World):
         behav.add_transit("chatting", "message_prepared",
                           action="do_gen", args={"u_hashes": ["<agent>:processor_in"], "samples": 1}, ready=True,
                           avoid_changing_ready=True)
-        behav.add_transit("chatting", "ready_for_survey", action="stop", ready=False)
+        behav.add_transit("chatting", "ready_for_survey", action="stop", ready=False,
+                          msg="📋 You will be able to provide your feedback to the final survey shortly "
+                              "(wait for the request from the manager)")
+        behav.add_transit("ready_for_survey", "hall", action="leave_room", ready=False,
+                          msg="🚪 Leaving room")
+        behav.add_transit("ready_for_survey", "hall",
+                          action="nop", args={"delay": survey_reply_time + 10.},
+                          msg="🏢 Back to hall (fallback)")
         behav.add_transit("ready_for_survey", "replied_to_survey",
-                          action="do_gen", args={"samples": 1}, ready=False)
+                          action="do_gen", args={"u_hashes": ["<agent>:processor_in"], "samples": 1}, ready=False)
         behav.add_transit("message_prepared", "ready_to_chat",
                           action="ask_gen", args={"u_hashes": ["<agent>:processor"], "samples": 1,
                                                   "from_state": "collect_messages", "ask_uuid": "s4m344ll"})
@@ -99,11 +104,6 @@ class WWorld(World):
                           msg="🏢 Back to hall (fallback)")
         behav.add_transit("chatting", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
-        behav.add_transit("ready_for_survey", "hall", action="leave_room", ready=False,
-                          msg="🚪 Leaving room")
-        behav.add_transit("ready_for_survey", "hall",
-                          action="nop", args={"delay": survey_reply_time + 10.},
-                          msg="🏢 Back to hall (fallback)")
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'participant.json'), only_if_changed=dummy_agent)
@@ -134,7 +134,7 @@ class WWorld(World):
                           msg="📋 Preparing surveys and taking notes of the received feedbacks (if any)")
         behav.add_transit("ready_to_send", "survey_requests_sent",
                           action="ask_gen",
-                          args={"u_hashes": ["<agent>:processor"], "samples": 1, "from_state": "ready_for_survey"},
+                          args={"ask_uuid": "5urv3y", "samples": 1, "from_state": "ready_for_survey"},
                           msg="🚚 Sending requests for surveys (if any)")
         behav.add_transit("ready_to_send", "sending_messages", action="nop")
         behav.add_transit("survey_requests_sent", "sending_messages", action="nop")

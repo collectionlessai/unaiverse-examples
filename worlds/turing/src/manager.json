@@ -5,6 +5,9 @@
     "prev_state": null,
     "limbo_state": null,
     "welcome_msg": "Welcome to the Turing Hotel &#127976;, we always need more managers, happy to have you here!",
+    "highlight_blocking_states_in_messages": false,
+    "show_action_ticks_after_messages": false,
+    "show_action_request_after_messages": false,
     "state_actions": {
         "sending_messages": [null, null, 0, true, 0.0, "&#128666; Sending collected messages and surveys"],
         "rooms_assigned": [null, null, 1, false, 0.0],
@@ -28,7 +31,7 @@
             "ready_to_send": [["prepare_surveys_and_get_feedbacks", {}, true, 6, "&#128203; Preparing surveys and taking notes of the received feedbacks (if any)"]]
         },
         "ready_to_send": {
-            "survey_requests_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "from_state": "ready_for_survey"}, true, 7, "&#128666; Sending requests for surveys (if any)"]],
+            "survey_requests_sent": [["ask_gen", {"ask_uuid": "5urv3y", "samples": 1, "from_state": "ready_for_survey"}, true, 7, "&#128666; Sending requests for surveys (if any)"]],
             "sending_messages": [["nop", {}, true, 8]]
         },
         "survey_requests_sent": {

@@ -29,7 +29,7 @@ class WAgent(Agent):
     # Generic options to configure the Turing Test Hotel
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
-    test_duration = 30  # Seconds
+    test_duration = 10  # Seconds
     survey_reply_time = 1 * 30  # Seconds
     guests_per_room = 2
     tot_rooms = 3
@@ -343,8 +343,9 @@ class WAgent(Agent):
         self._mana_peer_id: str | None = None  # The peer ID of our agent
         self._mana_sender_peer_id: str | None = None  # The peer ID of the agent who sent a message we are broadcasting
         self._mana_guests_ready_to_get_the_survey: set[str] | None = None  # Guests that will be asked for a feedback
-        self._mana_guests_who_got_the_survey: dict[str, int] | None = None  # The data tags of the survey requests
+        self._mana_guests_who_got_the_survey: dict[str, int] | None = None  # The data UUID of the survey requests
         self._mana_proc_output_stream: DataStream | None = None  # Our output stream that will store messages we send
+        self._mana_proc_output_stream_net_hash: str | None = None  # Hash of our output stream
         self._mana_rooms_ready_for_start_message: dict | None = None  # The dict of rooms just set as active
         self._mana_streams_of_rooms: list | None = None  # The data streams associated to the rooms
         self._mana_streams_of_rooms_net_hashes: list | None = None  # The net hashes of the room streams
@@ -371,6 +372,7 @@ class WAgent(Agent):
                 for stream_name, stream_obj in stream_dict.items():
                     if stream_obj.props.is_text():
                         self._mana_proc_output_stream = stream_obj
+                        self._mana_proc_output_stream_net_hash = net_hash
                         break
             if self._mana_proc_output_stream is None:
                 raise GenException("Cannot find the output stream of the manager agent")
@@ -589,6 +591,16 @@ class WAgent(Agent):
         # Putting the survey in output stream of the manager (recall that the output stream was altered after every
         # room-related internal 'do_gen' to format the message)
         self._mana_proc_output_stream.set(_survey_message)  # Keep it fresh
+        self._mana_proc_output_stream.set_uuid("5urv3y")
+
+        # Setting the list of recipients that will get the survey
+        self.clear_recipients(self._mana_proc_output_stream_net_hash)
+        for guest_ready_to_get_the_survey in self._mana_guests_ready_to_get_the_survey:
+            self.add_recipient(self._mana_proc_output_stream_net_hash, guest_ready_to_get_the_survey)
+
+        # Setting the engaged partners, that will be the one who will be passed to the ask_gen for the survey
+        # (They change every time)
+        await self.set_engaged_partner(self._mana_guests_ready_to_get_the_survey)
 
         # Setting the recipients for the currently buffered chat messages that still have to be sent
         for room_id in range(0, len(self._mana_hotel.rooms)):
@@ -614,10 +626,9 @@ class WAgent(Agent):
         # that were asked for a feedback, i.e., we sent to "self._engaged_agents"
         # and saved the request UUID to "self.last_ref_uuid". We remember this information here, so that when we will
         # get a message from a guest, we will be able to detect if it is a feedback in response to the survey or not.
-        for asked in self._engaged_agents:
-            self._mana_guests_ready_to_get_the_survey.discard(asked)  # Removing, since here we know he got the survey
-            self._mana_guests_who_got_the_survey[asked] = self._mana_proc_output_stream.get_tag()  # Saving the tag
-        await self.set_engaged_partner(None)  # Clearing
+        for asked in self._mana_guests_ready_to_get_the_survey:
+            self._mana_guests_who_got_the_survey[asked] = self._mana_proc_output_stream.get_tag()  # Saving the UUID
+        self._mana_guests_ready_to_get_the_survey.clear()  # Clearing
 
         self.print(f"Guests who correctly got the survey and that are expected to send a feedback: "
                    f"{list(self._mana_guests_who_got_the_survey.keys())}")
@@ -658,9 +669,6 @@ class WAgent(Agent):
                 else:
                     self._mana_guests_ready_to_get_the_survey.add(guest)
 
-        # Engaging with the selected guests that will receive our survey (and that will fill it)
-        await self.set_engaged_partner(self._mana_guests_ready_to_get_the_survey)
-
         # Let's copy this dictionary, since we will modify it in the loop below
         guests_who_got_the_survey = {k: v for k, v in self._mana_guests_who_got_the_survey.items()}
 
@@ -693,7 +701,7 @@ class WAgent(Agent):
                     if tag != stream_obj.get_tag():
                         self.print(
                             f"Got something (expected feedback) "
-                            f"from {guest}, but with wrong tag ({stream_obj.get_tag()} vs {tag}). "
+                            f"from {guest}, but with wrong data tag ({stream_obj.get_tag()} vs {tag}). "
                             f"Got: {guest_feedback}")
                         stop_loop = True
                         continue
@@ -806,24 +814,6 @@ class WAgent(Agent):
                     self.print(f"Broadcast it to: {broadcast_to}")
             return True
 
-        if self.get_current_role() == "participant" and self.behaving_in_world() and _requester is not None:
-
-            # First of all, let's stop every attempt to 'do_gen' if the requester is not the manager
-            if _requester != self._part_manager_peer_id:
-                return True
-
-            # The only case in which a participant falls here is to handle the survey.
-            # We have to provide him with the whole context of the conversation.
-            survey_message = self._part_manager_stream.get()
-            if survey_message is not None and survey_message.startswith(WAgent.sender_prefix):
-
-                # Adding to history and generating the long string saved in self._part_conversation_as_str
-                self.__add_to_history(formatted_msg=survey_message)
-
-                # Alter message, preserve data tag
-                self._part_manager_stream.set(self._part_conversation_as_str,
-                                              data_tag=self._part_manager_stream.get_tag())
-
         # In all other cases (public network, participant-related stuff, ..., revert to the usual do_gen
         return await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
                                     _requester, _request_time, _request_uuid, _completed)
@@ -907,6 +897,8 @@ class WAgent(Agent):
             self.__add_to_history(formatted_msg=msg)
 
         # Keep the input stream of our processor up-to-date
+        # Here we do not see any UUIDs or tags, since this input will be handled by the internal (solid) do_gen
+        # to create an output that, afterward, will be used in a ask_gen (that indeed will set the UUID)
         self.set_proc_input(self._part_conversation_as_str)   # Here it can be None, and that's fine
         self.out(f"Conversation so far:\n{self._part_conversation_as_str}")
         return True
@@ -998,6 +990,10 @@ class WAgent(Agent):
 
         if self.get_current_role() != "participant":
             return False
+
+        # Some previous, possibly not completed, "ask_gen" might have left a marker in the manager's processor output
+        # stream, better clear the marker to avoid further resets when receiving the survey
+        self._part_manager_stream.clear_uuid_if_marked_as_clearable()
         return True
 
     async def stop(self):
@@ -1006,12 +1002,28 @@ class WAgent(Agent):
         if self.get_current_role() != "participant":
             return False
 
-        # Some previous, possibly not completed, "ask_gen" might have left a marker in the manager's processor output
-        # stream, better clear the marker to avoid further resets when receiving the survey
-        self._part_manager_stream.clear_uuid_if_marked_as_clearable()
-
         # Blocking all pending conversations (if any)
         self.__disable_and_clear_all_room_streams()
+
+        # We wait for the survey message from the manager, and then we have to provide the participant with the
+        # whole context of the conversation.
+        survey_message = self._part_manager_stream.get("stop")
+        if survey_message is None or not survey_message.startswith(self.__format_message(WAgent.manager_fake_name,
+                                                                                         msg="")):
+            return False
+
+        # Adding to history and generating the long string saved in self._part_conversation_as_str
+        self.__add_to_history(formatted_msg=survey_message)
+
+        # Move the (altered) message to the input stream
+        # Here we also set the UUID, since this is the data that will be used in a (dashed) do_gen requested by the
+        # manager, hence the input data must be already aligned with what will be the UUID of the manager's request
+        self.set_proc_input(self._part_conversation_as_str, uuid='5urv3y')
+
+        # Forcing ALL the tags of the data stream in the input stream to be the one of the manager's message
+        # (if you only set it to the text data stream, the others will have a different tag, making the processor
+        # decide to output tag -1 due to incoherence)
+        self.set_tag(self.get_proc_input_net_hash(public=False), self._part_manager_stream.get_tag())
         return True
 
     async def message_prepared(self):
