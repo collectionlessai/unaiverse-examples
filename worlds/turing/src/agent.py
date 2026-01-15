@@ -699,7 +699,7 @@ class WAgent(Agent):
                 if not stream_obj.props.is_public() and stream_obj.props.is_text():
 
                     # Getting feedback
-                    if stream_obj.get_uuid() != '5urv3y':
+                    if stream_obj.get_uuid() == 's4m344ll':
                         continue
 
                     # Getting feedback
