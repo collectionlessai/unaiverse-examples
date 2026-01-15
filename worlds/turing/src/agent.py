@@ -699,6 +699,10 @@ class WAgent(Agent):
                 if not stream_obj.props.is_public() and stream_obj.props.is_text():
 
                     # Getting feedback
+                    if stream_obj.get_uuid() != '5urv3y':
+                        continue
+
+                    # Getting feedback
                     guest_feedback = stream_obj.get("prepare_surveys_and_get_feedbacks")
                     if guest_feedback is None:
                         self.print(
