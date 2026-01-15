@@ -29,7 +29,7 @@ class WAgent(Agent):
     # Generic options to configure the Turing Test Hotel
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
-    test_duration = 10  # Seconds
+    test_duration = 40  # Seconds
     survey_reply_time = 1 * 30  # Seconds
     guests_per_room = 2
     tot_rooms = 3
@@ -453,7 +453,7 @@ class WAgent(Agent):
             # Clearing UUIDs and the data of the processor of the guests
             net_hash_to_stream_dict = self.find_streams(guest, name_or_group="processor")
             for net_hash, stream_dict in net_hash_to_stream_dict.items():
-                self.set_uuid(net_hash,None, expected=True)
+                self.set_uuid(net_hash, None, expected=True)
                 self.set_uuid(net_hash, None, expected=False)
                 for stream_obj in stream_dict.values():
                     stream_obj.set(None)
@@ -911,7 +911,7 @@ class WAgent(Agent):
 
         # Keep the input stream of our processor up-to-date
         # Here we do not see any UUIDs or tags, since this input will be handled by the internal (solid) do_gen
-        # to create an output that, afterward, will be used in a ask_gen (that indeed will set the UUID)
+        # to create an output that, afterward, will be used in an ask_gen (that indeed will set the UUID)
         self.set_proc_input(self._part_conversation_as_str)   # Here it can be None, and that's fine
         self.out(f"Conversation so far:\n{self._part_conversation_as_str}")
         return True
@@ -1248,4 +1248,3 @@ class WAgent(Agent):
         """Get the sender name from a formatted message."""
 
         return msg[len(WAgent.sender_prefix):].split(WAgent.sender_suffix)[0]
-
