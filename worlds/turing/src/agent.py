@@ -449,6 +449,15 @@ class WAgent(Agent):
         for guest in checked_in:
             ret = await self.set_next_action(agent=guest, action="join_room",
                                              args={"room_id": self._mana_hotel.get_room(guest).id_in_hotel})
+
+            # Clearing UUIDs and the data of the processor of the guests
+            net_hash_to_stream_dict = self.find_streams(guest, name_or_group="processor")
+            for net_hash, stream_dict in net_hash_to_stream_dict.keys():
+                self.set_uuid(net_hash,None, expected=True)
+                self.set_uuid(net_hash, None, expected=False)
+                for stream_obj in stream_dict.values():
+                    stream_obj.set(None)
+
             if not ret:
                 self._mana_hotel.get_room(guest).remove_if_present(guest)
                 await self.disconnect(guest)  # Killing the ones that are not reachable anymore
