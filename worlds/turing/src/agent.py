@@ -29,13 +29,14 @@ class WAgent(Agent):
     # Generic options to configure the Turing Test Hotel
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
-    test_duration = 60  # Seconds
+    test_duration = 60.0  # Seconds
     survey_reply_time = 1 * 30  # Seconds
     guests_per_room = 4
     tot_rooms = 3
     manager_fake_name = "MANAGER"
     sender_prefix = "**"
     sender_suffix = ":** "  # Do not forget the final space here
+    init_message_delay = 2.5  # Seconds
     init_message = (f"WELCOME TO THE TURING TEST HOTEL 🏨 (Your email: <email>)!<br/><br/>"
                     f"This is a unique destination "
                     f"composed of rooms that implement the multi-agent Turing Test, where you will act as both "
@@ -351,6 +352,7 @@ class WAgent(Agent):
         self._mana_streams_of_rooms_net_hashes: list | None = None  # The net hashes of the room streams
         self._mana_streams_of_rooms_buffered_recipients: list[list[list[str]]] | None = None
         self._mana_streams_of_rooms_tags: list[int] | None = None
+        self._mana_streams_of_rooms_sent_tags: list[int] | None = None
         self._mana_do_gen_called: int | None = None
 
     def accept_new_role(self, role: int):
@@ -382,6 +384,7 @@ class WAgent(Agent):
             self._mana_streams_of_rooms_net_hashes = []
             self._mana_streams_of_rooms_buffered_recipients = []
             self._mana_streams_of_rooms_tags = []
+            self._mana_streams_of_rooms_sent_tags = []
             for i in range(0, WAgent.tot_rooms):
 
                 # We create buffered streams handled as queues, since the rate with which the manager will set data to
@@ -401,6 +404,7 @@ class WAgent(Agent):
                 # During the same clock cycle, multiple data samples will be generated,
                 # hence we need to manually tag them (cannot use the clock cycle number)
                 self._mana_streams_of_rooms_tags.append(0)
+                self._mana_streams_of_rooms_sent_tags.append(-1)  # This marks the tags that were sent, start with -1
 
             # Updating the manager's profile
             self.update_streams_in_profile()
@@ -433,6 +437,11 @@ class WAgent(Agent):
         else:
             all_hotel_guests = []
         self.print(f"Guests in the hall: {all_hotel_guests}")
+
+        # Wait for all the rooms to finish before checking-in again
+        for room in self._mana_hotel.rooms:
+            if room.is_active() or room.count_guests() > 0:  # Active or in "wait-for-survey" stage
+                return True
 
         # Assign to rooms the ones that are not already in some rooms
         checked_in, cannot_check_in, updated_rooms = self._mana_hotel.check_in(all_hotel_guests)
@@ -519,11 +528,12 @@ class WAgent(Agent):
                     # Activating the room: notice that we will postpone the actual activation by a few seconds, to let
                     # the 'start' signal reach all the guests
                     room.set_as_active()
-                    room.activation_timestamp += 5.0
+                    room.activation_timestamp += WAgent.init_message_delay
 
                     # We take a note of the room that is ready to receive the welcome message
                     self._mana_rooms_ready_for_start_message[room.id_in_hotel] = \
-                        {'room': room, 'send_message_at': ttime.monotonic() + 5.0, 'requested_action': False}
+                        {'room': room, 'send_message_at': ttime.monotonic() + WAgent.init_message_delay,
+                         'requested_action': False}
 
             # Sending the welcome (start) message (unless it was already requested before)
             if (room.id_in_hotel in self._mana_rooms_ready_for_start_message and
@@ -1087,18 +1097,19 @@ class WAgent(Agent):
                     break
         return inputs
 
-    def callback_before_sending_sample(self, data, net_hash: str, stream_name: str, recipient: str):
+    def callback_before_sending_sample(self, content, data_tag: int, net_hash: str, stream_name: str, recipient: str):
         """Right before sending a message with a data sample, we save stats about it, and we also alter it if needed."""
 
-        msg = super().callback_before_sending_sample(data, net_hash, stream_name, recipient)
+        super().callback_before_sending_sample(content, data_tag, net_hash, stream_name, recipient)
+        msg = content['data']
         if self.get_current_role() != "manager":
             self.out(f"Sending message {msg} to {recipient}...")
-            return msg
+            return
 
         # Let's avoid considering communications that are not about hotel rooms
         if not self._mana_hotel.already_in_a_hotel_room(recipient):
             self.out(f"Sending (not about hotel rooms) message {msg} to {recipient}...")
-            return msg
+            return
 
         # Getting sender info
         room = self._mana_hotel.get_room(recipient)
@@ -1116,16 +1127,20 @@ class WAgent(Agent):
         msg = msg.replace("<YOUR_NAME>", recipient_fake_name).replace("<OTHER_NAMES>", other_fake_names)
 
         # Saving stats about this message
-        room_msg = {
-            "room_uuid": room.uuid,
-            "msg": msg,
-            "timestamp": self._node_clock.get_time_as_string(),
-            "sender_peer_id": sender_peer_id,
-            "sender_fake_name": sender_fake_name,
-            "sender_real_name": sender_profile['email'] + '/' + sender_profile['node_name']
-        }
-        int_timestamp = self._node_clock.get_time_ms(monotonic=True)
-        self.stats.store_stat("room_message", room_msg, peer_id=room.uuid, timestamp=int_timestamp)
+        if (sender_peer_id == self._mana_peer_id or  # Log all messages only from the manager...
+                self._mana_streams_of_rooms_sent_tags[room.id_in_hotel] != data_tag):  # ...skip repeated messages
+            room_msg = {
+                "room_uuid": room.uuid,
+                "msg": msg,
+                "timestamp": self._node_clock.get_time_as_string(),
+                "sender_peer_id": sender_peer_id,
+                "sender_fake_name": sender_fake_name,
+                "sender_real_name": sender_profile['email'] + '/' + sender_profile['node_name']
+            }
+            int_timestamp = self._node_clock.get_time_ms(monotonic=True)
+            self.stats.store_stat("room_message", room_msg, peer_id=room.uuid, timestamp=int_timestamp)
+            self._mana_streams_of_rooms_sent_tags[room.id_in_hotel] = data_tag
+
         self.out(f"Sending message {msg} to {recipient}...")
         return msg
 
@@ -1160,9 +1175,11 @@ class WAgent(Agent):
         """Resets the stream associated to a room of the hotel."""
 
         self.out(f"Resetting the stream associated to room ID {room.id_in_hotel}, UUID {room.uuid}")
+        self._mana_streams_of_rooms[room.id_in_hotel].set(None)  # Clearing existing message
         self._mana_streams_of_rooms[room.id_in_hotel].clear_buffer()  # Forgetting not-sent-yet messages
         self._mana_streams_of_rooms[room.id_in_hotel].clear_uuid()  # Forgetting the UUID (for safety)
         self._mana_streams_of_rooms_tags[room.id_in_hotel] = 0  # Resetting the tag
+        self._mana_streams_of_rooms_sent_tags[room.id_in_hotel] = -1  # Resetting the sent tag
         self._mana_streams_of_rooms_buffered_recipients[room.id_in_hotel].clear()  # Forgetting recipients
 
     def __reset_room(self, room):

@@ -50,7 +50,9 @@ results[0]['mask_scores']: mono-dim numpy array with some float32 (4 in the runn
 
 # Agent
 agent = Agent(proc=LangSegmentAnything(),
-              proc_inputs=[Data4Proc(data_type="img", pubsub=False, private_only=False),
+              proc_inputs=[Data4Proc(data_type="img", pubsub=False, private_only=False,
+                                     stream_to_proc_transforms=lambda im:
+                                     im.resize([int(s * (400*400 / (im.width * im.height))**0.5) for s in im.size])),
                            Data4Proc(data_type="text", pubsub=False, private_only=False)],
               proc_outputs=[Data4Proc(data_type="img", pubsub=False, private_only=False)],
               proc_opts={})
