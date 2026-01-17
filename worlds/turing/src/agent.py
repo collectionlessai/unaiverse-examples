@@ -29,7 +29,7 @@ class WAgent(Agent):
     # Generic options to configure the Turing Test Hotel
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
-    test_duration = 60.0  # Seconds
+    test_duration = 60  # Seconds (int)
     survey_reply_time = 1 * 30  # Seconds
     guests_per_room = 2
     tot_rooms = 3
@@ -1103,7 +1103,7 @@ class WAgent(Agent):
         """Right before sending a message with a data sample, we save stats about it, and we also alter it if needed."""
 
         super().callback_before_sending_sample(content, data_tag, net_hash, stream_name, recipient)
-        msg = content['data']
+        msg = content
         if self.get_current_role() != "manager":
             self.out(f"Sending message {msg} to {recipient}...")
             return
