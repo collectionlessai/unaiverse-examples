@@ -142,6 +142,11 @@ class WAgent(Agent):
 
         if self.get_current_role() == "broadcaster":
             if self.behaving_in_world():
+
+                # If the requester disconnected, we treat this action as correctly completed, to destroy the request
+                if _requester not in self.all_agents:
+                    return True
+
                 _, _my_peer_id = self.get_peer_ids()
                 self._broadcaster_sender = self.all_agents[_requester].get_static_profile()['node_name']
 
