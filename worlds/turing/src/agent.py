@@ -31,7 +31,7 @@ class WAgent(Agent):
                     "viewform?usp=pp_url&entry.1591917462=<email>")
     test_duration = 60.0  # Seconds
     survey_reply_time = 1 * 30  # Seconds
-    guests_per_room = 4
+    guests_per_room = 2
     tot_rooms = 3
     manager_fake_name = "MANAGER"
     sender_prefix = "**"
