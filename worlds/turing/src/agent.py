@@ -440,7 +440,9 @@ class WAgent(Agent):
 
         # Wait for all the rooms to finish before checking-in again
         for room in self._mana_hotel.rooms:
-            if room.is_active() or room.count_guests() > 0:  # Active or in "wait-for-survey" stage
+
+            # If even just a single room is active or in "wait-for-survey" stage
+            if room.is_active() or (room.activation_timestamp > 0 and room.count_guests() > 0):
                 return True
 
         # Assign to rooms the ones that are not already in some rooms
