@@ -1102,16 +1102,16 @@ class WAgent(Agent):
     def callback_before_sending_sample(self, content, data_tag: int, net_hash: str, stream_name: str, recipient: str):
         """Right before sending a message with a data sample, we save stats about it, and we also alter it if needed."""
 
-        super().callback_before_sending_sample(content, data_tag, net_hash, stream_name, recipient)
+        content = super().callback_before_sending_sample(content, data_tag, net_hash, stream_name, recipient)
         msg = content
         if self.get_current_role() != "manager":
             self.out(f"Sending message {msg} to {recipient}...")
-            return
+            return msg
 
         # Let's avoid considering communications that are not about hotel rooms
         if not self._mana_hotel.already_in_a_hotel_room(recipient):
             self.out(f"Sending (not about hotel rooms) message {msg} to {recipient}...")
-            return
+            return msg
 
         # Getting sender info
         room = self._mana_hotel.get_room(recipient)
