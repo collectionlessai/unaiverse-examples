@@ -28,8 +28,8 @@ from unaiverse.modules.utils import error_rate_mnist_test_set
 
 
 class WAgent(Agent):
-    student_learn_time = 7.5
-    student_exam_time = 5.0
+    student_learn_time = 30.0
+    student_exam_time = 30.0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -140,7 +140,7 @@ class WAgent(Agent):
 
         self.update_streams_in_profile()
 
-        self.behav.set_debug_messages_active(True)  # TODO remove this
+        #self.behav.set_debug_messages_active(True)  # TODO remove this
 
     async def ask_best_to_gen_ask_others_to_learn(self):
         if self._valid_cmp_agents is None or len(self._valid_cmp_agents) == 0:
@@ -153,9 +153,13 @@ class WAgent(Agent):
         _, teacher = self.get_peer_ids()
         best_student = next(iter(self._valid_cmp_agents))  # This set has only 1 element
         other_not_isolated_students = not_isolated_students - {best_student}
+        print("======= Best student and Other Not Isolated Students =======")
+        print(best_student)
+        print(other_not_isolated_students)
+        print("=================")
 
         # Considering not-isolated students (different from the best one)
-        self._engaged_agents = other_not_isolated_students
+        await self.set_engaged_partner(other_not_isolated_students)
 
         # Telling them to listen to what the best student streams
         net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
@@ -204,6 +208,13 @@ class WAgent(Agent):
             self.err("Unable to ask the other not-isolated student to learn from the best student")
             self._engaged_agents = all_students
             return False
+
+    async def clear_pending_requests(self, preserve: str | None = None):
+        actions = self.behav.get_all_actions()
+        for action in actions:
+            if preserve is None or action.name != preserve:
+                action.get_list_of_requests().clear()
+        await self.set_engaged_partner(None, clear_found=False)
 
     async def do_gen(self, u_hashes: list[str] | None = None, extra_hashes: list[str] | None = None,
                      samples: int = 100, time: float = -1., timeout: float = -1.,

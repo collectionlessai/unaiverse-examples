@@ -89,7 +89,8 @@ class WWorld(World):
         behav.add_state("compare_time", msg="✏️ Correcting exams")
 
         behav.add_state("searching", msg="🔍 Searching for students...")
-        behav.add_state("connected", msg="🤝 Started to connect to one or more students")
+        behav.add_state("connected", msg="🤝 Started to connect to one or more students",
+                        action="clear_pending_requests")
         behav.add_state("can_engage", msg="✅ Connection confirmed by one or more students, ready to engage")
         behav.add_state("exam_in_progress", msg="✏️ Exam in progress")
         behav.add_state("best_not_found", msg="❌ The best of class was not found")
@@ -115,7 +116,8 @@ class WWorld(World):
         behav.add_wildcards({"<learn_timeout>": WAgent.student_learn_time / 3.0})
         behav.add_wildcards({"<exam_time>": WAgent.student_exam_time})
         behav.add_wildcards({"<exam_timeout>": WAgent.student_exam_time / 2.0})
-        behav.add_wildcards({"<others_learn_exam_timeout>": 2.5})
+        behav.add_wildcards({"<others_learn_exam_timeout>": min(WAgent.student_learn_time,
+                                                                WAgent.student_exam_time) * 0.33})
 
         # Providing a badge to all the agents that were the best of the world
         behav.add_state("finished_teaching")
@@ -142,26 +144,27 @@ class WWorld(World):
                           action="get_engagement",
                           args={"acceptable_role": "teacher"})
         behav.add_state("init", blocking=False,
+                        action="clear_pending_requests", args={"preserve": "get_engagement"},
                         msg="⏳ Waiting for the next set of lectures to start")
 
         # Requests from the teacher
+        behav.add_transit("teacher_engaged", "init", action="get_disengagement")
         behav.add_transit("teacher_engaged", "finished_learning", action="do_learn",
                           msg="📗 Following a lecture, learning...")
         behav.add_transit("teacher_engaged", "listening_to_best_student", action="do_subscribe")
         behav.add_transit("teacher_engaged", "teacher_engaged", action="do_gen")
         behav.add_transit("teacher_engaged", "init", action="disconnected")
-        behav.add_transit("teacher_engaged", "init", action="get_disengagement")
         behav.add_transit("teacher_engaged", "init", action="nop", args={"delay": 30.0})
         behav.add_state("teacher_engaged", blocking=False, msg="🔔 Ready for the lecture")
         behav.add_transit("finished_learning", "teacher_engaged", action="do_gen",
                           msg="✏️ Taking the exam...")
-        behav.add_transit("finished_learning", "init", action="disconnected")
         behav.add_transit("finished_learning", "init", action="get_disengagement")
+        behav.add_transit("finished_learning", "init", action="disconnected")
         behav.add_transit("finished_learning", "init", action="nop", args={"delay": 30.0})
         behav.add_transit("listening_to_best_student", "teacher_engaged", action="do_learn",
                           msg="📕 Learning from the best student’s feedback...")
-        behav.add_transit("listening_to_best_student", "init", action="disconnected")
         behav.add_transit("listening_to_best_student", "init", action="get_disengagement")
+        behav.add_transit("listening_to_best_student", "init", action="disconnected")
         behav.add_transit("listening_to_best_student", "init", action="nop", args={"delay": 30.0})
         behav.add_state("listening_to_best_student", blocking=False,
                         msg="👍 Ready to listen to the best student of the class")
@@ -173,7 +176,7 @@ class WWorld(World):
         behav.set_welcome_message("🎓 Welcome to the world of Social Learning, you joined as a student (isolated)")
         behav.set_role("student_isolated")
         behav.save(os.path.join(self.world_folder, 'student_isolated.json'), only_if_changed=dummy_agent)
-    
+
     def _process_custom_stat(self, stat_name, value, peer_id, timestamp):
         # handle the special case of best_exam_err_history
         if stat_name == 'best_exam_err_history':
