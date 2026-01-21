@@ -21,4 +21,4 @@ agent = Agent(proc=net,
 node = Node(node_name="DigitClassifier3", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Running node
-node.run(join_world="DigitSocialLearning")
+node.run(join_world="DigitSocialLearning", resume_from_checkpoint=True)

@@ -21,4 +21,4 @@ agent = Agent(proc=net,
 node = Node(node_name="DigitClassifier4", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Running node
-node.run(join_world="DigitSocialLearning", role_preference="student_isolated")  # Role suggestion
+node.run(join_world="DigitSocialLearning", role_preference="student_isolated", resume_from_checkpoint=True)  # Role suggestion
