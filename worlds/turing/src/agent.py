@@ -923,8 +923,9 @@ class WAgent(Agent):
                                                                         "your way of talking must look as the one of a "
                                                                         "human.")
             else:
-                raise GenException(f"The first message was expected to be the welcome/start message from the "
-                                   f"manager, but it seems that it is not like that (message: {msg})")
+                self.err(f"The first message was expected to be the welcome/start message from the "
+                         f"manager, but it seems that it is not like that (message: {msg})")
+                return True
 
         # Adding the received message to the message history, to create the context we will pass to our processor
         if msg is not None and add_to_history:
