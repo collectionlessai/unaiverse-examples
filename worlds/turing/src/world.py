@@ -63,6 +63,7 @@ class WWorld(World):
         behav.add_state("message_prepared", action="message_prepared", blocking=False)
         behav.add_state("ready_for_survey", blocking=False)
         behav.add_state("replied_to_survey", blocking=False)
+        behav.add_state("timeout", blocking=False, msg="⏱️Lost sync with the room (disconnecting)")
         behav.add_transit("set_email", "init_message", action="nop")
         behav.add_transit("init_message", "ready",
                           action="do_gen", args={"u_hashes": ["<agent>:processor_in"], "samples": 1}, ready=True,
@@ -77,7 +78,7 @@ class WWorld(World):
                           msg="🚪 Leaving room")
         behav.add_transit("in_room", "chatting", action="start", ready=False,
                           msg="🚪 Starting the chat (wait for the message from the manager)")
-        behav.add_transit("chatting", "hall", action="nop", args={"delay": test_duration + 20.},
+        behav.add_transit("chatting", "timeout", action="nop", args={"delay": test_duration + 20.},
                           msg="🏢 Back to hall (fallback)")
         behav.add_transit("chatting", "chatting", action="wait_for_intro")
         behav.add_transit("chatting", "message_prepared",
@@ -88,7 +89,7 @@ class WWorld(World):
                               "(wait for the request from the manager)")
         behav.add_transit("ready_for_survey", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
-        behav.add_transit("ready_for_survey", "hall",
+        behav.add_transit("ready_for_survey", "timeout",
                           action="nop", args={"delay": survey_reply_time + 10.},
                           msg="🏢 Back to hall (fallback)")
         behav.add_transit("ready_for_survey", "replied_to_survey",
@@ -99,11 +100,12 @@ class WWorld(World):
         behav.add_transit("ready_to_chat", "chatting", action="nop")
         behav.add_transit("replied_to_survey", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
-        behav.add_transit("replied_to_survey", "hall",
+        behav.add_transit("replied_to_survey", "timeout",
                           action="nop", args={"delay": survey_reply_time + 10.},
                           msg="🏢 Back to hall (fallback)")
         behav.add_transit("chatting", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
+        behav.add_transit("timeout", "ready", action="disconnect_from_manager")
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'participant.json'), only_if_changed=dummy_agent)

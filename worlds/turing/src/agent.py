@@ -843,13 +843,13 @@ class WAgent(Agent):
         return await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
                                     _requester, _request_time, _request_uuid, _completed)
 
-    async def connect_to_manager(self, role: str):
+    async def connect_to_manager(self):
         """Connecting to the (first found) Turing hotel manager (async)."""
 
         if self.get_current_role() != "participant":
             return False
 
-        if await self.connect_by_role(role):  # It only "starts" the connection (and it will fill self._found_agents)
+        if await self.connect_by_role("manager"):  # It only "starts" connection (and it will fill self._found_agents)
             self._part_manager_peer_id = next(iter(self._found_agents))  # Takes the first found manager
             await self.set_engaged_partner(self._part_manager_peer_id)
             self.out("Connection to manager started...")
@@ -857,6 +857,17 @@ class WAgent(Agent):
         else:
             self.err("Failed to connect to a manager")
             return False
+
+    async def disconnect_from_manager(self):
+        """Disconnecting from the manager (in case of timeouts)."""
+
+        if self.get_current_role() != "participant":
+            return False
+
+        await self.disconnect(self._part_manager_peer_id)
+        self.out("Disconnecting from manager...")
+        self._part_manager_peer_id = None
+        return True
 
     async def ready_to_chat(self):
         """This is only needed to fix the case in which the survey message arrives before the 'stop' action."""
@@ -959,11 +970,18 @@ class WAgent(Agent):
         self._part_room_stream = None
         self._part_fake_name = None
 
-        # Clearing pending requests (preserving "join_room")
+        # Clearing pending requests (preserving "join_room" and "start",
+        # since the manager could be fast in sending them after he told you "leave_room", that you might have not run
+        # yet
         actions = self.behav.get_all_actions()
         for action in actions:
-            if action.name != "join_room":
+            if action.name != "join_room" and action.name != "start":
                 action.get_list_of_requests().clear()
+            else:
+
+                # Avoid storing multiple join_room and start requests, just the last one (safety)
+                if len(action.get_list_of_requests()) > 1:
+                    action.get_list_of_requests().keep_only_the_most_recent_request()
 
     async def join_room(self, room_id: int = -1):
         """Join a room (find the room stream and the manager stream)."""
@@ -1025,6 +1043,12 @@ class WAgent(Agent):
         # Some previous, possibly not completed, "ask_gen" might have left a marker in the manager's processor output
         # stream, better clear the marker to avoid further resets when receiving the survey
         self._part_manager_stream.clear_uuid_if_marked_as_clearable()
+
+        # If you have a slow clock, it could happen that the welcome message arrives at the same time you can the
+        # request for action 'start' and you run it. The next state is blocking, so we will go through another cycle
+        # in which a participant might send another message, overwriting the mananger's wellcome.
+        # So let's call a starting get_messages() here as well.
+        await self.get_messages()
         return True
 
     async def stop(self):
