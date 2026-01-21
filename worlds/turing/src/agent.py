@@ -458,7 +458,7 @@ class WAgent(Agent):
         # Telling the newly checked in guests to join their room
         checked_in_and_reached_out = []
         for guest in checked_in:
-            ret = await self.set_next_action(agent=guest, action="join_room",
+            ret = await self.set_next_action(agent=guest, action="join_room", from_state="hall",
                                              args={"room_id": self._mana_hotel.get_room(guest).id_in_hotel})
 
             # Clearing UUIDs and the data of the processor of the guests
