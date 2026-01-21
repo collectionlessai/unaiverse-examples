@@ -431,7 +431,7 @@ class WAgent(Agent):
             return False
 
         # Looking for all current known guests of the whole hotel, being them in rooms or not
-        if await self.find_agents("participant"):
+        if await self.find_agents("participant", handshake_completed=True):
             all_hotel_guests = [a for a in self._found_agents if not self._mana_hotel.already_in_a_hotel_room(a)]
             self._found_agents.clear()  # Clear this, otherwise it will become the default argument in involved agents
         else:
@@ -958,6 +958,12 @@ class WAgent(Agent):
         self._part_manager_stream = None
         self._part_room_stream = None
         self._part_fake_name = None
+
+        # Clearing pending requests (preserving "join_room")
+        actions = self.behav.get_all_actions()
+        for action in actions:
+            if action.name != "join_room":
+                action.get_list_of_requests().clear()
 
     async def join_room(self, room_id: int = -1):
         """Join a room (find the room stream and the manager stream)."""
