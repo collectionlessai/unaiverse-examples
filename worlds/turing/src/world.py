@@ -69,7 +69,7 @@ class WWorld(World):
                           action="do_gen", args={"u_hashes": ["<agent>:processor_in"], "samples": 1}, ready=True,
                           avoid_changing_ready=True)
         behav.add_transit("init_message", "ready", action="skip_confirmation")
-        behav.add_transit("ready", "hall", action="connect_to_manager", args={"role": "manager"},
+        behav.add_transit("ready", "hall", action="connect_to_manager",
                           msg="🔗 Connecting to manager...")
         behav.add_transit("hall", "init_message", action="disconnected", args={"delay": 5.0})
         behav.add_transit("hall", "in_room", action="join_room", args={}, ready=False,
