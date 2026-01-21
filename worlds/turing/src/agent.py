@@ -794,6 +794,7 @@ class WAgent(Agent):
                 # Clearing: all the just-activated rooms will get the welcome/start message
                 for room_id in room_ids:
                     del self._mana_rooms_ready_for_start_message[room_id]
+                self.print("Sending welcome message...")
 
             # Case (2)
             else:
@@ -858,8 +859,9 @@ class WAgent(Agent):
             self.err("Failed to connect to a manager")
             return False
 
-    async def disconnect_from_manager(self):
+    async def lost(self, delay: float = -1):
         """Disconnecting from the manager (in case of timeouts)."""
+        assert delay is not None, "Missing basic action information"
 
         if self.get_current_role() != "participant":
             return False

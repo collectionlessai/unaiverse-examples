@@ -17,7 +17,7 @@
         "ready_to_chat": ["ready_to_chat", {}, 5, false, 0.0],
         "chatting": ["get_messages", {}, 6, true, 0.0],
         "message_prepared": ["message_prepared", {}, 7, false, 0.0],
-        "ready_for_survey": [null, null, 8, false, 0.0, "&#128203; You will be able to provide your feedback to the final survey shortly (wait for the request from the manager)"],
+        "ready_for_survey": [null, null, 8, false, 0.0],
         "replied_to_survey": [null, null, 9, false, 0.0]
     },
     "transitions": {
@@ -28,10 +28,10 @@
             "ready": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 6], ["skip_confirmation", {}, true, 7]]
         },
         "ready": {
-            "hall": [["connect_to_manager", {"role": "manager"}, true, 8, "&#128279; Connecting to manager..."]]
+            "hall": [["connect_to_manager", {}, true, 8, "&#128279; Connecting to manager..."]]
         },
         "hall": {
-            "init_message": [["disconnected", {"delay": 5.0}, true, 9]],
+            "ready": [["disconnected", {"delay": 5.0}, true, 9]],
             "in_room": [["join_room", {}, false, 10, "&#128682; Joining room"]]
         },
         "in_room": {
@@ -39,23 +39,26 @@
             "chatting": [["start", {}, false, 12, "&#128682; Starting the chat (wait for the message from the manager)"]]
         },
         "chatting": {
-            "hall": [["nop", {"delay": 30.0}, true, 13, "&#127970; Back to hall (fallback)"], ["leave_room", {}, false, 22, "&#128682; Leaving room"]],
+            "ready": [["lost", {"delay": 80.0}, true, 13, "&#9201;&#65039;Lost sync with the room (disconnecting)"]],
             "chatting": [["wait_for_intro", {}, true, 14]],
             "message_prepared": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 15]],
-            "ready_for_survey": [["stop", {}, false, 16]]
+            "ready_for_survey": [["stop", {}, false, 16, "&#128203; You will be able to provide your feedback to the final survey shortly (wait for the request from the manager)"]],
+            "hall": [["leave_room", {}, false, 24, "&#128682; Leaving room"]]
         },
         "message_prepared": {
-            "ready_to_chat": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "from_state": "collect_messages", "ask_uuid": "s4m344ll"}, true, 18]]
+            "ready_to_chat": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "from_state": "collect_messages", "ask_uuid": "s4m344ll"}, true, 20]]
         },
         "ready_for_survey": {
-            "replied_to_survey": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, false, 17]],
-            "hall": [["leave_room", {}, false, 23, "&#128682; Leaving room"], ["nop", {"delay": 40.0}, true, 24, "&#127970; Back to hall (fallback)"]]
+            "hall": [["leave_room", {}, false, 17, "&#128682; Leaving room"]],
+            "ready": [["lost", {"delay": 40.0}, true, 18, "&#9201;&#65039;Lost sync with the room (disconnecting)"]],
+            "replied_to_survey": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, false, 19]]
         },
         "replied_to_survey": {
-            "hall": [["leave_room", {}, false, 20, "&#128682; Leaving room"], ["nop", {"delay": 40.0}, true, 21, "&#127970; Back to hall (fallback)"]]
+            "hall": [["leave_room", {}, false, 22, "&#128682; Leaving room"]],
+            "ready": [["lost", {"delay": 40.0}, true, 23, "&#9201;&#65039;Lost sync with the room (disconnecting)"]]
         },
         "ready_to_chat": {
-            "chatting": [["nop", {}, true, 19]]
+            "chatting": [["nop", {}, true, 21]]
         }
     },
     "cur_action": null
