@@ -15,8 +15,8 @@ class WStats(Stats):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
     
-    def plot(self):
+    def plot(self, since_timestamp: int = 0) -> str | None:
         # In this case we want to hide the default stats plot
-        # because knowing the the number of artificial and human agents
+        # because knowing the number of artificial and human agents
         # could give some hints about the agents in the world.
         return json.dumps({"data": [], "layout": {}})
