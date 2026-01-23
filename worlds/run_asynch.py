@@ -4,7 +4,6 @@ import sys
 import glob
 import time
 import shutil
-import signal
 import argparse
 import threading
 import subprocess
