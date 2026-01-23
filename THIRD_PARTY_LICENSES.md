@@ -16,6 +16,7 @@
 | ntplib                   | 0.4.0   | MIT License                                       | https://github.com/cf-natali/ntplib                |
 | numpy                    | 2.3.2   | BSD License                                       | https://numpy.org                                  |
 | pillow                   | 11.3.0  | MIT-CMU                                           | https://python-pillow.github.io                    |
+| prompt_toolkit           | 0.2.13  | BSD-3-Clause                                      | https://github.com/prompt-toolkit                  |
 | protobuf                 | 6.32.0  | 3-Clause BSD License                              | https://developers.google.com/protocol-buffers/    |
 | psutil                   | 7.0.0   | BSD-3-Clause                                      | https://github.com/giampaolo/psutil                |
 | requests                 | 2.32.5  | Apache-2.0                                        | https://requests.readthedocs.io                    |

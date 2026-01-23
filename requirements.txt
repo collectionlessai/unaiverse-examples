@@ -9,6 +9,7 @@ ntplib
 numpy
 nltk
 Pillow
+prompt_toolkit
 protobuf
 psutil
 PyJWT
