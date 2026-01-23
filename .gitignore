@@ -71,3 +71,5 @@ stats.json
 **/unaiverse_nodes_identity/
 **/stats/
 **/*.pdf
+
+lonewolves/rag/*
