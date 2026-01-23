@@ -6,6 +6,7 @@ from unaiverse.modules.networks import CNN
 from unaiverse.networking.node.node import Node
 
 
+# Example
 def my_wandb_logger(node: Node):
     # Define a callback to log yo wandb every N cycles
     if node.clock.get_cycle() % 100 != 0:
@@ -19,6 +20,7 @@ def my_wandb_logger(node: Node):
     }
     # print(metrics)
     # wandb.log(metrics)
+
 
 # Agent
 net = CNN(d_dim=10, in_channels=1, seed=42)
@@ -37,7 +39,7 @@ agent = Agent(proc=net,
 node = Node(node_name="DigitClassifier2", hosted=agent, hidden=True, clock_delta=1. / 10.,
             run_hook=my_wandb_logger)
 
-# Init wandb
+# Init W&B
 # wandb.init(project="social_learning_example", name="DigitClassifier2")
 
 # Running node
