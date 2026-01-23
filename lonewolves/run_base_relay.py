@@ -8,7 +8,7 @@ agent = Agent(proc=None,
               proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=True)])
 
 # Node hosting agent
-node = Node(node_name="BaseRelay", hosted=agent, hidden=False, clock_delta=1. / 10., save_checkpoint_every=-1.)
+node = Node(node_name="BaseRelay", hosted=agent, hidden=True, clock_delta=1. / 10., save_checkpoint_every=-1.)
 
 # Running node
 # ALWAYS RUN THIS WITH THE FOLLOWING CONFIGURATION:
