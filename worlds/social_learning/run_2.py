@@ -41,4 +41,4 @@ node = Node(node_name="DigitClassifier2", hosted=agent, hidden=True, clock_delta
 # wandb.init(project="social_learning_example", name="DigitClassifier2")
 
 # Running node
-node.run(join_world="DigitSocialLearning")
+node.run(join_world="DigitSocialLearning", resume_from_checkpoint=True)
