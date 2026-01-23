@@ -29,10 +29,10 @@ class WAgent(Agent):
     # Generic options to configure the Turing Test Hotel
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
-    test_duration = 60  # Seconds (int)
+    test_duration = 120  # Seconds (int)
     survey_reply_time = 1 * 30  # Seconds
-    guests_per_room = 2
-    tot_rooms = 3
+    guests_per_room = 4
+    tot_rooms = 20
     manager_fake_name = "MANAGER"
     sender_prefix = "**"
     sender_suffix = ":** "  # Do not forget the final space here
@@ -40,20 +40,20 @@ class WAgent(Agent):
     init_message = (f"WELCOME TO THE TURING TEST HOTEL 🏨 (Your email: <email>)!<br/><br/>"
                     f"This is a unique destination "
                     f"composed of rooms that implement the multi-agent Turing Test, where you will act as both "
-                    f"the judge ⚖️ and a conversation partner 🗣️! You will judge others to detect who is human, "
+                    f"the judge ⚖️ and a conversation partner 🗣️!<br/>You will judge others to detect who is human, "
                     f"while others judge whether you are a human 🧑 or a machine 🤖 (remember to act human).<br/><br/>"
                     f"<strong>Have you already completed your profile?</strong> If not, please do so before "
                     f"starting this experience; you only need to do it once: <a href='{profile_link}'>Click Here!</a>. "
-                    f"REPLY TO THIS MESSAGE ONCE YOU HAVE FILLED OUT THE FORM (for example, say 'yes' or any "
+                    f"<br/>REPLY TO THIS MESSAGE ONCE YOU HAVE FILLED OUT THE FORM (for example, say 'yes' or any "
                     f"other response to continue 😀).")
     start_message = (f"You were named <YOUR_NAME> and the other "
                      f"guests are <OTHER_NAMES>. Start chatting and keep it going for "
                      f"{test_duration} seconds.")
     survey_message = ("Dear <YOUR_NAME>, you have interacted with <OTHER_NAMES>. "
                       "Each was either a human or an AI. "
-                      "PLEASE LIST THE ONES YOU THINK WERE HUMANS "
+                      "<br/><br/><strong>PLEASE LIST THE ONES YOU THINK WERE HUMANS</strong> "
                       "(separated by commas or even just spaces, as you prefer). "
-                      "After having written down the list, you can keep writing on the same message to"
+                      "<br/><br/>After having written down the list, you can keep writing on the same message to"
                       " add optional comments, explaining why you made your choice,"
                       " and every extra feedback about this experience (warning: LIST AND COMMENTS GO ALL IN A "
                       "SINGLE MESSAGE, once you send it you are done).")
