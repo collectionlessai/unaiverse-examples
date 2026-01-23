@@ -12,7 +12,6 @@ initial_code = """
 import os
 import sys
 import asyncio
-from unaiverse.utils.server import Server
 from unaiverse.networking.node.node import NodeSynchronizer
 
 # Synchronizing nodes (for visualization purposes)
@@ -135,19 +134,12 @@ def build_script(code_dir: str) -> str:
 
 
 if __name__ == "__main__":
-    if (len(sys.argv) != 2 and len(sys.argv) != 3) or \
-            (len(sys.argv) == 3 and sys.argv[1] != "-s" and sys.argv[1] != "--server"):
+    if len(sys.argv) != 2:
         script_name = os.path.basename(sys.argv[0])
-        print(f"Usage: python {script_name} [-s or --server] <world-name>")
-        print(f"Flags: -s or --server: activate debug server (dev only)")
+        print(f"Usage: python {script_name} <world-name>")
         sys.exit(1)
 
-    if len(sys.argv) == 3:
-        final_code = "Server(node_synchronizer=node_synchronizer)\n" + final_code
-        world_name = sys.argv[2]
-    else:
-        world_name = sys.argv[1]
-
+    world_name = sys.argv[1]
     main_dir = os.path.dirname(os.path.abspath(__file__))
     script_dir = os.path.join(main_dir, world_name)
 
