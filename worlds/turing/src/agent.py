@@ -806,7 +806,7 @@ class WAgent(Agent):
                 self.print("Preparing welcome message...")
 
                 # Letting the init message be formatted as by adding the sender name as a prefix
-                _init_message = WAgent.__format_message(WAgent.manager_fake_name, WAgent.survey_message)
+                _init_message = WAgent.__format_message(WAgent.manager_fake_name, WAgent.init_message)
 
                 # Putting the message in output stream of the manager
                 self._mana_proc_output_stream.set(_init_message)
