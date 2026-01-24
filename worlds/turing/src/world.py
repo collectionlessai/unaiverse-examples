@@ -56,7 +56,7 @@ class WWorld(World):
         behav.add_state("init_message", blocking=False, msg=WAgent.init_message)
         behav.add_state("ready", blocking=False)
         behav.add_state("hall", blocking=False, action="hall",
-                        msg="🏢 In the hall, waiting to be checked-in (approximately <eta_time>s to go)")
+                        msg="🏢 In the hall, waiting to be checked-in <eta_time>")
         behav.add_state("in_room", blocking=False,
                         msg=f"🚪 In your room, waiting until there are {WAgent.guests_per_room} "
                             f"participants (missing <eta_part>)")

@@ -905,6 +905,8 @@ class WAgent(Agent):
             self._part_manager_peer_id = next(iter(self._found_agents))  # Takes the first found manager
             await self.set_engaged_partner(self._part_manager_peer_id)
             self.out("Connection to manager started...")
+
+            self.behav.update_wildcard("<eta_time>", "")
             return True
         else:
             self.err("Failed to connect to a manager")
@@ -1033,16 +1035,16 @@ class WAgent(Agent):
         self._part_room_stream = None
         self._part_fake_name = None
 
-        # Clearing pending requests (preserving "join_room" and "start",
+        # Clearing pending requests (preserving "join_room" and "start" and "status",
         # since the manager could be fast in sending them after he told you "leave_room", that you might have not run
         # yet)
         actions = self.behav.get_all_actions()
         for action in actions:
-            if action.name != "join_room" and action.name != "start":
+            if action.name != "join_room" and action.name != "start" and action.name != 'status':
                 action.get_list_of_requests().clear()
             else:
 
-                # Avoid storing multiple join_room and start requests, just the last one (safety)
+                # Avoid storing multiple join_room and start and status requests, just the last one (safety)
                 if len(action.get_list_of_requests()) > 1:
                     action.get_list_of_requests().keep_only_the_most_recent_request()
 
@@ -1051,7 +1053,8 @@ class WAgent(Agent):
         if self.get_current_role() != "participant":
             return False
 
-        self.behav.update_wildcard("<eta_time>", str(eta))
+        self.behav.update_wildcard("<eta_time>", "(approximately " + str(eta) + "s to go)")
+        return True
 
     async def join_room(self, room_id: int = -1, missing: int = 0):
         """Join a room (find the room stream and the manager stream)."""
@@ -1115,6 +1118,12 @@ class WAgent(Agent):
         # Some previous, possibly not completed, "ask_gen" might have left a marker in the manager's processor output
         # stream, better clear the marker to avoid further resets when receiving the survey
         self._part_manager_stream.clear_uuid_if_marked_as_clearable()
+
+        # Clearing all pending requests (except the current one)
+        actions = self.behav.get_all_actions()
+        for action in actions:
+            if action.name != "start":
+                action.get_list_of_requests().clear()
 
         # If you have a slow clock, it could happen that the welcome message arrives at the same time you can the
         # request for action 'start' and you run it. The next state is blocking, so we will go through another cycle
