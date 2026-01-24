@@ -55,9 +55,11 @@ class WWorld(World):
         behav.add_state("set_email", action="set_email", blocking=False)
         behav.add_state("init_message", blocking=False, msg=WAgent.init_message)
         behav.add_state("ready", blocking=False)
-        behav.add_state("hall", blocking=False, action="hall", msg="🏢 In the hall: waiting to be checked-in")
+        behav.add_state("hall", blocking=False, action="hall",
+                        msg="🏢 In the hall, waiting to be checked-in (approximately <eta_time>s to go)")
         behav.add_state("in_room", blocking=False,
-                        msg="🚪 In your room: waiting for the other guests to join")
+                        msg=f"🚪 In your room, waiting until there are {WAgent.guests_per_room} "
+                            f"participants (missing <eta_part>)")
         behav.add_state("ready_to_chat", action="ready_to_chat", blocking=False)
         behav.add_state("chatting", action="get_messages", blocking=True)
         behav.add_state("message_prepared", action="message_prepared", blocking=False)
@@ -71,8 +73,9 @@ class WWorld(World):
         behav.add_transit("ready", "hall", action="connect_to_manager",
                           msg="🔗 Connecting to manager...")
         behav.add_transit("hall", "ready", action="manager_is_disconnected", args={"delay": 5.0})
-        behav.add_transit("hall", "in_room", action="join_room", args={}, ready=False,
-                          msg="🚪 Joining room")
+        behav.add_transit("hall", "in_room", action="join_room",
+                          args={"missing": "<eta_part>"}, ready=False,
+                          msg=f"🚪 Joining room")
         behav.add_transit("in_room", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
         behav.add_transit("in_room", "chatting", action="start", ready=False,
@@ -105,6 +108,7 @@ class WWorld(World):
                           msg="⏱️Lost sync with the room (disconnecting)")
         behav.add_transit("chatting", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
+        behav.add_transit("hall", "hall", action="status", ready=False)
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'participant.json'), only_if_changed=dummy_agent)

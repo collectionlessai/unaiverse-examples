@@ -356,6 +356,7 @@ class WAgent(Agent):
         self._mana_streams_of_rooms_tags: list[int] | None = None
         self._mana_streams_of_rooms_sent_tags: list[int] | None = None
         self._mana_do_gen_called: int | None = None
+        self._mana_last_communicated_eta: int | None = None
 
     def accept_new_role(self, role: int):
         super().accept_new_role(role)
@@ -408,6 +409,9 @@ class WAgent(Agent):
                 self._mana_streams_of_rooms_tags.append(0)
                 self._mana_streams_of_rooms_sent_tags.append(-1)  # This marks the tags that were sent, start with -1
 
+                # Setting up eta
+                self._mana_last_communicated_eta = -1.
+
             # Updating the manager's profile
             self.update_streams_in_profile()
 
@@ -434,18 +438,36 @@ class WAgent(Agent):
 
         # Looking for all current known guests of the whole hotel, being them in rooms or not
         if await self.find_agents("participant", handshake_completed=True):
-            all_hotel_guests = [a for a in self._found_agents if not self._mana_hotel.already_in_a_hotel_room(a)]
+            guests_in_the_hall = [a for a in self._found_agents if not self._mana_hotel.already_in_a_hotel_room(a)]
             self._found_agents.clear()  # Clear this, otherwise it will become the default argument in involved agents
         else:
-            all_hotel_guests = []
-        self.print(f"Guests in the hall: {all_hotel_guests}")
+            guests_in_the_hall = []
+        self.print(f"Guests in the hall: {guests_in_the_hall}")
 
         # Wait for all the rooms to finish before checking-in again
+        must_wait = False
+        eta = -1
+        tot_test_duration = WAgent.test_duration + WAgent.survey_reply_time
         for room in self._mana_hotel.rooms:
 
             # If even just a single room is active or in "wait-for-survey" stage
             if room.is_active() or (room.activation_timestamp > 0 and room.count_guests() > 0):
-                return True
+                must_wait = True
+                eta = max(eta, tot_test_duration - room.get_passed_seconds_since_activation())
+                eta = max(eta, 0)  # Safety
+
+        # Updating status (for waiting guests)
+        if must_wait:
+            if (self._mana_last_communicated_eta < 0. or
+                    (self._mana_last_communicated_eta - eta) > tot_test_duration * 0.15):
+                self._mana_last_communicated_eta = eta
+                for guest_waiting in guests_in_the_hall:
+                    ret = await self.set_next_action(agent=guest_waiting, action="status", from_state="hall",
+                                                     args={"eta": eta})
+                    if not ret:
+                        self._mana_hotel.check_out(guest_waiting)
+                        await self.disconnect(guest_waiting)  # Killing the ones that are not reachable anymore
+            return True
 
         # Clearing all pending requests (we start from scratch since we are handling rooms in a synchronous manner)
         actions = self.behav.get_all_actions()
@@ -453,7 +475,7 @@ class WAgent(Agent):
             action.get_list_of_requests().clear()
 
         # Assign to rooms the ones that are not already in some rooms
-        checked_in, cannot_check_in, updated_rooms = self._mana_hotel.check_in(all_hotel_guests)
+        checked_in, cannot_check_in, updated_rooms = self._mana_hotel.check_in(guests_in_the_hall)
         self.print(f"Guests checked-in: {checked_in}")
         self.print(f"Guests that cannot be checked-in: {cannot_check_in}")
         self.print(f"Updated rooms IDs: {[room.id_in_hotel for room in updated_rooms]}")
@@ -465,8 +487,10 @@ class WAgent(Agent):
         # Telling the newly checked in guests to join their room
         checked_in_and_reached_out = []
         for guest in checked_in:
+            room = self._mana_hotel.get_room(guest)
             ret = await self.set_next_action(agent=guest, action="join_room", from_state="hall",
-                                             args={"room_id": self._mana_hotel.get_room(guest).id_in_hotel})
+                                             args={"room_id": room.id_in_hotel,
+                                                   "missing": room.count_free_spots()})
 
             # Clearing UUIDs and the data of the processor of the guests
             net_hash_to_stream_dict = self.find_streams(guest, name_or_group="processor")
@@ -1011,7 +1035,7 @@ class WAgent(Agent):
 
         # Clearing pending requests (preserving "join_room" and "start",
         # since the manager could be fast in sending them after he told you "leave_room", that you might have not run
-        # yet
+        # yet)
         actions = self.behav.get_all_actions()
         for action in actions:
             if action.name != "join_room" and action.name != "start":
@@ -1022,7 +1046,14 @@ class WAgent(Agent):
                 if len(action.get_list_of_requests()) > 1:
                     action.get_list_of_requests().keep_only_the_most_recent_request()
 
-    async def join_room(self, room_id: int = -1):
+    async def status(self, eta: int = -1):
+        """Update the counter telling how many seconds are left before starting the conversation."""
+        if self.get_current_role() != "participant":
+            return False
+
+        self.behav.update_wildcard("<eta_time>", str(eta))
+
+    async def join_room(self, room_id: int = -1, missing: int = 0):
         """Join a room (find the room stream and the manager stream)."""
 
         if self.get_current_role() != "participant":
@@ -1064,6 +1095,8 @@ class WAgent(Agent):
             await self.disconnect(self._part_manager_peer_id)
             return False
 
+        # Number of missing participants at joining time
+        self.behav.update_wildcard("<eta_part>", str(missing))
         return True
 
     async def leave_room(self):
