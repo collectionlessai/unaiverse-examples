@@ -289,6 +289,8 @@ class WAgent(Agent):
 
         def check_out(self, guest):
             if guest in self.guest2room:
+                room = self.guest2room[guest]
+                room.remove_if_present(guest)
                 del self.guest2room[guest]
 
         def compute_room_stats(self):
@@ -470,7 +472,7 @@ class WAgent(Agent):
                     stream_obj.set(None)
 
             if not ret:
-                self._mana_hotel.get_room(guest).remove_if_present(guest)
+                self._mana_hotel.check_out(guest)
                 await self.disconnect(guest)  # Killing the ones that are not reachable anymore
             else:
                 checked_in_and_reached_out.append(guest)
@@ -505,6 +507,7 @@ class WAgent(Agent):
             return False
 
         # For each room of the hotel...
+        self.print(f"Hotel guests ({len(self._mana_hotel.guest2room)}): f{list(self._mana_hotel.guest2room.keys())}")
         for room in self._mana_hotel.rooms:
             kicked_all_out = False
             self.print(f"Room ID {room.id_in_hotel}, UUID {room.uuid}, {len(room.guests)} guests: "
@@ -519,7 +522,7 @@ class WAgent(Agent):
                 for guest in room.guests.keys():
                     ret = await self.set_next_action(agent=guest, action="start")
                     if not ret:
-                        self._mana_hotel.get_room(guest).remove_if_present(guest)
+                        self._mana_hotel.check_out(guest)
                         await self.disconnect(guest)  # Killing the ones that are not reachable anymore
                         lost_guests.append(guest)
 
@@ -597,6 +600,13 @@ class WAgent(Agent):
             # Reset empty rooms (only those that were "used" before, using the activation_timestamp to discriminate)
             if room.count_guests() == 0 and room.activation_timestamp > 0:
                 self.__reset_room(room)
+
+        # TODO remove this check
+        count = 0
+        for room in self._mana_hotel.rooms:
+            count += room.count_guests()
+        assert count == len(self._mana_hotel.guest2room), \
+            f"Sum of room counts does not match hotel guest count: {count} vs {len(self._mana_hotel.guest2room)}"
 
         return True
 
@@ -1185,7 +1195,6 @@ class WAgent(Agent):
         self.print(f"Kicking guest {guest} from room ID {room.id_in_hotel}, UUID {room.uuid}")
 
         # Kicking out from the guest list
-        room.remove_if_present(guest, ignore_editable_flag=True)
         self._mana_hotel.check_out(guest)
 
         # Telling the guest to "leave_room"
@@ -1197,6 +1206,11 @@ class WAgent(Agent):
         self._mana_guests_ready_to_get_the_survey.discard(guest)
         if guest in self._mana_guests_who_got_the_survey:
             del self._mana_guests_who_got_the_survey[guest]
+
+        # Safety
+        if room.count_guests() == 0:
+            if room.id_in_hotel in self._mana_rooms_ready_for_start_message:
+                del self._mana_rooms_ready_for_start_message[room.id_in_hotel]
 
     async def __kick_all_guests(self, room: Room):
         """Kicks all guests of a room (telling them to "leave_room")."""
