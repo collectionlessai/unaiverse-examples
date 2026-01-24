@@ -507,7 +507,8 @@ class WAgent(Agent):
             return False
 
         # For each room of the hotel...
-        self.print(f"Hotel guests ({len(self._mana_hotel.guest2room)}): f{list(self._mana_hotel.guest2room.keys())}")
+        self.print(f"Connected to manager ({len(self.all_agents.keys())}): {list(self.all_agents.keys())}")
+        self.print(f"Hotel guests ({len(self._mana_hotel.guest2room)}): {list(self._mana_hotel.guest2room.keys())}")
         for room in self._mana_hotel.rooms:
             kicked_all_out = False
             self.print(f"Room ID {room.id_in_hotel}, UUID {room.uuid}, {len(room.guests)} guests: "
