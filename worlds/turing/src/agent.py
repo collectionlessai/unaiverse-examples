@@ -555,7 +555,6 @@ class WAgent(Agent):
                 # the message, that will be sent to all the guest since the "do_gen" of the manager is prepared to do.
                 # Before doing anything, we set in the input stream of the manager's processor the "welcome/start"
                 # message, assuming the processor acts like an identity function
-                self.set_proc_input(WAgent.start_message, uuid="s4m344ll")
                 if not self.behav.request_action(signature=self._mana_peer_id,
                                                  action_name="do_gen",
                                                  args={"u_hashes": [f'{self._mana_peer_id}:processor_in'],
@@ -806,11 +805,12 @@ class WAgent(Agent):
                     del self._mana_rooms_ready_for_start_message[room_id]
                 self.print("Preparing welcome message...")
 
-                ret = await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
-                                           None, _request_time, _request_uuid, _completed)
-                if not ret:
-                    self.err("Failed to process the welcome message by internally calling do_gen")  # Unexpected
-                    return False
+                # Letting the init message be formatted as by adding the sender name as a prefix
+                _init_message = WAgent.__format_message(WAgent.manager_fake_name, WAgent.survey_message)
+
+                # Putting the message in output stream of the manager
+                self._mana_proc_output_stream.set(_init_message)
+                self._mana_proc_output_stream.set_uuid(_request_uuid)
 
             # Ordinary room message from a participant
             if is_participant_message:
