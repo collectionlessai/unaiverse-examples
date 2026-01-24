@@ -805,11 +805,11 @@ class WAgent(Agent):
                     del self._mana_rooms_ready_for_start_message[room_id]
                 self.print("Preparing welcome message...")
 
-                # Letting the init message be formatted as by adding the sender name as a prefix
-                _init_message = WAgent.__format_message(WAgent.manager_fake_name, WAgent.init_message)
+                # Letting the welcome/start message be formatted as by adding the sender name as a prefix
+                _start_message = WAgent.__format_message(WAgent.manager_fake_name, WAgent.start_message)
 
                 # Putting the message in output stream of the manager
-                self._mana_proc_output_stream.set(_init_message)
+                self._mana_proc_output_stream.set(_start_message)
                 self._mana_proc_output_stream.set_uuid(_request_uuid)
 
             # Ordinary room message from a participant
