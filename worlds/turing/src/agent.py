@@ -447,6 +447,11 @@ class WAgent(Agent):
             if room.is_active() or (room.activation_timestamp > 0 and room.count_guests() > 0):
                 return True
 
+        # Clearing all pending requests (we start from scratch since we are handling rooms in a synchronous manner)
+        actions = self.behav.get_all_actions()
+        for action in actions:
+            action.get_list_of_requests().clear()
+
         # Assign to rooms the ones that are not already in some rooms
         checked_in, cannot_check_in, updated_rooms = self._mana_hotel.check_in(all_hotel_guests)
         self.print(f"Guests checked-in: {checked_in}")
@@ -779,25 +784,19 @@ class WAgent(Agent):
 
         if self.get_current_role() == "manager" and self.behaving_in_world() and _requester is not None:
 
+            # Let's distinguish ordinary room-messages (sent by participants) from the welcome/start message sent
+            # by the manager
+            is_welcome_message = _requester == self._mana_peer_id
+            is_participant_message = self._mana_hotel.already_in_a_hotel_room(_requester)
+            room_ids = []
+
             # First of all, let's stop every attempt to 'do_gen' if the requester is not in the hotel, and he is not
-            # the manager as well
-            if not self._mana_hotel.already_in_a_hotel_room(_requester) and _requester != self._mana_peer_id:
+            # the manager as well sending the welcome message
+            if not is_participant_message and not is_welcome_message:
                 return True
 
-            # Let's avoid attempts to send messages by guests in rooms not active yet or by guests in rooms that were
-            # just activated, but that have not broadcast the welcome/start message yet. This will also filter out
-            # guests that are dealing with the survey, since their rooms are deactivates (i.e., not active)
-            if _requester != self._mana_peer_id:
-                room = self._mana_hotel.get_room(_requester)
-                if not room.is_active() or room.id_in_hotel in self._mana_rooms_ready_for_start_message:
-                    return True
-
-            # In all other cases, we are in front of one of the following:
-            # - (1) the hotel manager that is sending the welcome/start message
-            # - (2) a guest of an active room, not dealing with the survey
-
-            # Case (1)
-            if _requester == self._mana_peer_id:
+            # Welcome message
+            if is_welcome_message:
                 self._mana_sender_peer_id = _requester  # Saving the peer ID of the sender (the hotel manager)
                 room_ids = [room_id for room_id, status in self._mana_rooms_ready_for_start_message.items()
                             if status['requested_action'] is True]
@@ -805,10 +804,25 @@ class WAgent(Agent):
                 # Clearing: all the just-activated rooms will get the welcome/start message
                 for room_id in room_ids:
                     del self._mana_rooms_ready_for_start_message[room_id]
-                self.print("Sending welcome message...")
+                self.print("Preparing welcome message...")
 
-            # Case (2)
-            else:
+                ret = await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
+                                           None, _request_time, _request_uuid, _completed)
+                if not ret:
+                    self.err("Failed to process the welcome message by internally calling do_gen")  # Unexpected
+                    return False
+
+            # Ordinary room message from a participant
+            if is_participant_message:
+
+                # Let's avoid attempts to send messages by guests in rooms not active yet or by guests in rooms that
+                # were just activated, but that have not broadcast the welcome/start message yet.
+                # This will also filter out guests that are dealing with the survey, since their rooms are
+                # deactivates (i.e., not active)
+                room = self._mana_hotel.get_room(_requester)
+                if not room.is_active() or room.id_in_hotel in self._mana_rooms_ready_for_start_message:
+                    return True
+
                 self._mana_sender_peer_id = _requester  # Saving the peer ID of the sender (a guest of the room)
                 room_ids = [self._mana_hotel.get_room(_requester).id_in_hotel]
 
@@ -819,36 +833,38 @@ class WAgent(Agent):
             for room_id in room_ids:
 
                 # Internal call to format the message before sending it: call 'do_gen' by clearing the requester
-                ret = await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
-                                           None, _request_time, _request_uuid, _completed)
-                if not ret:
-                    self.err("Failed to process the message by internally calling do_gen")  # Unexpected
-                    return False
-                else:
+                # (no need to do it for the welcome message, that is the same for all the rooms, hence already
+                # generated above - only once)
+                if is_participant_message:
+                    ret = await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
+                                               None, _request_time, _request_uuid, _completed)
+                    if not ret:
+                        self.err("Failed to process the message by internally calling do_gen")  # Unexpected
+                        return False
 
-                    # Getting the formatted message (do not put any arguments in get())
-                    sample_to_broadcast = self._mana_proc_output_stream.get()  # No arguments here (important!)
-                    self.print(f"Sample to broadcast (wildcards not handled yet): {sample_to_broadcast}")
+                # Getting the formatted message (do not put any arguments in get())
+                sample_to_broadcast = self._mana_proc_output_stream.get()  # No arguments here (important!)
+                self.print(f"Sample to broadcast (wildcards not handled yet): {sample_to_broadcast}")
 
-                    # Manual tag management
-                    sample_tag = self._mana_streams_of_rooms_tags[room_id]
-                    self._mana_streams_of_rooms_tags[room_id] += 1
+                # Manual tag management
+                sample_tag = self._mana_streams_of_rooms_tags[room_id]
+                self._mana_streams_of_rooms_tags[room_id] += 1
 
-                    # Setting the formatted message to the room stream (using the just prepared tag)
-                    # Recall that this is a buffered stream handled as a queue, so we will have to manually set the
-                    # recipients of this message (not here, we will do it when leaving the state where we are now)
-                    self._mana_streams_of_rooms[room_id].set(sample_to_broadcast, data_tag=sample_tag)
+                # Setting the formatted message to the room stream (using the just prepared tag)
+                # Recall that this is a buffered stream handled as a queue, so we will have to manually set the
+                # recipients of this message (not here, we will do it when leaving the state where we are now)
+                self._mana_streams_of_rooms[room_id].set(sample_to_broadcast, data_tag=sample_tag)
 
-                    # Setting the UUID to the same one that was originally requested
-                    self._mana_streams_of_rooms[room_id].set_uuid(_request_uuid)
+                # Setting the UUID to the same one that was originally requested
+                self._mana_streams_of_rooms[room_id].set_uuid(_request_uuid)
 
-                    # Saving the recipients of this broadcasting: all the guests in case (1),
-                    # all except the sender in case (2) - since the manager is not a guest, this code is fine for both.
-                    # We will set them when leaving this state, assuming that the oldest buffered message is the next
-                    # one that will be sent, and the oldest saved recipients are the ones who are expected to receive it
-                    broadcast_to = set(self._mana_hotel.rooms[room_id].guests.keys()) - {self._mana_sender_peer_id}
-                    self._mana_streams_of_rooms_buffered_recipients[room_id].append(list(broadcast_to))
-                    self.print(f"Broadcast it to: {broadcast_to}")
+                # Saving the recipients of this broadcasting: all the guests in case (1),
+                # all except the sender in case (2) - since the manager is not a guest, this code is fine for both.
+                # We will set them when leaving this state, assuming that the oldest buffered message is the next
+                # one that will be sent, and the oldest saved recipients are the ones who are expected to receive it
+                broadcast_to = set(self._mana_hotel.rooms[room_id].guests.keys()) - {self._mana_sender_peer_id}
+                self._mana_streams_of_rooms_buffered_recipients[room_id].append(list(broadcast_to))
+                self.print(f"Broadcast it to: {broadcast_to}")
             return True
 
         # In all other cases (public network, participant-related stuff, ..., revert to the usual do_gen
