@@ -335,7 +335,7 @@ class WAgent(Agent):
         # These attributes are valued only if the role is 'participant'
         self._part_conversation = None  # The list of messages of the whole conversation happened so far
         self._part_conversation_as_str = None  # A long-string version of the whole conversation
-        self._part_manager_peer_id = None  # The peer ID of the selected manager
+        self._part_manager_peer_id: str | None = None  # The peer ID of the selected manager
         self._part_manager_stream = None  # Output stream of the selected manager
         self._part_room_stream = None  # Stream of the manager where chat messages are received
         self._part_proc_output_stream = None  # Output stream of this participant
@@ -869,6 +869,15 @@ class WAgent(Agent):
         else:
             self.err("Failed to connect to a manager")
             return False
+
+    async def manager_is_disconnected(self, delay: float = 1.):
+        """Checking is the manager is disconnected (usually starts with a delay to wait for handshake to complete."""
+        assert delay == -1. or delay >= 0., "Invalid delay"
+
+        if self.get_current_role() != "participant":
+            return False
+
+        return await self.disconnected(agent=self._part_manager_peer_id, handshake_completed=True, delay=-1.)
 
     async def lost(self, delay: float = -1):
         """Disconnecting from the manager (in case of timeouts)."""

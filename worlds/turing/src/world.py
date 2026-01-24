@@ -70,7 +70,7 @@ class WWorld(World):
         behav.add_transit("init_message", "ready", action="skip_confirmation")
         behav.add_transit("ready", "hall", action="connect_to_manager",
                           msg="🔗 Connecting to manager...")
-        behav.add_transit("hall", "ready", action="disconnected", args={"delay": 5.0})
+        behav.add_transit("hall", "ready", action="manager_is_disconnected", args={"delay": 5.0})
         behav.add_transit("hall", "in_room", action="join_room", args={}, ready=False,
                           msg="🚪 Joining room")
         behav.add_transit("in_room", "hall", action="leave_room", ready=False,
