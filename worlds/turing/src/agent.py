@@ -290,7 +290,7 @@ class WAgent(Agent):
         def check_out(self, guest):
             if guest in self.guest2room:
                 room = self.guest2room[guest]
-                room.remove_if_present(guest)
+                room.remove_if_present(guest, ignore_editable_flag=True)
                 del self.guest2room[guest]
 
         def compute_room_stats(self):
