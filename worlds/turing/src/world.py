@@ -74,7 +74,7 @@ class WWorld(World):
                           msg="🔗 Connecting to manager...")
         behav.add_transit("hall", "ready", action="manager_is_disconnected", args={"delay": 5.0})
         behav.add_transit("hall", "in_room", action="join_room",
-                          args={"missing": "<eta_part>"}, ready=False,
+                          args={}, ready=False,
                           msg=f"🚪 Joining room")
         behav.add_transit("in_room", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")

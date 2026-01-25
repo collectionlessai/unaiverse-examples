@@ -458,7 +458,7 @@ class WAgent(Agent):
 
         # Updating status (for waiting guests)
         if must_wait:
-            if (self._mana_last_communicated_eta < 0. or
+            if (self._mana_last_communicated_eta < 0 or
                     (self._mana_last_communicated_eta - eta) > tot_test_duration * 0.15):
                 self._mana_last_communicated_eta = eta
                 for guest_waiting in guests_in_the_hall:
@@ -1012,6 +1012,8 @@ class WAgent(Agent):
 
         # Getting your email address and putting it in the HSM
         self.behav.add_wildcards({"<email>": self.get_profile().get_static_profile()['email']})
+        self.behav.add_wildcards({"<eta_time>": ""})
+        self.behav.add_wildcards({"<eta_part>": str(WAgent.guests_per_room)})
         return True
 
     async def skip_confirmation(self):
