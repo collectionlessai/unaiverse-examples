@@ -442,12 +442,12 @@ class WAgent(Agent):
             self._found_agents.clear()  # Clear this, otherwise it will become the default argument in involved agents
         else:
             guests_in_the_hall = []
-        self.print(f"Guests in the hall: {guests_in_the_hall}")
+        self.print(f"Guests in the hall ({len(guests_in_the_hall)}): {guests_in_the_hall}")
 
         # Wait for all the rooms to finish before checking-in again
         must_wait = False
         eta = -1
-        tot_test_duration = WAgent.test_duration + WAgent.survey_reply_time * 0.5
+        tot_test_duration = WAgent.test_duration + int(WAgent.survey_reply_time * 0.5)
         for room in self._mana_hotel.rooms:
 
             # If even just a single room is active or in "wait-for-survey" stage
@@ -468,6 +468,8 @@ class WAgent(Agent):
                         self._mana_hotel.check_out(guest_waiting)
                         await self.disconnect(guest_waiting)  # Killing the ones that are not reachable anymore
             return True
+        else:
+            self._mana_last_communicated_eta = -1
 
         # Clearing all pending requests (we start from scratch since we are handling rooms in a synchronous manner)
         actions = self.behav.get_all_actions()

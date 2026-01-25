@@ -79,7 +79,7 @@ class WWorld(World):
         behav.add_transit("in_room", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
         behav.add_transit("in_room", "chatting", action="start", ready=False,
-                          msg="🚪 Starting the chat (wait for the message from the manager)")
+                          msg="🚪 Starting the chat (wait for the message from the manager, if not received yet)")
         behav.add_transit("chatting", "ready", action="lost",
                           args={"delay": test_duration + 20.},
                           msg="⏱️Lost sync with the room (disconnecting)")
@@ -89,7 +89,7 @@ class WWorld(World):
                           avoid_changing_ready=True)
         behav.add_transit("chatting", "ready_for_survey", action="stop", ready=False,
                           msg="📋 You will be able to provide your feedback to the final survey shortly "
-                              "(wait for the request from the manager)")
+                              "(wait for the request from the manager, if not received yet)")
         behav.add_transit("ready_for_survey", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
         behav.add_transit("ready_for_survey", "ready",
