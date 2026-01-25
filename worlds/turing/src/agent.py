@@ -438,7 +438,8 @@ class WAgent(Agent):
 
         # Looking for all current known guests of the whole hotel, being them in rooms or not
         if await self.find_agents("participant", handshake_completed=True):
-            guests_in_the_hall = [a for a in self._found_agents if not self._mana_hotel.already_in_a_hotel_room(a)]
+            guests_in_the_hall = [self.__guest_log_name(a)
+                                  for a in self._found_agents if not self._mana_hotel.already_in_a_hotel_room(a)]
             self._found_agents.clear()  # Clear this, otherwise it will become the default argument in involved agents
         else:
             guests_in_the_hall = []
@@ -538,12 +539,15 @@ class WAgent(Agent):
             return False
 
         # For each room of the hotel...
-        self.print(f"Connected to manager ({len(self.all_agents.keys())}): {list(self.all_agents.keys())}")
-        self.print(f"Hotel guests ({len(self._mana_hotel.guest2room)}): {list(self._mana_hotel.guest2room.keys())}")
+        connected = [self.__guest_log_name(a) for a in self.all_agents.keys()]
+        guest_list = [self.__guest_log_name(a) for a in self._mana_hotel.guest2room.keys()]
+        self.print(f"Connected to manager ({len(connected)}): {connected}")
+        self.print(f"Hotel guests ({len(guest_list)}): {guest_list}")
         for room in self._mana_hotel.rooms:
             kicked_all_out = False
+            room_guests = [self.__guest_log_name(a) for a in room.guests.keys()]
             self.print(f"Room ID {room.id_in_hotel}, UUID {room.uuid}, {len(room.guests)} guests: "
-                       f"{list(room.guests.keys())}")
+                       f"{room_guests}")
 
             # Activating a room that has the right number of guests
             if room.is_room_full() and not room.is_active() and room.is_editable():
@@ -1388,3 +1392,7 @@ class WAgent(Agent):
         """Get the sender name from a formatted message."""
 
         return msg[len(WAgent.sender_prefix):].split(WAgent.sender_suffix)[0]
+
+    def __guest_log_name(self, guest: str):
+        guest = self.all_agents[guest]
+        return guest.get_static_profile()['email'] + '/' + guest.get_static_profile()['node_name'] + ' (' + guest + ')'
