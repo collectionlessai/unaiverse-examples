@@ -447,7 +447,7 @@ class WAgent(Agent):
         # Wait for all the rooms to finish before checking-in again
         must_wait = False
         eta = -1
-        tot_test_duration = WAgent.test_duration + WAgent.survey_reply_time
+        tot_test_duration = WAgent.test_duration + WAgent.survey_reply_time * 0.5
         for room in self._mana_hotel.rooms:
 
             # If even just a single room is active or in "wait-for-survey" stage
@@ -1055,7 +1055,8 @@ class WAgent(Agent):
         if self.get_current_role() != "participant":
             return False
 
-        self.behav.update_wildcard("<eta_time>", "(approximately " + str(eta) + "s to go)")
+        self.behav.update_wildcard("<eta_time>", "(approximately " +
+                                   str(eta) + "s to go, we must wait for the other conversations to finish")
         return True
 
     async def join_room(self, room_id: int = -1, missing: int = 0):
@@ -1102,6 +1103,7 @@ class WAgent(Agent):
 
         # Number of missing participants at joining time
         self.behav.update_wildcard("<eta_part>", str(missing))
+        self.behav.update_wildcard("<eta_time>", "")  # Clearing
         return True
 
     async def leave_room(self):
