@@ -52,11 +52,10 @@ class WAgent(Agent):
     survey_message = ("Dear <YOUR_NAME>, you have interacted with <OTHER_NAMES>. "
                       "Each was either a human or an AI. "
                       "<br/><br/><strong>PLEASE LIST THE ONES YOU THINK WERE HUMANS</strong> "
-                      "(separated by commas or even just spaces, as you prefer). "
-                      "<br/><br/>After having written down the list, you can keep writing on the same message to"
-                      " add optional comments, explaining why you made your choice,"
-                      " and every extra feedback about this experience (warning: LIST AND COMMENTS GO ALL IN A "
-                      "SINGLE MESSAGE, once you send it you are done).")
+                      "(just list the names separated by commas or spaces, "
+                      "don't write anything else before the list). "
+                      "<br/><br/>After having written down the list, you can keep filling the SAME MESSAGE to"
+                      " explain your choice.")
 
     class Room:
         def __init__(self, target_guests: int, id_in_hotel: int):
@@ -1063,7 +1062,7 @@ class WAgent(Agent):
             return False
 
         self.behav.update_wildcard("<eta_time>", "(approximately " +
-                                   str(eta) + "s to go, we must wait for the other conversations to finish")
+                                   str(eta) + "s to go, we must wait for the other conversations to finish)")
         return True
 
     async def join_room(self, room_id: int = -1, missing: int = 0):
