@@ -1394,5 +1394,6 @@ class WAgent(Agent):
         return msg[len(WAgent.sender_prefix):].split(WAgent.sender_suffix)[0]
 
     def __guest_log_name(self, guest: str):
-        guest = self.all_agents[guest]
-        return guest.get_static_profile()['email'] + '/' + guest.get_static_profile()['node_name'] + ' (' + guest + ')'
+        profile = self.all_agents[guest]
+        return (profile.get_static_profile()['email'] + '/' + profile.get_static_profile()['node_name'] +
+                ' (' + guest + ')')
