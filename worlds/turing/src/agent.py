@@ -438,12 +438,13 @@ class WAgent(Agent):
 
         # Looking for all current known guests of the whole hotel, being them in rooms or not
         if await self.find_agents("participant", handshake_completed=True):
-            guests_in_the_hall = [self.__guest_log_name(a)
-                                  for a in self._found_agents if not self._mana_hotel.already_in_a_hotel_room(a)]
+            guests_in_the_hall = [a for a in self._found_agents if not self._mana_hotel.already_in_a_hotel_room(a)]
+            guests_in_the_hall_log_names = [self.__guest_log_name(a) for a in guests_in_the_hall]
             self._found_agents.clear()  # Clear this, otherwise it will become the default argument in involved agents
         else:
             guests_in_the_hall = []
-        self.print(f"Guests in the hall ({len(guests_in_the_hall)}): {guests_in_the_hall}")
+            guests_in_the_hall_log_names = []
+        self.print(f"Guests in the hall ({len(guests_in_the_hall)}): {guests_in_the_hall_log_names}")
 
         # Wait for all the rooms to finish before checking-in again
         must_wait = False
