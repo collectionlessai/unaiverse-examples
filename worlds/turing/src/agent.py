@@ -1394,6 +1394,9 @@ class WAgent(Agent):
         return msg[len(WAgent.sender_prefix):].split(WAgent.sender_suffix)[0]
 
     def __guest_log_name(self, guest: str):
-        profile = self.all_agents[guest]
-        return (profile.get_static_profile()['email'] + '/' + profile.get_static_profile()['node_name'] +
-                ' (' + guest + ')')
+        if guest not in self.all_agents:
+            return "DISCONNECTED"
+        else:
+            profile = self.all_agents[guest]
+            return (profile.get_static_profile()['email'] + '/' + profile.get_static_profile()['node_name'] +
+                    ' (' + guest + ')')
