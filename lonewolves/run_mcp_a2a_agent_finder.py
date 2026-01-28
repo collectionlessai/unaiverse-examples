@@ -4,13 +4,21 @@ import torch
 import asyncio
 import threading
 
-# Unaiverse imports
+# Unaiverse imports for building a node in our network.
 from unaiverse.agent import Agent
 from unaiverse.dataprops import Data4Proc
 from unaiverse.networking.node.node import Node
 
+# --------- Code from the src/a2a_mcp/a2a_mcp/mcp/client.py file ---------
+# DISCLAIMER & ATTRIBUTION:
+# The following section (`init_session` / `find_agent` functions as well as their imports)
+# is adapted from the 'a2a-samples' GitHub repository (Apache 2.0 License).
+# This code acts as a specific client implementation to communicate with their
+# Model Context Protocol (MCP) server implemented in the a2a_mcp example for python.
+# It is NOT a generic A2A wrapper, but a specific bridge for this example.
+# Please refer to the original repository for more details:
+#   https://github.com/a2aproject/a2a-samples/tree/main/samples/python/agents/a2a_mcp
 
-# --------- Code from the a2a_mcp/mcp/client.py file ---------
 # MCP related imports
 from contextlib import asynccontextmanager
 from mcp import ClientSession, StdioServerParameters
@@ -21,25 +29,6 @@ from mcp.types import CallToolResult
 @asynccontextmanager
 async def init_session(host, port, transport):
     """Initializes and manages an MCP ClientSession based on the specified transport.
-
-    This asynchronous context manager establishes a connection to an MCP server
-    using either Server-Sent Events (SSE) or Standard I/O (STDIO) transport.
-    It handles the setup and teardown of the connection and yields an active
-    `ClientSession` object ready for communication.
-
-    Args:
-        host: The hostname or IP address of the MCP server (used for SSE).
-        port: The port number of the MCP server (used for SSE).
-        transport: The communication transport to use ('sse' or 'stdio').
-
-    Yields:
-        ClientSession: An initialized and ready-to-use MCP client session.
-
-    Raises:
-        ValueError: If an unsupported transport type is provided (implicitly,
-                    as it won't match 'sse' or 'stdio').
-        Exception: Other potential exceptions during client initialization or
-                   session setup.
     """
     if transport == 'sse':
         url = f'http://{host}:{port}/sse'
@@ -75,13 +64,6 @@ async def init_session(host, port, transport):
 
 async def find_agent(session: ClientSession, query) -> CallToolResult:
     """Calls the 'find_agent' tool on the connected MCP server.
-
-    Args:
-        session: The active ClientSession.
-        query: The natural language query to send to the 'find_agent' tool.
-
-    Returns:
-        The result of the tool call.
     """
     print(f"Calling 'find_agent' tool with query: '{query[:50]}...'")
     return await session.call_tool(
@@ -94,6 +76,15 @@ async def find_agent(session: ClientSession, query) -> CallToolResult:
 
 
 class A2AMCPFinder(torch.nn.Module):
+    """
+    We inherit from torch.nn.Module because the Unaiverse `Agent` class expects
+    a callable module as its processor ('proc'). This class acts as a proxy node:
+    it receives a message from the Unaiverse network, forwards it to the external
+    MCP server, and returns the formatted result.
+    
+    This is a "Proxy Node". It does not perform the logic itself but forwards the request
+    to an external entity (in this case the MCP Server) and returns the result to the network.
+    """
     def __init__(self, config: dict):
         """
         config (dict):
@@ -109,13 +100,18 @@ class A2AMCPFinder(torch.nn.Module):
 
     def forward(self, msg: str, first: bool = False, last: bool = False):
         """
-        Forwards the 'msg' to the A2A server in a separate thread to avoid
-        asyncio loop conflicts.
+        The entry point when this Node receives a message.
+        
+        Crucially, we spin up a separate thread here. The Unaiverse node loop
+        might interfere with the asyncio loop required by the MCP client.
+        To ensure stability, we isolate the async I/O of the MCP request 
+        in its own thread using `asyncio.run()`.
         """
         result = {"output": None, "error": None}
 
         def run_in_thread():
             try:
+                # We block this thread until the async MCP call is finished.
                 result["output"] = asyncio.run(self._run_mcp_tool(msg))
             except Exception as e:
                 result["error"] = str(e)
@@ -131,7 +127,8 @@ class A2AMCPFinder(torch.nn.Module):
 
     def _format_markdown_card(self, json_str: str) -> str:
         """
-        Used to format the agent card JSON into a nice Markdown representation.
+        The raw response from the A2A agent is a JSON string. 
+        We parse it here to make it readable for the end user in our UI.
         """
         try:
             data = json.loads(json_str)
@@ -169,7 +166,9 @@ class A2AMCPFinder(torch.nn.Module):
     
     async def _run_mcp_tool(self, user_input: str) -> str:
         """
-        Connects to the MCP server and uses a chosen tool.
+        This is where the actual bridge happens. We use the 'init_session' context
+        manager (from the a2a-samples repo) to establish the SSE connection,
+        and then we invoke the tool specified in our config.
         """
         host = self.config.get("host", "localhost")
         port = self.config.get("port")
@@ -179,6 +178,7 @@ class A2AMCPFinder(torch.nn.Module):
         
         try:
             # Uses context manager from a2a_mcp/mcp/client.py
+            # We assume 'sse' transport here as it is standard for network agents.
             async with init_session(host, port, 'sse') as session:
                 arguments = {arg_key: user_input}
                 
@@ -198,7 +198,41 @@ class A2AMCPFinder(torch.nn.Module):
 
 if __name__ == "__main__":
 
-    # Config to call an MCP tool
+    # ==================================================================================
+    # HOW TO RUN THIS EXAMPLE
+    # ==================================================================================
+    # This script assumes you are running the 'a2a-samples' MCP server locally.
+    # The 'a2a-samples' repo serves as a registry of agent cards (Travel, Hotel, etc.).
+    #
+    # PREREQUISITES:
+    # 1. You must have the `a2a-samples` repository cloned locally.
+    #    Repo: https://github.com/a2aproject/a2a-samples
+    # 2. You must have `uv` installed (python package manager used in the sample).
+    # 3. You must have a Google API Key if using the GenAI features of the sample, 
+    #    though for simple discovery, it might not be strictly required depending on implementation.
+    #
+    # SETUP INSTRUCTIONS (Terminal 1 - The MCP Server):
+    # Navigate to the a2a sample directory:
+    #   cd samples/python/agents/a2a_mcp
+    #
+    # Create the virtual environment:
+    #   uv venv
+    #   source .venv/bin/activate
+    #
+    # Run the MCP Server (Hosting the Agent Cards):
+    #   uv run --env-file .env a2a-mcp --run mcp-server --transport sse
+    #
+    #   * Note: This defaults to port 10100, which matches our config below.
+    #
+    # EXECUTION (Terminal 2 - This Unaiverse Node):
+    # Once the server in Terminal 1 is running and listening on port 10100,
+    # you can run this script. It will spin up a Unaiverse Node that acts as a 
+    # client to that server.
+    #
+    #   python run_mcp_a2a_agent_finder.py
+    # ==================================================================================
+
+    # Config to call the 'find_agent' tool on the local MCP server
     mcp_config = {
         "host": "localhost",
         "port": 10100,
@@ -206,6 +240,7 @@ if __name__ == "__main__":
         "arg_key": "query"
     }
 
+    # We wrap our custom Torch module (A2AMCPFinder) into a Unaiverse Agent
     agent = Agent(
         proc=A2AMCPFinder(config=mcp_config),
         proc_inputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
@@ -213,6 +248,7 @@ if __name__ == "__main__":
         proc_opts={}
     )
 
+    # Finally, we host the Agent in a Node, making it a participant in the network.
     node_agent = Node(
         node_name="A2AMCPFinder", 
         hosted=agent, 
@@ -221,5 +257,8 @@ if __name__ == "__main__":
         save_checkpoint_every=-1.
     )
 
-    # Ensure you started the A2A MCP server separately before running this!
+    # Run the node. 
+    # In a real scenario, this node would wait for messages from other nodes (like a UI node).
+    # Since this is a standalone test script, ensure your environment sends input 
+    # or the node is configured to poll/interact as needed.
     node_agent.run()
