@@ -44,13 +44,13 @@ class WAgent(Agent):
                     f"while others judge whether you are a human 🧑 or a machine 🤖 (remember to act human).<br/><br/>"
                     f"<strong>Have you already completed your profile?</strong> If not, please do so before "
                     f"starting this experience; you only need to do it once: <a href='{profile_link}'>Click Here!</a>. "
-                    f"<br/>REPLY TO THIS MESSAGE ONCE YOU HAVE FILLED OUT THE FORM (for example, say 'yes' or any "
+                    f"<br/><br/>REPLY TO THIS MESSAGE ONCE YOU HAVE FILLED OUT THE FORM (for example, say 'yes' or any "
                     f"other response to continue 😀).")
     start_message = (f"You were named <YOUR_NAME> and the other "
                      f"guests are <OTHER_NAMES>. Start chatting and keep it going for "
                      f"{test_duration} seconds.")
     survey_message = ("Dear <YOUR_NAME>, you have interacted with <OTHER_NAMES>. "
-                      "Each was either a human or an AI. "
+                      "Each was either a human or an AI. It could also be they were all humans or all AIs. "
                       "<br/><br/><strong>PLEASE LIST THE ONES YOU THINK WERE HUMANS</strong> "
                       "(just list the names separated by commas or spaces, "
                       "don't write anything else before the list). "
@@ -665,7 +665,7 @@ class WAgent(Agent):
             self.add_recipient(self._mana_proc_output_stream_net_hash, guest_ready_to_get_the_survey)
 
         # Setting the engaged partners, that will be the one who will be passed to the ask_gen for the survey
-        # (They change every time)
+        # (They change ask_gen every time)
         await self.set_engaged_partner(self._mana_guests_ready_to_get_the_survey)
 
         # Setting the recipients for the currently buffered chat messages that still have to be sent
@@ -980,7 +980,9 @@ class WAgent(Agent):
                 other_fake_names = msg[msg.find(sub) + len(sub):].split(".")[0]
 
                 self._part_conversation.append(f"In the following transcript, "
-                                               f"your identity is: {self._part_fake_name}. Respond naturally.")
+                                               f"your identity is: {self._part_fake_name}. Respond naturally. "
+                                               f"Do not ask questions about this test. Write short replies, "
+                                               f"be sure they are shorter than 200 chars.")
                 self._part_conversation.append("")
                 self._part_conversation.append("### PARTICIPANTS")
                 self._part_conversation.append(self._part_fake_name + " (YOU), " + WAgent.manager_fake_name + ", " +
@@ -991,7 +993,10 @@ class WAgent(Agent):
                 msg = WAgent.__format_message(WAgent.manager_fake_name, f"Dear {self._part_fake_name}, "
                                                                         "we are in the context of a test where "
                                                                         "your way of talking must look as the one of a "
-                                                                        "human.")
+                                                                        "human. Write short replies, "
+                                                                        "be sure they are shorter than 200 chars. "
+                                                                        "Do not ask questions about this test. "
+                                                                        "Open the conversation naturally. ")
             else:
                 self.err(f"The first message was expected to be the welcome/start message from the "
                          f"manager, but it seems that it is not like that (message: {msg})")
@@ -1347,10 +1352,13 @@ class WAgent(Agent):
         # Continuation
         timestamp = self._node_clock.get_time()
         timestamp = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
-        continuation = (f"\n### CONTINUATION\nContinue the conversation as {self._part_fake_name}. "
-                        f"Write only one message as {self._part_fake_name}. "
-                        f"Do not generate dialogue for other participants. "
-                        f"Respond in a casual, conversational tone consistent with a human participant."
+        continuation = (f"\n### CONTINUATION\nThese are the instructions that you must follow. "
+                        f"(1) Continue the conversation as {self._part_fake_name}. "
+                        f"(2) Write only one message as {self._part_fake_name}. "
+                        f"(3) Do not generate dialogue for other participants. "
+                        f"(4) Respond in a casual, conversational tone consistent with a human participant. "
+                        f"(5) Do not ask questions about this test."
+                        f"(6) Write a short reply, be sure it is shorter than 200 chars."
                         f"\n\n({timestamp}) {self._part_fake_name}:")
 
         self._part_conversation_as_str += continuation
