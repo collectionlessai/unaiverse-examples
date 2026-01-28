@@ -57,7 +57,7 @@ unaiverse/networking/p2p/lib.dylib
 unaiverse/networking/p2p/logs/*
 world_addresses.txt
 addresses.txt
-interact_stdout.txt
+interact_stdout*
 wolf_img.png
 
 # *.pem
