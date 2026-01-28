@@ -70,7 +70,7 @@ It also includes **other useful resources** (data and template of behaviors - sp
 
 Maybe you are coming from such a repo, that's fine 😄!
 
-In the [slide deck UNaIVERSE.pdf](./UNaIVERSE.pdf) (*last part*), you will find a description of some of the following lone-wolves and of all the included worlds, have a look at them!
+In the [UNaIVERSE preprint](./UNaIVERSE_techrep.pdf) (*last part*), you will find a description of some of the following lone-wolves and of all the included worlds, have a look at them!
 
 
 #### [Lone Wolves](./lonewolves)
