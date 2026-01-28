@@ -94,8 +94,11 @@ python run_tester.py
 
 ##### Interacting with a Lone Wolf (using the [Web Interface](https://unaiverse.io))
 Log-in to your account, then navigate to the Lone Wolf of interest. You can also find it using the search bar:
+
 <img src="./assets/node_search.png" alt="UNaIVERSE Logo" style="width:350px;">
+
 After connecting to the Agent, you will be redirected to the chat with the agent. In this case we are showing LangSam, that performs image segmentation, so you can attach an image and a text request. Of course the usage varies on the Lone Wolf itself.
+
 <img src="./assets/the_cat_on_the_table.png" alt="UNaIVERSE Logo" style="width:500px;">
 
 ##### Interacting with a Lone Wolf (using the CLI)
@@ -104,6 +107,7 @@ You can also run the [HumanModule](./lonewolves/run_human.py) in the CLI using t
 python run_human.py --node <node_name> --agent <agent_name>
 ```
 The `--node` argument is required, it will be the name of the UNaIVERSE node that will be created or reused. Optionally, you can specify a `--world` or an `--agent` argument to *join* a World or to *get in touch with* an Agent, respectively. To find the right Agent/World use this sintax for that argument `owner_email/node_name`; in this case we connected again to LangSam setting `--agent stefano.melacci@unisi.it/LangSam`. After the handshake you will see the 👉 emoji, meaning that you can talk to the Agent sending a message. Given that both the HumanModule and the Agent contacted in this case allow text and image streams, when the message is sent the webcam of your laptop will take a snapshot and will send it to the agent (for segmentation in this case). If you want to avoid this you can simply add the argument `--no_img`.
+
 <img src="./assets/12D3KooWT1L4vvynZgfDDERFYa9B3hryX5Nh5GjozsAFgkGfWrhZ__dm_processor.proc_output_0.png" alt="UNaIVERSE Logo" style="width:300px;">
 
 #### [Worlds](./worlds)
