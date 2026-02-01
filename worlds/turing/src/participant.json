@@ -10,10 +10,10 @@
     "show_action_request_after_messages": false,
     "state_actions": {
         "set_email": ["set_email", {}, 0, false, 0.0],
-        "init_message": [null, null, 1, false, 0.0, "WELCOME TO THE TURING TEST HOTEL &#127976; (Your email: <email>)!<br/><br/>This is a unique destination composed of rooms that implement the multi-agent Turing Test, where you will act as both the judge &#9878;&#65039; and a conversation partner &#128483;&#65039;!<br/>You will judge others to detect who is human, while others judge whether you are a human &#129489; or a machine &#129302; (remember to act human).<br/><br/><strong>Have you already completed your profile?</strong> If not, please do so before starting this experience; you only need to do it once: <a href='https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/viewform?usp=pp_url&entry.1591917462=<email>'>Click Here!</a>. <br/>REPLY TO THIS MESSAGE ONCE YOU HAVE FILLED OUT THE FORM (for example, say 'yes' or any other response to continue &#128512;)."],
+        "init_message": [null, null, 1, false, 0.0, "WELCOME TO THE TURING TEST HOTEL &#127976; (Your email: <email>)!<br/><br/>This is a unique destination composed of rooms that implement the multi-agent Turing Test, where you will act as both the judge &#9878;&#65039; and a conversation partner &#128483;&#65039;!<br/>You will judge others to detect who is human, while others judge whether you are a human &#129489; or a machine &#129302; (remember to act human).<br/><br/><strong>Have you already completed your profile?</strong> If not, please do so before starting this experience; you only need to do it once: <a href='https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/viewform?usp=pp_url&entry.1591917462=<email>'>Click Here!</a>. <br/><br/>REPLY TO THIS MESSAGE ONCE YOU HAVE FILLED OUT THE FORM (for example, say 'yes' or any other response to continue &#128512;)."],
         "ready": [null, null, 2, false, 0.0],
-        "hall": ["hall", {}, 3, false, 0.0, "&#127970; In the hall, waiting to be checked-in (approximately <eta_time>s to go)"],
-        "in_room": [null, null, 4, false, 0.0, "&#128682; In your room, waiting until there are 4 participants (missing <eta_part>)"],
+        "hall": ["hall", {}, 3, false, 0.0, "&#127970; In the hall, waiting to be checked-in <eta_time>"],
+        "in_room": [null, null, 4, false, 0.0, "&#128682; In your room, waiting until there are 2 participants (missing <eta_part>)"],
         "ready_to_chat": ["ready_to_chat", {}, 5, false, 0.0],
         "chatting": ["get_messages", {}, 6, true, 0.0],
         "message_prepared": ["message_prepared", {}, 7, false, 0.0],
@@ -32,18 +32,18 @@
         },
         "hall": {
             "ready": [["manager_is_disconnected", {"delay": 5.0}, true, 9]],
-            "in_room": [["join_room", {"missing": "<eta_part>"}, false, 10, "&#128682; Joining room"]],
+            "in_room": [["join_room", {}, false, 10, "&#128682; Joining room"]],
             "hall": [["status", {}, false, 25]]
         },
         "in_room": {
             "hall": [["leave_room", {}, false, 11, "&#128682; Leaving room"]],
-            "chatting": [["start", {}, false, 12, "&#128682; Starting the chat (wait for the message from the manager)"]]
+            "chatting": [["start", {}, false, 12, "&#128682; Starting the chat (wait for the message from the manager, if not received yet)"]]
         },
         "chatting": {
-            "ready": [["lost", {"delay": 140.0}, true, 13, "&#9201;&#65039;Lost sync with the room (disconnecting)"]],
+            "ready": [["lost", {"delay": 50.0}, true, 13, "&#9201;&#65039;Lost sync with the room (disconnecting)"]],
             "chatting": [["wait_for_intro", {}, true, 14]],
             "message_prepared": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 15]],
-            "ready_for_survey": [["stop", {}, false, 16, "&#128203; You will be able to provide your feedback to the final survey shortly (wait for the request from the manager)"]],
+            "ready_for_survey": [["stop", {}, false, 16, "&#128203; Survey time! Check the request from the manager and reply (send 1 message only)!"]],
             "hall": [["leave_room", {}, false, 24, "&#128682; Leaving room"]]
         },
         "message_prepared": {
@@ -51,12 +51,12 @@
         },
         "ready_for_survey": {
             "hall": [["leave_room", {}, false, 17, "&#128682; Leaving room"]],
-            "ready": [["lost", {"delay": 40.0}, true, 18, "&#9201;&#65039;Lost sync with the room (disconnecting)"]],
+            "ready": [["lost", {"delay": 70.0}, true, 18, "&#9201;&#65039;Lost sync with the room (disconnecting)"]],
             "replied_to_survey": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, false, 19]]
         },
         "replied_to_survey": {
             "hall": [["leave_room", {}, false, 22, "&#128682; Leaving room"]],
-            "ready": [["lost", {"delay": 40.0}, true, 23, "&#9201;&#65039;Lost sync with the room (disconnecting)"]]
+            "ready": [["lost", {"delay": 70.0}, true, 23, "&#9201;&#65039;Lost sync with the room (disconnecting)"]]
         },
         "ready_to_chat": {
             "chatting": [["nop", {}, true, 21]]

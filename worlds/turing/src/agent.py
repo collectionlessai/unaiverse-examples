@@ -30,7 +30,7 @@ class WAgent(Agent):
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
     test_duration = 120  # Seconds (int)
-    survey_reply_time = 1 * 30  # Seconds
+    survey_reply_time = 1 * 60  # Seconds
     guests_per_room = 4
     tot_rooms = 20
     manager_fake_name = "MANAGER"
@@ -556,6 +556,15 @@ class WAgent(Agent):
                 # Telling the guests the conversation can start
                 lost_guests = []
                 for guest in room.guests.keys():
+
+                    # Clearing UUIDs of the guest streams (clearing garbage possibly left by spurious runs)
+                    net_hash_to_stream_dict = self.find_streams(guest, "processor")
+                    for net_hash, stream_dict in net_hash_to_stream_dict.items():
+                        for _, stream_obj in stream_dict.items():
+                            if not stream_obj.props.is_public() and stream_obj.props.is_text():
+                                stream_obj.clear_uuid()  # Resetting UUIDs of the guest on the manager side (important!)
+                                stream_obj.set(None)  # Clearing pending messages
+
                     ret = await self.set_next_action(agent=guest, action="start")
                     if not ret:
                         self._mana_hotel.check_out(guest)
@@ -635,13 +644,6 @@ class WAgent(Agent):
             # Reset empty rooms (only those that were "used" before, using the activation_timestamp to discriminate)
             if room.count_guests() == 0 and room.activation_timestamp > 0:
                 self.__reset_room(room)
-
-        # TODO remove this check
-        count = 0
-        for room in self._mana_hotel.rooms:
-            count += room.count_guests()
-        assert count == len(self._mana_hotel.guest2room), \
-            f"Sum of room counts does not match hotel guest count: {count} vs {len(self._mana_hotel.guest2room)}"
 
         return True
 
@@ -912,14 +914,14 @@ class WAgent(Agent):
             await self.set_engaged_partner(self._part_manager_peer_id)
             self.out("Connection to manager started...")
 
-            self.behav.update_wildcard("<eta_time>", "")
+            self.behav.update_wildcard("<eta_time>", "(we must wait for the other conversations to finish)")
             return True
         else:
             self.err("Failed to connect to a manager")
             return False
 
     async def manager_is_disconnected(self, delay: float = 1.):
-        """Checking is the manager is disconnected (usually starts with a delay to wait for handshake to complete."""
+        """Checking is the manager is disconnected (usually starts with a delay to wait for handshake to complete)."""
         assert delay == -1. or delay >= 0., "Invalid delay"
 
         if self.get_current_role() != "participant":
@@ -979,24 +981,48 @@ class WAgent(Agent):
                 sub = WAgent.start_message[pos + len("<YOUR_NAME>"):pos_o]
                 other_fake_names = msg[msg.find(sub) + len(sub):].split(".")[0]
 
-                self._part_conversation.append(f"In the following transcript, "
-                                               f"your identity is: {self._part_fake_name}. Respond naturally. "
-                                               f"Do not ask questions about this test. Write short replies, "
-                                               f"be sure they are shorter than 200 chars.")
-                self._part_conversation.append("")
-                self._part_conversation.append("### PARTICIPANTS")
-                self._part_conversation.append(self._part_fake_name + " (YOU), " + WAgent.manager_fake_name + ", " +
-                                               other_fake_names)
-                self._part_conversation.append("")
-                self._part_conversation.append("### TRANSCRIPT")
+                incipit = f"""
+You are a participant in a "Turing Test Hotel". You are a HUMAN. 
+Your goal is to chat with others, act natural, and identify who is a bot.
+
+<context>
+Your Name: "{self._part_fake_name}" (You)
+The Manager: MANAGER
+Other Guests: "{other_fake_names}"
+</context>
+
+<style_guide>
+1. **Lowercase Only:** No capitalization, apart from the names of the other participants and proper nouns.
+2. **No Punctuation:** Avoid periods at the end of sentences.
+3. **Length:** Keep it short (2-10 words).
+4. **Typos:** Occasional typos are acceptable.
+</style_guide>
+
+<critical_rules>
+1. **Single Target:** Never address the whole group. Talk to one specific person.
+2. **Anti-Bot:** NEVER say "As an AI", "I cannot", or "I understand".
+3. **No Loops:** If the conversation repeats, call it out or change the topic.
+4. **Survey Override:** If MANAGER asks for a survey/vote, drop the lazy persona and answer clearly.
+</critical_rules>
+
+<strategy_priority>
+Scan the TRANSCRIPT below and pick the first matching reaction:
+1. **IF MANAGER ASKS FOR SURVEY:** Reply with your vote/list immediately.
+2. **IF ACCUSED TO BE A BOT:** Deny it.
+3. **IF OTHERS ACT ROBOTIC:** Mock them
+4. **DEFAULT:** Just vibe. Agree or disagree briefly.
+</strategy_priority>
+
+<task>
+Read the transcript. Output ONLY your next reply text. Do not output the transcript or your reasoning.
+</task>
+
+### TRANSCRIPT START
+"""
+                self._part_conversation.append(incipit)
 
                 msg = WAgent.__format_message(WAgent.manager_fake_name, f"Dear {self._part_fake_name}, "
-                                                                        "we are in the context of a test where "
-                                                                        "your way of talking must look as the one of a "
-                                                                        "human. Write short replies, "
-                                                                        "be sure they are shorter than 200 chars. "
-                                                                        "Do not ask questions about this test. "
-                                                                        "Open the conversation naturally. ")
+                                                                        f"open the conversation naturally. ")
             else:
                 self.err(f"The first message was expected to be the welcome/start message from the "
                          f"manager, but it seems that it is not like that (message: {msg})")
@@ -1023,7 +1049,7 @@ class WAgent(Agent):
 
         # Getting your email address and putting it in the HSM
         self.behav.add_wildcards({"<email>": self.get_profile().get_static_profile()['email']})
-        self.behav.add_wildcards({"<eta_time>": ""})
+        self.behav.add_wildcards({"<eta_time>": "(we must wait for the other conversations to finish)"})
         self.behav.add_wildcards({"<eta_part>": str(WAgent.guests_per_room)})
         return True
 
@@ -1114,7 +1140,7 @@ class WAgent(Agent):
 
         # Number of missing participants at joining time
         self.behav.update_wildcard("<eta_part>", str(missing))
-        self.behav.update_wildcard("<eta_time>", "")  # Clearing
+        self.behav.update_wildcard("<eta_time>", "(we must wait for the other conversations to finish)")  # Clearing
         return True
 
     async def leave_room(self):
@@ -1142,7 +1168,7 @@ class WAgent(Agent):
 
         # If you have a slow clock, it could happen that the welcome message arrives at the same time you can the
         # request for action 'start' and you run it. The next state is blocking, so we will go through another cycle
-        # in which a participant might send another message, overwriting the mananger's wellcome.
+        # in which a participant might send another message, overwriting the manager welcome.
         # So let's call a starting get_messages() here as well.
         await self.get_messages()
         return True
@@ -1191,7 +1217,8 @@ class WAgent(Agent):
         if my_own_prepared_message is not None:
 
             # Formatting as expected
-            my_own_prepared_message = WAgent.__format_message(self._part_fake_name, my_own_prepared_message)
+            my_own_prepared_message = WAgent.__format_message(f"{self._part_fake_name} (You)",
+                                                              my_own_prepared_message)
 
             # Add to history adn convert the conversation to a single, long, string,
             # saved in self._part_conversation_as_str
@@ -1342,24 +1369,19 @@ class WAgent(Agent):
         timestamp = self._part_room_stream.get_timestamp() \
             if sender != self._part_fake_name else self._part_proc_output_stream.get_timestamp()
         timestamp = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
-        self._part_conversation.append(f"({timestamp}) {sender}:")
-        self._part_conversation.append(msg_only)
-        self._part_conversation.append("")
+        self._part_conversation.append(f"({timestamp}) {sender}: {msg_only}")
+        self._part_conversation.append("--------------")
 
         # Convert the conversation to a single, long, string
         self._part_conversation_as_str = "\n".join(self._part_conversation)
 
-        # Continuation
-        timestamp = self._node_clock.get_time()
-        timestamp = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
-        continuation = (f"\n### CONTINUATION\nThese are the instructions that you must follow. "
-                        f"(1) Continue the conversation as {self._part_fake_name}. "
-                        f"(2) Write only one message as {self._part_fake_name}. "
-                        f"(3) Do not generate dialogue for other participants. "
-                        f"(4) Respond in a casual, conversational tone consistent with a human participant. "
-                        f"(5) Do not ask questions about this test."
-                        f"(6) Write a short reply, be sure it is shorter than 200 chars."
-                        f"\n\n({timestamp}) {self._part_fake_name}:")
+        continuation = f""" 
+### TRANSCRIPT END
+
+---
+
+Now it's your turn to respond as {self._part_fake_name}. Remember to follow the guidelines provided earlier.
+"""
 
         self._part_conversation_as_str += continuation
 
