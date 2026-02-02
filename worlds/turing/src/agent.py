@@ -29,8 +29,8 @@ class WAgent(Agent):
     # Generic options to configure the Turing Test Hotel
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
-    test_duration = 120  # Seconds (int)
-    survey_reply_time = 1 * 60  # Seconds
+    test_duration = 180  # Seconds (int)
+    survey_reply_time = 1 * 90  # Seconds
     guests_per_room = 4
     tot_rooms = 20
     manager_fake_name = "MANAGER"

@@ -88,7 +88,8 @@ class WWorld(World):
                           action="do_gen", args={"u_hashes": ["<agent>:processor_in"], "samples": 1}, ready=True,
                           avoid_changing_ready=True)
         behav.add_transit("chatting", "ready_for_survey", action="stop", ready=False,
-                          msg="📋 Survey time! Check the request from the manager and reply (send 1 message only)!")
+                          msg=f"📋 Survey time! Check the request from the manager and reply (send 1 message only)! "
+                              f"WARNING: YOU HAVE {WAgent.survey_reply_time} SECONDS!")
         behav.add_transit("ready_for_survey", "hall", action="leave_room", ready=False,
                           msg="🚪 Leaving room")
         behav.add_transit("ready_for_survey", "ready",
