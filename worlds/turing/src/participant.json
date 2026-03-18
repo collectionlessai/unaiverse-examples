@@ -40,10 +40,10 @@
             "chatting": [["start", {}, false, 12, "&#128682; Starting the chat (wait for the message from the manager, if not received yet)"]]
         },
         "chatting": {
-            "ready": [["lost", {"delay": 50.0}, true, 13, "&#9201;&#65039;Lost sync with the room (disconnecting)"]],
+            "ready": [["lost", {"delay": 40.0}, true, 13, "&#9201;&#65039;Lost sync with the room (disconnecting)"]],
             "chatting": [["wait_for_intro", {}, true, 14]],
             "message_prepared": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 15]],
-            "ready_for_survey": [["stop", {}, false, 16, "&#128203; Survey time! Check the request from the manager and reply (send 1 message only)!"]],
+            "ready_for_survey": [["stop", {}, false, 16, "&#128203; Survey time! Check the request from the manager and reply (send 1 message only)! WARNING: YOU HAVE 10 SECONDS!"]],
             "hall": [["leave_room", {}, false, 24, "&#128682; Leaving room"]]
         },
         "message_prepared": {
@@ -51,12 +51,12 @@
         },
         "ready_for_survey": {
             "hall": [["leave_room", {}, false, 17, "&#128682; Leaving room"]],
-            "ready": [["lost", {"delay": 70.0}, true, 18, "&#9201;&#65039;Lost sync with the room (disconnecting)"]],
+            "ready": [["lost", {"delay": 20.0}, true, 18, "&#9201;&#65039;Lost sync with the room (disconnecting)"]],
             "replied_to_survey": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, false, 19]]
         },
         "replied_to_survey": {
             "hall": [["leave_room", {}, false, 22, "&#128682; Leaving room"]],
-            "ready": [["lost", {"delay": 70.0}, true, 23, "&#9201;&#65039;Lost sync with the room (disconnecting)"]]
+            "ready": [["lost", {"delay": 20.0}, true, 23, "&#9201;&#65039;Lost sync with the room (disconnecting)"]]
         },
         "ready_to_chat": {
             "chatting": [["nop", {}, true, 21]]

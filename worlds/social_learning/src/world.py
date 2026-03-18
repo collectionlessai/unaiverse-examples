@@ -71,7 +71,7 @@ class WWorld(World):
                           args={"net_hashes": [f"<agent>:teach_{i}" for i in range(0, dummy_agent.get_num_rounds())]})
         behav.add_wildcards({"<learn_steps>": dummy_agent.get_teach_steps(),
                              "<eval_steps>": dummy_agent.get_eval_steps(),
-                             "<cmp_thres>": 0.5})
+                             "<cmp_thres>": 1.0})  # TODO put it to 0.5
 
         # Counting
         behav.add_state("engagement_complete", msg="🔔 Ready for the lecture")
@@ -96,6 +96,7 @@ class WWorld(World):
         behav.add_state("best_not_found", msg="❌ The best of class was not found")
         behav.add_state("best_teaching", msg="📕 The best of class is now teaching")
         behav.add_state("wait_for_disengagement", msg="🔚 Waiting while students leave...")
+        behav.add_state("connection_timeout", msg="⏰ Timeout!")
 
         # Telling the best student to teach and the other to listen to the best student
         behav.transitions["best_found"] = {}  # Clearing existing transitions, loaded from the template

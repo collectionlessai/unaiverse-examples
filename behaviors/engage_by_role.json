@@ -16,12 +16,12 @@
             "connected": [["connect_by_role", {"role": "<roles_to_engage>"}, true, 0]]
         },
         "connected": {
-            "connection_timeout": [["nop", {"delay": 15.0}, true, 3]],
+            "connection_timeout": [["nop", {"delay": 45.0}, true, 3]],
             "connected": [["agents_are_waiting", {}, true, 1]],
-            "can_engage": [["find_agents", {"role": "<roles_to_engage>"}, true, 11]]
+            "can_engage": [["find_agents", {"role": "<roles_to_engage>", "handshake_completed": true}, true, 11]]
         },
         "connection_timeout": {
-            "can_engage": [["find_agents", {"role": "<roles_to_engage>"}, true, 2]],
+            "can_engage": [["find_agents", {"role": "<roles_to_engage>", "handshake_completed": true}, true, 2]],
             "searching": [["nop", {}, true, 10]]
         },
         "can_engage": {

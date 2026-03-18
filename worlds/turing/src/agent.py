@@ -29,10 +29,10 @@ class WAgent(Agent):
     # Generic options to configure the Turing Test Hotel
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
-    test_duration = 180  # Seconds (int)
-    survey_reply_time = 1 * 90  # Seconds
-    guests_per_room = 4
-    tot_rooms = 20
+    test_duration = 20  # Seconds (int)  # TODO set to 180
+    survey_reply_time = 10  # Seconds  # TODO set to 20?
+    guests_per_room = 2  # TODO set to 4
+    tot_rooms = 1  # TODO set to 20
     manager_fake_name = "MANAGER"
     sender_prefix = "**"
     sender_suffix = ":** "  # Do not forget the final space here
@@ -524,10 +524,10 @@ class WAgent(Agent):
                                        room.guests[z].get_static_profile()['email'] + '/' +
                                        room.guests[z].get_static_profile()['node_name'])
                                       for z in room.artificial_guests.keys()],
-                "timestamp": self._node_clock.get_time_as_string(),
+                "timestamp": self.clock.get_time_as_string(),
                 "event": "room_update"
             }
-            int_timestamp = self._node_clock.get_time_ms(monotonic=True)
+            int_timestamp = self.clock.get_time_ms(monotonic=True)
             self.stats.store_stat("room_update", room_stats, peer_id=room.uuid, timestamp=int_timestamp)
 
         return True
@@ -555,7 +555,8 @@ class WAgent(Agent):
 
                 # Telling the guests the conversation can start
                 lost_guests = []
-                for guest in room.guests.keys():
+                cur_guests = list(room.guests.keys())
+                for guest in cur_guests:
 
                     # Clearing UUIDs of the guest streams (clearing garbage possibly left by spurious runs)
                     net_hash_to_stream_dict = self.find_streams(guest, "processor")
@@ -619,10 +620,10 @@ class WAgent(Agent):
                                                room.guests[z].get_static_profile()['email'] + '/' +
                                                room.guests[z].get_static_profile()['node_name'])
                                               for z in room.artificial_guests.keys()],
-                        "timestamp": self._node_clock.get_time_as_string(),
+                        "timestamp": self.clock.get_time_as_string(),
                         "event": "room_activation"
                     }
-                    int_timestamp = self._node_clock.get_time_ms(monotonic=True)
+                    int_timestamp = self.clock.get_time_ms(monotonic=True)
                     self.stats.store_stat("room_activation", room_stats, peer_id=room.uuid, timestamp=int_timestamp)
 
             # If just one guest is not connected anymore to the manager, kick everybody out (telling to "leave_room")
@@ -658,8 +659,8 @@ class WAgent(Agent):
 
         # Putting the survey in output stream of the manager (recall that the output stream was altered after every
         # room-related internal 'do_gen' to format the message)
-        self._mana_proc_output_stream.set(_survey_message)  # Keep it fresh
         self._mana_proc_output_stream.set_uuid("5urv3y")
+        self._mana_proc_output_stream.set(_survey_message)  # Keep it fresh
 
         # Setting the list of recipients that will get the survey
         self.clear_recipients(self._mana_proc_output_stream_net_hash)
@@ -679,6 +680,7 @@ class WAgent(Agent):
             # ...then adding the new ones, that are the oldest recipients in our queue (assuming we will be sending the
             # oldest queued/buffered message at the next cycle)
             if len(self._mana_streams_of_rooms_buffered_recipients[room_id]) > 0:
+                print(self._mana_streams_of_rooms_buffered_recipients[room_id])
                 self.add_recipient(self._mana_streams_of_rooms_net_hashes[room_id],
                                    self._mana_streams_of_rooms_buffered_recipients[room_id][0])  # First is the oldest
                 del self._mana_streams_of_rooms_buffered_recipients[room_id][0]  # Removing recipients from the queue
@@ -722,10 +724,10 @@ class WAgent(Agent):
             # Saving stats
             room_stats = {
                 "room_uuid": room.uuid,
-                "timestamp": self._node_clock.get_time_as_string(),
+                "timestamp": self.clock.get_time_as_string(),
                 "event": "room_deactivation"
             }
-            int_timestamp = self._node_clock.get_time_ms(monotonic=True)
+            int_timestamp = self.clock.get_time_ms(monotonic=True)
             self.stats.store_stat("room_deactivation", room_stats, peer_id=room.uuid, timestamp=int_timestamp)
 
             # Saving guests into the list of those who will be expected to reply to the request we are going to make
@@ -789,13 +791,13 @@ class WAgent(Agent):
                     feedback = {
                         "msg": guest_feedback if (guest_feedback is not None
                                                   and isinstance(guest_feedback, str)) else "<INVALID_FORMAT>",
-                        "timestamp": self._node_clock.get_time_as_string(),
+                        "timestamp": self.clock.get_time_as_string(),
                         "room_uuid": room.uuid,
                         "sender_peer_id": guest,
                         "sender_fake_name": room.guest2name[guest],
                         "sender_real_name": sender_profile['email'] + '/' + sender_profile['node_name']
                     }
-                    int_timestamp = self._node_clock.get_time_ms(monotonic=True)
+                    int_timestamp = self.clock.get_time_ms(monotonic=True)
                     self.stats.store_stat("room_survey", feedback, peer_id=room.uuid, timestamp=int_timestamp)
         return True
 
@@ -841,8 +843,8 @@ class WAgent(Agent):
                 _start_message = WAgent.__format_message(WAgent.manager_fake_name, WAgent.start_message)
 
                 # Putting the message in output stream of the manager
-                self._mana_proc_output_stream.set(_start_message)
                 self._mana_proc_output_stream.set_uuid(_request_uuid)
+                self._mana_proc_output_stream.set(_start_message)
 
             # Ordinary room message from a participant
             if is_participant_message:
@@ -868,6 +870,7 @@ class WAgent(Agent):
                 # (no need to do it for the welcome message, that is the same for all the rooms, hence already
                 # generated above - only once)
                 if is_participant_message:
+                    print("PARTICIPANT MESSAGE")
                     ret = await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
                                                None, _request_time, _request_uuid, _completed)
                     if not ret:
@@ -879,16 +882,19 @@ class WAgent(Agent):
                 self.print(f"Sample to broadcast (wildcards not handled yet): {sample_to_broadcast}")
 
                 # Manual tag management
+                if is_participant_message:
+                    print("CIAO")
                 sample_tag = self._mana_streams_of_rooms_tags[room_id]
                 self._mana_streams_of_rooms_tags[room_id] += 1
+
+                # Setting the UUID to the same one that was originally requested
+                print(f"_request_uuid={_request_uuid}")
+                self._mana_streams_of_rooms[room_id].set_uuid(_request_uuid)
 
                 # Setting the formatted message to the room stream (using the just prepared tag)
                 # Recall that this is a buffered stream handled as a queue, so we will have to manually set the
                 # recipients of this message (not here, we will do it when leaving the state where we are now)
                 self._mana_streams_of_rooms[room_id].set(sample_to_broadcast, data_tag=sample_tag)
-
-                # Setting the UUID to the same one that was originally requested
-                self._mana_streams_of_rooms[room_id].set_uuid(_request_uuid)
 
                 # Saving the recipients of this broadcasting: all the guests in case (1),
                 # all except the sender in case (2) - since the manager is not a guest, this code is fine for both.
@@ -969,6 +975,11 @@ class WAgent(Agent):
         # Getting data from the manager's stream, add it to the existing conversation, load it to the input stream
         msg = self._part_room_stream.get("get_messages")
 
+        print("============")
+        print(msg)
+        print(self._part_room_stream.data_by_uuid.keys())
+        print("============")
+
         # Guessing our own fake name by parsing the welcome/start message that the manager sent us
         # (if self._part_fake_name is None, then no messages has been received yet)
         if msg is not None and self._part_fake_name is None:
@@ -1038,7 +1049,7 @@ Read the transcript. Output ONLY your next reply text. Do not output the transcr
         # Here we do not see any UUIDs or tags, since this input will be handled by the internal (solid) do_gen
         # to create an output that, afterward, will be used in an ask_gen (that indeed will set the UUID)
         self.set_proc_input(self._part_conversation_as_str)   # Here it can be None, and that's fine
-        self.out(f"Conversation so far:\n{self._part_conversation_as_str}")
+        #self.out(f"Conversation so far:\n{self._part_conversation_as_str}")
         return True
 
     async def set_email(self):
@@ -1211,17 +1222,21 @@ Read the transcript. Output ONLY your next reply text. Do not output the transcr
 
         # Getting from the output stream the message that was just prepared by the 'do_gen' action
         my_own_prepared_message = self._part_proc_output_stream.get("message_prepared")
+        print(f"my_own_prepared_message={my_own_prepared_message}")
+        print(self._part_proc_output_stream.data_by_uuid.keys())
 
         # Saving the message we prepared in the conversation history: notice that the other guests will receive it
         # later (so the conversations are not exactly the same on all sides), but that's expected
         if my_own_prepared_message is not None:
 
             # Formatting as expected
-            my_own_prepared_message = WAgent.__format_message(f"{self._part_fake_name} (You)",
+            my_own_prepared_message = WAgent.__format_message(f"{self._part_fake_name}",
                                                               my_own_prepared_message)
 
             # Add to history adn convert the conversation to a single, long, string,
             # saved in self._part_conversation_as_str
+            print(f"my_own_prepared_message={my_own_prepared_message}")
+            print(self._part_proc_output_stream.data_by_uuid.keys())
             self.__add_to_history(formatted_msg=my_own_prepared_message)
 
         return True
@@ -1252,10 +1267,10 @@ Read the transcript. Output ONLY your next reply text. Do not output the transcr
                     break
         return inputs
 
-    def callback_before_sending_sample(self, content, data_tag: int, net_hash: str, stream_name: str, recipient: str):
+    def hook_before_sending_sample(self, content, data_tag: int, net_hash: str, stream_name: str, recipient: str):
         """Right before sending a message with a data sample, we save stats about it, and we also alter it if needed."""
 
-        content = super().callback_before_sending_sample(content, data_tag, net_hash, stream_name, recipient)
+        content = super().hook_before_sending_sample(content, data_tag, net_hash, stream_name, recipient)
         msg = content
         if self.get_current_role() != "manager":
             self.out(f"Sending message {msg} to {recipient}...")
@@ -1287,12 +1302,12 @@ Read the transcript. Output ONLY your next reply text. Do not output the transcr
             room_msg = {
                 "room_uuid": room.uuid,
                 "msg": msg,
-                "timestamp": self._node_clock.get_time_as_string(),
+                "timestamp": self.clock.get_time_as_string(),
                 "sender_peer_id": sender_peer_id,
                 "sender_fake_name": sender_fake_name,
                 "sender_real_name": sender_profile['email'] + '/' + sender_profile['node_name']
             }
-            int_timestamp = self._node_clock.get_time_ms(monotonic=True)
+            int_timestamp = self.clock.get_time_ms(monotonic=True)
             self.stats.store_stat("room_message", room_msg, peer_id=room.uuid, timestamp=int_timestamp)
             self._mana_streams_of_rooms_sent_tags[room.id_in_hotel] = data_tag
 
@@ -1366,8 +1381,19 @@ Read the transcript. Output ONLY your next reply text. Do not output the transcr
         # Hi mate.
         #
         # --------------
-        timestamp = self._part_room_stream.get_timestamp() \
-            if sender != self._part_fake_name else self._part_proc_output_stream.get_timestamp()
+        if sender != self._part_fake_name:
+            if sender == WAgent.manager_fake_name:
+                print(f"sender={sender} == {WAgent.manager_fake_name} (getting _part_manager_stream)")
+                timestamp = self._part_manager_stream.get_timestamp()
+                if timestamp is None:
+                    timestamp = self._part_room_stream.get_timestamp()
+            else:
+                print(f"sender={sender} != {self._part_fake_name} (getting _part_room_stream)")
+                timestamp = self._part_room_stream.get_timestamp()
+        else:
+            print(f"sender={sender} == {self._part_fake_name} (getting _part_proc_output_stream)")
+            timestamp = self._part_proc_output_stream.get_timestamp()
+            sender += " (You)"
         timestamp = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
         self._part_conversation.append(f"({timestamp}) {sender}: {msg_only}")
         self._part_conversation.append("--------------")

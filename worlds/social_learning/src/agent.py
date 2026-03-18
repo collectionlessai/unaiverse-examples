@@ -140,7 +140,7 @@ class WAgent(Agent):
 
         self.update_streams_in_profile()
 
-        #self.behav.set_debug_messages_active(True)  # TODO remove this
+        # self.behav.set_debug_messages_active(True)  # TODO remove this
 
     async def ask_best_to_gen_ask_others_to_learn(self):
         if self._valid_cmp_agents is None or len(self._valid_cmp_agents) == 0:
@@ -182,6 +182,7 @@ class WAgent(Agent):
 
             # Getting the UUID of the request
             ref_uuid = self.last_ref_uuid
+            asked = self._agents_who_were_asked.copy()
 
             # Asking the best student to label the data
             if not (await self.ask_gen(best_student,
@@ -190,9 +191,12 @@ class WAgent(Agent):
                                        timeout=30.0,
                                        ask_uuid=ref_uuid)):
                 self.err("Unable to ask the best student to for the next lecture")
+                self._agents_who_were_asked.clear()
+                self._agents_who_were_asked.update(asked)
                 self._engaged_agents = all_students
                 return False
             else:
+                self._agents_who_were_asked.update(asked)
 
                 # From the teacher's perspective: setting the UUID of the pubsub that the best student will send
                 net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
@@ -249,9 +253,17 @@ class WAgent(Agent):
 
                     # Setting up the stream data
                     if name == "images":
+                        #print(image_stream_obj)
+                        #print(image_stream_obj.get("do_genitals"))
                         stream_obj.set(image_stream_obj.get("do_gen"))  # Streaming image
+                        #print(stream_obj)
+                        #print(f"FANCULO IMAGES _request_uuid={_request_uuid}")
                     elif name == "labels":
+                        #print(prediction_stream_obj)
+                        #print(prediction_stream_obj.get("do_genitals"))
                         stream_obj.set(prediction_stream_obj.get("do_gen"))  # Streaming decision
+                        #print(stream_obj)
+                        #print(f"FANCULO LABELS _request_uuid={_request_uuid}")
                     else:
                         raise ValueError(f"Unexpected stream name in the best_student_stream group: {name}")
                 break
@@ -280,7 +292,7 @@ class WAgent(Agent):
         # Generic evaluation request
         if not (await super().evaluate(stream_hash, how, steps, re_offset)):
             return False
-        _t = self._node_clock.get_time_ms()
+        _t = self.clock.get_time_ms()
         for _peer_id, _eval_result in self._eval_results.items():
             self.stats.store_stat("exam_err", _eval_result, peer_id=_peer_id, timestamp=_t)
 
@@ -291,7 +303,7 @@ class WAgent(Agent):
         # we overload this so that each student, after class, takes the full mnist test set and evaluates itself
         error_rate = error_rate_mnist_test_set(network=self.proc,
                                                mnist_data_save_path=os.path.join(self._agent_folder_name, "mnist_data"))
-        _t = self._node_clock.get_time_ms()
+        _t = self.clock.get_time_ms()
         _, _peer_id = self.get_peer_ids()
         self.stats.store_stat("full_test_err", error_rate, peer_id=_peer_id, timestamp=_t)
         return True
@@ -308,7 +320,7 @@ class WAgent(Agent):
                 best_student_result = self._eval_results[best_student_peer_id]
 
                 if best_student_result >= 0:
-                    _t = self._node_clock.get_time_ms()
+                    _t = self.clock.get_time_ms()
                     self.out(f"The best student is {best_student_peer_id} with this result: {best_student_result})")
                     # the agent store and then send the stat to the world with the peer_id of the best student
                     self.stats.store_stat("best_exam_err_history", best_student_result, peer_id=best_student_peer_id,
