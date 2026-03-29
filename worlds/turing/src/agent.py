@@ -18,10 +18,11 @@ import random
 import time as ttime
 from datetime import datetime
 from unaiverse.agent import Agent
-from unaiverse.dataprops import DataProps
+from unaiverse.custom import GenException
+from unaiverse.streams.dataprops import DataProps
+from unaiverse.modules.utils import has_human_processor
 from unaiverse.networking.node.profile import NodeProfile
 from unaiverse.streams import DataStream, BufferedDataStream
-from unaiverse.utils.misc import GenException, has_human_processor
 
 
 class WAgent(Agent):
@@ -921,6 +922,7 @@ class WAgent(Agent):
             self.out("Connection to manager started...")
 
             self.behav.update_wildcard("<eta_time>", "(we must wait for the other conversations to finish)")
+            self.behav.apply_wildcards()
             return True
         else:
             self.err("Failed to connect to a manager")
@@ -1062,6 +1064,7 @@ Read the transcript. Output ONLY your next reply text. Do not output the transcr
         self.behav.add_wildcards({"<email>": self.get_profile().get_static_profile()['email']})
         self.behav.add_wildcards({"<eta_time>": "(we must wait for the other conversations to finish)"})
         self.behav.add_wildcards({"<eta_part>": str(WAgent.guests_per_room)})
+        self.behav.apply_wildcards()
         return True
 
     async def skip_confirmation(self):
@@ -1105,6 +1108,7 @@ Read the transcript. Output ONLY your next reply text. Do not output the transcr
 
         self.behav.update_wildcard("<eta_time>", "(approximately " +
                                    str(eta) + "s to go, we must wait for the other conversations to finish)")
+        self.behav.apply_wildcards()
         return True
 
     async def join_room(self, room_id: int = -1, missing: int = 0):
@@ -1152,6 +1156,7 @@ Read the transcript. Output ONLY your next reply text. Do not output the transcr
         # Number of missing participants at joining time
         self.behav.update_wildcard("<eta_part>", str(missing))
         self.behav.update_wildcard("<eta_time>", "(we must wait for the other conversations to finish)")  # Clearing
+        self.behav.apply_wildcards()
         return True
 
     async def leave_room(self):

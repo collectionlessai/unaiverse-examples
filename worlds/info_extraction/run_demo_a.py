@@ -23,7 +23,7 @@ agent.add_behav_wildcard("<stream_name>", "animal_stream")
 agent.add_behav_wildcard("<stream_len>", len(stream))
 
 # Node hosting agent
-node = Node(node_name="Test0", hosted=agent, hidden=True, clock_delta=1. / 10.)
+node = Node(node_name="_Test0", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Running node
-node.run(join_world="InfoExtraction")
+node.run(join_world="_InfoExtraction")

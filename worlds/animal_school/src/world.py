@@ -104,6 +104,7 @@ class WWorld(World):
         # Wildcards present in the template
         behav.add_wildcards({"<role_to_connect>": "student",
                              "<learn_steps>": 40, "<eval_steps>": 30, "<cmp_thres>": 0.65})
+        behav.apply_wildcards()
 
         # Adding default messages
         behav.generate_auto_messages()

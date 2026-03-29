@@ -1,6 +1,6 @@
 import torch
 from unaiverse.agent import Agent
-from unaiverse.dataprops import Data4Proc
+from unaiverse.streams.dataprops import Data4Proc
 from unaiverse.modules.networks import CNN
 from unaiverse.networking.node.node import Node
 

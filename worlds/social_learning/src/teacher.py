@@ -15,21 +15,17 @@
 import os
 import math
 import copy
-import torch
 import random
 import numpy as np
 from unaiverse.agent import Agent
 from torch.utils.data import Subset
-from unaiverse.dataprops import DataProps
 from torchvision import datasets, transforms
 from unaiverse.utils.misc import prepare_app_dir
 from unaiverse.streams import DataStream, Dataset
-from unaiverse.modules.utils import error_rate_mnist_test_set
+from unaiverse.interaction import CompletionReason
 
 
 class WAgent(Agent):
-    student_learn_time = 30.0
-    student_exam_time = 30.0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -60,87 +56,68 @@ class WAgent(Agent):
     def accept_new_role(self, role: int):
         super().accept_new_role(role)
 
-        if self.get_current_role() == "teacher":
-            # Getting MNIST data
-            mnist_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,))
-            ])
-            mnist_train = datasets.MNIST(root=os.path.join(self._agent_folder_name, "mnist_data"), train=True,
-                                         download=True,
-                                         transform=mnist_transform)
-            mnist_test = datasets.MNIST(root=os.path.join(self._agent_folder_name, "mnist_data"), train=False,
-                                        download=True,
-                                        transform=mnist_transform)
+        # Getting MNIST data
+        mnist_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+        mnist_train = datasets.MNIST(root=os.path.join(self._agent_folder_name, "mnist_data"), train=True,
+                                     download=True,
+                                     transform=mnist_transform)
+        mnist_test = datasets.MNIST(root=os.path.join(self._agent_folder_name, "mnist_data"), train=False,
+                                    download=True,
+                                    transform=mnist_transform)
 
-            # Preparing dataset that will be streamed by the teacher
-            def subsample(dataset, n_per_class, c, grp=0, offset=0):
-                targets = dataset.targets.cpu().numpy()
-                indices = []
-                for cls in range(c):
-                    cls_indices = np.where(targets == cls)[0]
-                    start = offset + grp * n_per_class
-                    end = offset + start + n_per_class
-                    cls_indices = cls_indices[start:end]
-                    indices.extend(cls_indices.tolist())
-                random.shuffle(indices)
-                return Subset(dataset, indices)
+        # Preparing dataset that will be streamed by the teacher
+        def subsample(dataset, n_per_class, c, grp=0, offset=0):
+            targets = dataset.targets.cpu().numpy()
+            indices = []
+            for cls in range(c):
+                cls_indices = np.where(targets == cls)[0]
+                start = offset + grp * n_per_class
+                end = offset + start + n_per_class
+                cls_indices = cls_indices[start:end]
+                indices.extend(cls_indices.tolist())
+            random.shuffle(indices)
+            return Subset(dataset, indices)
 
-            eval_set = subsample(mnist_test, n_per_class=self._eval_per_class, c=10, grp=0)
-            teach_sets = []
+        eval_set = subsample(mnist_test, n_per_class=self._eval_per_class, c=10, grp=0)
+        teach_sets = []
 
-            for n in range(0, self._rounds):
-                teach_sets.append(subsample(mnist_train, n_per_class=self._teach_per_class, c=10, grp=n))
-            unlabeled_set = subsample(mnist_train, n_per_class=self._unlabeled_per_class, c=10,
-                                      grp=0, offset=self._rounds * self._teach_per_class)
+        for n in range(0, self._rounds):
+            teach_sets.append(subsample(mnist_train, n_per_class=self._teach_per_class, c=10, grp=n))
+        unlabeled_set = subsample(mnist_train, n_per_class=self._unlabeled_per_class, c=10,
+                                  grp=0, offset=self._rounds * self._teach_per_class)
 
-            # Adding streams
-            s = self.add_streams([DataStream.create(group="eval", name="images", public=False,
-                                                    stream=Dataset(eval_set, shape=(None, 1, 28, 28), index=0,
+        # Adding streams
+        s = self.add_streams([DataStream.create(group="eval", name="images", public=False,
+                                                stream=Dataset(eval_set, shape=(None, 1, 28, 28), index=0,
+                                                               batch_size=self._batch_size)),
+                              DataStream.create(group="eval", name="labels", public=False,
+                                                stream=Dataset(eval_set, shape=(None,), index=1,
+                                                               batch_size=self._batch_size))])
+        self._test_teach_and_unlabeled_data_streams += s
+
+        for n in range(0, self._rounds):
+            s = self.add_streams([DataStream.create(group=f"teach_{n}", name="images", public=False,
+                                                    stream=Dataset(teach_sets[n], shape=(None, 1, 28, 28), index=0,
                                                                    batch_size=self._batch_size)),
-                                  DataStream.create(group="eval", name="labels", public=False,
-                                                    stream=Dataset(eval_set, shape=(None,), index=1,
+                                  DataStream.create(group=f"teach_{n}", name="labels", public=False,
+                                                    stream=Dataset(teach_sets[n], shape=(None,), index=1,
                                                                    batch_size=self._batch_size))])
             self._test_teach_and_unlabeled_data_streams += s
 
-            for n in range(0, self._rounds):
-                s = self.add_streams([DataStream.create(group=f"teach_{n}", name="images", public=False,
-                                                        stream=Dataset(teach_sets[n], shape=(None, 1, 28, 28), index=0,
-                                                                       batch_size=self._batch_size)),
-                                      DataStream.create(group=f"teach_{n}", name="labels", public=False,
-                                                        stream=Dataset(teach_sets[n], shape=(None,), index=1,
-                                                                       batch_size=self._batch_size))])
-                self._test_teach_and_unlabeled_data_streams += s
+        s = self.add_streams([DataStream.create(group="unlabeled", name="images", public=False, pubsub=False,
+                                                stream=Dataset(unlabeled_set, shape=(None, 1, 28, 28), index=0,
+                                                               batch_size=self._batch_size))])
+        self._test_teach_and_unlabeled_data_streams += s
 
-            s = self.add_streams([DataStream.create(group="unlabeled", name="images", public=False, pubsub=False,
-                                                    stream=Dataset(unlabeled_set, shape=(None, 1, 28, 28), index=0,
-                                                                   batch_size=10))])
-            self._test_teach_and_unlabeled_data_streams += s
-
-            # Initially de-activating pub-sub streams
-            for stream_dict in self._test_teach_and_unlabeled_data_streams:
-                for stream_obj in stream_dict.values():
-                    stream_obj.disable()
-
-        elif self.get_current_role() == "student":
-            self.add_streams([DataStream(props=DataProps(group="best_student_stream", name="images",
-                                                         public=False, pubsub=True,
-                                                         data_type="tensor",
-                                                         data_desc="Batched images if this is the best student",
-                                                         tensor_shape=(None, 1, 28, 28),
-                                                         tensor_dtype=torch.float32)),
-                              DataStream(props=DataProps(group="best_student_stream", name="labels", public=False,
-                                                         data_type="tensor", pubsub=True,
-                                                         data_desc="Batched class-indices if this is the best student",
-                                                         tensor_shape=(None,),
-                                                         tensor_dtype=torch.long))])
-
-        elif self.get_current_role() == "student_isolated":
-            pass
+        # Initially de-activating pub-sub streams
+        for stream_dict in self._test_teach_and_unlabeled_data_streams:
+            for stream_obj in stream_dict.values():
+                stream_obj.disable()
 
         self.update_streams_in_profile()
-
-        # self.behav.set_debug_messages_active(True)  # TODO remove this
 
     async def ask_best_to_gen_ask_others_to_learn(self):
         if self._valid_cmp_agents is None or len(self._valid_cmp_agents) == 0:
@@ -176,9 +153,7 @@ class WAgent(Agent):
         # Asking them to learn from the best student
         if await self.ask_learn(u_hashes=[f"{best_student}:best_student_stream"],
                                 yhat_hashes=[f"{best_student}:best_student_stream"],
-                                samples=self.get_unlabeled_steps(),
-                                time=WAgent.student_learn_time * 2.,
-                                timeout=WAgent.student_learn_time / 3.0):
+                                samples=self.get_unlabeled_steps()):
 
             # Getting the UUID of the request
             ref_uuid = self.last_ref_uuid
@@ -188,7 +163,6 @@ class WAgent(Agent):
             if not (await self.ask_gen(best_student,
                                        u_hashes=[f"{teacher}:unlabeled"],
                                        samples=self.get_unlabeled_steps(),
-                                       timeout=30.0,
                                        ask_uuid=ref_uuid)):
                 self.err("Unable to ask the best student to for the next lecture")
                 self._agents_who_were_asked.clear()
@@ -217,63 +191,10 @@ class WAgent(Agent):
         actions = self.behav.get_all_actions()
         for action in actions:
             if preserve is None or action.name != preserve:
-                action.get_list_of_requests().clear()
+                interactions = action.get_list_of_interactions()
+                for interaction in interactions:
+                    self.im.complete(interaction, CompletionReason.DISCARDED)
         await self.set_engaged_partner(None, clear_found=False)
-
-    async def do_gen(self, u_hashes: list[str] | None = None, extra_hashes: list[str] | None = None,
-                     samples: int = 100, time: float = -1., timeout: float = -1.,
-                     _requester: str | list | None = None, _request_time: float = -1., _request_uuid: str | None = None,
-                     _completed: bool = False):
-
-        # Generic generation request
-        if not (await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
-                                     _requester, _request_time, _request_uuid, _completed)):
-            return False
-
-        # If the teacher asked to label its unlabeled data, then load the data and predictions in the apposite stream
-        if len(u_hashes) == 1 and u_hashes[0].endswith(":unlabeled") and len(self.known_streams[u_hashes[0]]) == 1:
-
-            # Getting the stream of the images coming from the teacher and of the labels predicted by my processor
-            image_stream_obj = next(iter(self.known_streams[u_hashes[0]].values()))  # This has only one data stream
-            prediction_stream_obj = None
-            for net_hash, stream_dict in self.proc_streams.items():
-                for name, stream_obj in stream_dict.items():
-                    if stream_obj.props.is_tensor():
-                        prediction_stream_obj = stream_obj
-                        break
-
-            # Loading data to the pubsub stream
-            _, best_student = self.get_peer_ids()
-            net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
-            for _, stream_dict in net_hash_to_stream_dict.items():
-                for name, stream_obj in stream_dict.items():
-
-                    # Forcing UUID
-                    stream_obj.set_uuid(_request_uuid)
-
-                    # Setting up the stream data
-                    if name == "images":
-                        #print(image_stream_obj)
-                        #print(image_stream_obj.get("do_genitals"))
-                        stream_obj.set(image_stream_obj.get("do_gen"))  # Streaming image
-                        #print(stream_obj)
-                        #print(f"FANCULO IMAGES _request_uuid={_request_uuid}")
-                    elif name == "labels":
-                        #print(prediction_stream_obj)
-                        #print(prediction_stream_obj.get("do_genitals"))
-                        stream_obj.set(prediction_stream_obj.get("do_gen"))  # Streaming decision
-                        #print(stream_obj)
-                        #print(f"FANCULO LABELS _request_uuid={_request_uuid}")
-                    else:
-                        raise ValueError(f"Unexpected stream name in the best_student_stream group: {name}")
-                break
-        elif len(u_hashes) == 1 and u_hashes[0].endswith(":eval"):
-            pass
-        else:
-            self.err("Expected only one stream hash to be provided as input, with name ending in 'eval' or "
-                     "'unlabeled'")
-            return False
-        return True
 
     async def shuffle_and_stop_streaming(self):
         self._seed += 1
@@ -295,18 +216,6 @@ class WAgent(Agent):
         _t = self.clock.get_time_ms()
         for _peer_id, _eval_result in self._eval_results.items():
             self.stats.store_stat("exam_err", _eval_result, peer_id=_peer_id, timestamp=_t)
-
-    async def get_disengagement(self, disconnect_too: bool = False, _requester: str | None = None):
-        if not (await super().get_disengagement(disconnect_too, _requester)):
-            return False
-        
-        # we overload this so that each student, after class, takes the full mnist test set and evaluates itself
-        error_rate = error_rate_mnist_test_set(network=self.proc,
-                                               mnist_data_save_path=os.path.join(self._agent_folder_name, "mnist_data"))
-        _t = self.clock.get_time_ms()
-        _, _peer_id = self.get_peer_ids()
-        self.stats.store_stat("full_test_err", error_rate, peer_id=_peer_id, timestamp=_t)
-        return True
 
     async def manage_best_of_class(self):
         if self.get_current_role() == "teacher":
@@ -334,6 +243,3 @@ class WAgent(Agent):
                 return True
         else:
             return True
-
-    async def manage_best_of_the_bests(self):
-        return True

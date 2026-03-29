@@ -70,6 +70,7 @@ class WWorld(World):
         # Wildcards present in the template
         behav.add_wildcards({"<role_to_connect>": "student",
                              "<learn_steps>": num_samples, "<eval_steps>": num_samples, "<cmp_thres>": 0.2})
+        behav.apply_wildcards()
 
         # Data tags are not reliable at evaluation time: forcing the tag of the first compared pair to be the same
         behav.states["eval_time"].action.args['re_offset'] = True

@@ -1,13 +1,13 @@
 from unaiverse.agent import Agent
-from unaiverse.dataprops import Data4Proc
+from unaiverse.streams import StreamType
 from unaiverse.modules.networks import SmolVLM
 from unaiverse.networking.node.node import Node
 
 # Agent
 agent = Agent(proc=SmolVLM(),
-              proc_inputs=[Data4Proc(data_type="img", pubsub=False, private_only=False),
-                           Data4Proc(data_type="text", pubsub=False, private_only=False)],
-              proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
+              proc_inputs=[StreamType(data_type="img", pubsub=False, private_only=False),
+                           StreamType(data_type="text", pubsub=False, private_only=False)],
+              proc_outputs=[StreamType(data_type="text", pubsub=False, private_only=False)],
               proc_opts={})
 
 # Node hosting agent

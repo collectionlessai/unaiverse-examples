@@ -4,6 +4,10 @@
     "role": "extractor",
     "prev_state": null,
     "limbo_state": null,
+    "welcome_msg": "Welcome to the world of Information Extraction. There are two types of citizens: 'users' &#128100; who stream images (through an environmental stream) and 'extractors' &#9997;&#65039; who provide a textual feedback about the streamed images. You joined as: '<role>'.",
+    "highlight_blocking_states_in_messages": false,
+    "show_action_ticks_after_messages": false,
+    "show_action_request_after_messages": false,
     "state_actions": {
         "ready": ["disengage_all", {}, 0, true, 0.0],
         "user_engaged": [null, null, 1, true, 0.0],

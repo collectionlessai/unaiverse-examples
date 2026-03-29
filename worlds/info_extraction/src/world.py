@@ -15,7 +15,8 @@
 import os
 from .stats import WStats
 from unaiverse.world import World
-from unaiverse.dataprops import DataProps
+from unaiverse.custom import Custom
+from unaiverse.streams import DataProps
 from unaiverse.hsm import HybridStateMachine
 from unaiverse.networking.node.profile import NodeProfile
 
@@ -79,12 +80,12 @@ class WWorld(World):
         dummy_agent = WAgent(proc=None)
         welcome_msg = "Welcome to the world of Information Extraction. There are two types of citizens: " \
                       "'users' 👤 who stream images (through an environmental stream) and 'extractors' ✍️ who " \
-                      "provide a textual feedback about the streamed images. You joined as: '<role>'."
+                      f"provide a textual feedback about the streamed images. You joined as: '{Custom.ROLE_WILDCARD}'."
 
         # ROLE 1/2: user
         behav = HybridStateMachine(dummy_agent)
         behav.set_welcome_message(welcome_msg)
-        behav.set_role("user")
+        behav.set_role("user")  # This will set the <role> (Custom.ROLE_WILDCARD) wildcard too
 
         # Let's wait a little bit before moving from init to the ready state of the service_requester.json, so that,
         # meanwhile, this agent will become known to the others...
@@ -96,6 +97,7 @@ class WWorld(World):
         behav.add_wildcards({"<provider_role>": "extractor",
                              "<providers_filter_fcn>": "filter_addresses",
                              "<providers_data_processing_fcn>": "handle_received_data"})
+        behav.apply_wildcards()
 
         # Messages
         behav.add_state("ready", msg="🔍 Looking for new agents for information exaction")
@@ -117,6 +119,7 @@ class WWorld(World):
                           action="nop", args={})
 
         behav.add_wildcards({"<user_role>": "user"})
+        behav.apply_wildcards()
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'extractor.json'), only_if_changed=dummy_agent)

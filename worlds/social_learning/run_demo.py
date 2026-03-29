@@ -1,9 +1,8 @@
 import os
-import sys
 import torch
 import importlib.util
 from unaiverse.agent import Agent
-from unaiverse.dataprops import Data4Proc
+from unaiverse.streams.dataprops import Data4Proc
 from unaiverse.modules.networks import CNN
 from unaiverse.networking.node.node import Node
 from unaiverse.modules.utils import error_rate_mnist_test_set
@@ -31,14 +30,14 @@ agent = Agent(proc=net,
               buffer_generated_by_others="none")
 
 # Node hosting agent
-node = Node(node_name="Test11", hosted=agent, hidden=True, clock_delta=1. / 10.)
+node = Node(node_name="_Test1", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Starting countdown
 living_seconds = 90*5
 c = countdown_start(living_seconds, msg="Living")
 
 # Running node
-node.run(join_world="DigitSocialLearning", max_time=living_seconds)
+node.run(join_world="_DigitSocialLearning", max_time=living_seconds)
 
 # Evaluating after 'living
 error_rate_final = error_rate_mnist_test_set(net, mnist_data_save_path=save_path)

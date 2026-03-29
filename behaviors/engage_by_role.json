@@ -1,44 +1,255 @@
 {
-    "initial_state": "searching",
-    "state": "searching",
-    "prev_state": null,
-    "limbo_state": null,
-    "state_actions": {
-        "searching": ["disconnect_by_role", {"role": "<roles_to_engage>"}, 0, false, 5.0],
-        "connected": [null, null, 1, true],
-        "can_engage": [null, null, 2, false],
-        "engagement_sent": [null, null, 3, false],
-        "engaged_one": [null, null, 4, false],
-        "engagement_complete": [null, null, 5, false]
-    },
-    "transitions": {
-        "searching": {
-            "connected": [["connect_by_role", {"role": "<roles_to_engage>"}, true, 0]]
-        },
-        "connected": {
-            "connection_timeout": [["nop", {"delay": 45.0}, true, 3]],
-            "connected": [["agents_are_waiting", {}, true, 1]],
-            "can_engage": [["find_agents", {"role": "<roles_to_engage>", "handshake_completed": true}, true, 11]]
-        },
-        "connection_timeout": {
-            "can_engage": [["find_agents", {"role": "<roles_to_engage>", "handshake_completed": true}, true, 2]],
-            "searching": [["nop", {}, true, 10]]
-        },
-        "can_engage": {
-            "engagement_sent": [["send_engagement", {}, true, 4]],
-            "searching": [["nop", {}, true, 5]]
-        },
-        "engagement_sent": {
-            "engaged_one": [["got_engagement", {}, false, 6]],
-            "searching": [["nop", {"delay": 7.5}, true, 7]]
-        },
-        "engaged_one": {
-            "engaged_one": [["got_engagement", {}, false, 8]],
-            "engagement_complete": [
-                ["all_engagements_completed", {}, true, 8],
-                ["nop", {"delay": 7.5}, true, 9]
-            ]
+    "machine": {
+        "role": "unknown",
+        "initial_state": "searching",
+        "msg": null,
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
         }
     },
-    "cur_action": null
+    "states": {
+        "searching": {
+            "action": "disconnect_by_role",
+            "action_kwargs": {
+                "role": "<roles_to_engage>"
+            },
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 5.0
+        },
+        "connected": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "can_engage": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "engagement_sent": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "engaged_one": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "engagement_complete": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "connection_timeout": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        }
+    },
+    "transitions": {
+        "searching": [
+            {
+                "on": {
+                    "action": "connect_by_role",
+                    "action_kwargs": {
+                        "role": "<roles_to_engage>"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "connected"
+            }
+        ],
+        "connected": [
+            {
+                "on": {
+                    "action": "agents_are_waiting",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "connected"
+            },
+            {
+                "on": {
+                    "action": "find_agents",
+                    "action_kwargs": {
+                        "role": "<roles_to_engage>",
+                        "handshake_completed": true
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "can_engage"
+            }
+        ],
+        "can_engage": [
+            {
+                "on": {
+                    "action": "send_engagement",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "engagement_sent"
+            }
+        ],
+        "engagement_sent": [
+            {
+                "on": {
+                    "action": "got_engagement",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "engaged_one"
+            }
+        ],
+        "engaged_one": [
+            {
+                "on": {
+                    "action": "got_engagement",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "engaged_one"
+            },
+            {
+                "on": {
+                    "action": "all_engagements_completed",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "engagement_complete"
+            }
+        ],
+        "connection_timeout": [
+            {
+                "on": {
+                    "action": "find_agents",
+                    "action_kwargs": {
+                        "role": "<roles_to_engage>",
+                        "handshake_completed": true
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "can_engage"
+            }
+        ]
+    },
+    "teleports": {
+        "connected": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 45.0
+                },
+                "goto": "connection_timeout"
+            }
+        ],
+        "can_engage": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "searching"
+            }
+        ],
+        "engagement_sent": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 7.5
+                },
+                "goto": "searching"
+            }
+        ],
+        "connection_timeout": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "searching"
+            }
+        ],
+        "engaged_one": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 7.5
+                },
+                "goto": "engagement_complete"
+            }
+        ]
+    }
 }

@@ -1,9 +1,7 @@
-import os
 from unaiverse.agent import Agent
-from unaiverse.dataprops import Data4Proc
+from unaiverse.streams import Data4Proc
 from unaiverse.networking.node.node import Node
 from unaiverse.modules.networks import FasterRCNN
-from unaiverse.utils.misc import get_node_addresses_from_file
 
 # Agent
 agent = Agent(proc=FasterRCNN(),

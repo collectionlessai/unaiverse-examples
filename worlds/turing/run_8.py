@@ -1,6 +1,6 @@
 import os
 from unaiverse.agent import Agent
-from unaiverse.dataprops import Data4Proc
+from unaiverse.streams.dataprops import Data4Proc
 from unaiverse.networking.node.node import Node
 from unaiverse.modules.utils import LoggerModule
 from unaiverse.utils.misc import PolicyFilterSelfGen
