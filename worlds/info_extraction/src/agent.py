@@ -17,7 +17,7 @@ import json
 import torch
 from PIL.Image import Image
 from unaiverse.agent import Agent
-from unaiverse.dataprops import DataProps
+from unaiverse.streams.dataprops import DataProps
 
 
 class WAgent(Agent):

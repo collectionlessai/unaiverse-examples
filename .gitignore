@@ -6,6 +6,7 @@ __pycache__/
 venv/
 env/
 *.env
+*.jsonl
 
 # Node.js / React
 node_modules/

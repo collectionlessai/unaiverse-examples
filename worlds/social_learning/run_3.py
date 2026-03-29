@@ -1,6 +1,6 @@
 import torch
 from unaiverse.agent import Agent
-from unaiverse.dataprops import Data4Proc
+from unaiverse.streams.dataprops import Data4Proc
 from unaiverse.modules.networks import CNN
 from unaiverse.networking.node.node import Node
 
@@ -18,7 +18,7 @@ agent = Agent(proc=net,
               buffer_generated_by_others="none")
 
 # Node hosting agent
-node = Node(node_name="DigitClassifier3", hosted=agent, hidden=True, clock_delta=1. / 10.)
+node = Node(node_name="_DigitClassifier3", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Running node
-node.run(join_world="DigitSocialLearning", resume_from_checkpoint=True)
+node.run(join_world="_DigitSocialLearning", resume_from_checkpoint=True)

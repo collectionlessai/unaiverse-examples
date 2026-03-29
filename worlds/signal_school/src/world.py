@@ -70,6 +70,7 @@ class WWorld(World):
         # Wildcards present in the template
         behav.add_wildcards({"<role_to_connect>": "student",
                              "<learn_steps>": 1000, "<eval_steps>": 1000, "<cmp_thres>": 0.2})
+        behav.apply_wildcards()
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'teacher.json'), only_if_changed=dummy_agent)

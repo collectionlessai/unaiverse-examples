@@ -1,22 +1,76 @@
 {
-    "initial_state": "ready",
-    "state": "ready",
-    "prev_state": null,
-    "limbo_state": null,
-    "state_actions": {
-        "ready": ["disengage_all", null, 0],
-        "user_engaged": [null, null, 1]
-    },
-    "transitions": {
-        "ready": {
-            "user_engaged": [["get_engagement", {"acceptable_role": "<user_role>"}, false, 0]]
-        },
-        "user_engaged": {
-            "ready": [
-                ["do_gen", {}, false, 1],
-                ["nop", {"delay": 90.0}, true, 2]
-            ]
+    "machine": {
+        "role": "unknown",
+        "initial_state": "ready",
+        "msg": null,
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
         }
     },
-    "cur_action": null
+    "states": {
+        "ready": {
+            "action": "disengage_all",
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "user_engaged": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        }
+    },
+    "transitions": {
+        "ready": [
+            {
+                "on": {
+                    "action": "get_engagement",
+                    "action_kwargs": {
+                        "acceptable_role": "<user_role>"
+                    },
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "user_engaged"
+            }
+        ],
+        "user_engaged": [
+            {
+                "on": {
+                    "action": "do_gen",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            }
+        ]
+    },
+    "teleports": {
+        "all": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 90.0
+                },
+                "goto": "ready"
+            }
+        ]
+    }
 }

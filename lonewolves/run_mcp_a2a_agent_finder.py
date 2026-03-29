@@ -6,7 +6,7 @@ import threading
 
 # Unaiverse imports for building a node in our network.
 from unaiverse.agent import Agent
-from unaiverse.dataprops import Data4Proc
+from unaiverse.streams import StreamType
 from unaiverse.networking.node.node import Node
 
 # --------- Code from the src/a2a_mcp/a2a_mcp/mcp/client.py file ---------
@@ -243,8 +243,8 @@ if __name__ == "__main__":
     # We wrap our custom Torch module (A2AMCPFinder) into a Unaiverse Agent
     agent = Agent(
         proc=A2AMCPFinder(config=mcp_config),
-        proc_inputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
-        proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
+        proc_inputs=[StreamType(data_type="text", pubsub=False, private_only=False)],
+        proc_outputs=[StreamType(data_type="text", pubsub=False, private_only=False)],
         proc_opts={}
     )
 

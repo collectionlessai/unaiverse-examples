@@ -1,5 +1,5 @@
 from unaiverse.agent import Agent
-from unaiverse.dataprops import Data4Proc
+from unaiverse.streams import Data4Proc
 from unaiverse.modules.networks import ViT
 from unaiverse.networking.node.node import Node
 
@@ -12,7 +12,7 @@ agent = Agent(proc=net,
                                       pubsub=False, private_only=True)])
 
 # Node hosting agent
-node = Node(node_name="ViT", hosted=agent, hidden=True, clock_delta=1. / 10.)
+node = Node(node_name="_ViT", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Running node
-node.run(join_world="InfoExtraction")
+node.run(join_world="_InfoExtraction")
