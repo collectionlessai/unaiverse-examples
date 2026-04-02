@@ -34,7 +34,7 @@ agent = Agent(proc=net,
 node = Node(node_name="Test11", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Starting countdown
-living_seconds = 90*5
+living_seconds = 90
 c = countdown_start(living_seconds, msg="Living")
 
 # Running node
