@@ -5,7 +5,6 @@ from unaiverse.streams import StreamType
 from unaiverse.custom import GenException
 from unaiverse.modules.utils import HumanModule
 from unaiverse.networking.node.node import Node
-from unaiverse.utils.misc import PolicyFilterHuman
 
 # Parsing command line
 parser = argparse.ArgumentParser(description="Human interface to UNaIVERSE (Python)")
@@ -28,8 +27,7 @@ agent = Agent(proc=HumanModule(),
                            StreamType(data_type="img", pubsub=False, private_only=False),
                            StreamType(data_type="all", pubsub=False, private_only=False)],
               proc_outputs=outputs,
-              proc_opts={},
-              policy_filter=PolicyFilterHuman())
+              proc_opts={})
 
 # Node hosting agent
 node_agent = Node(node_name=cmd_args.node, hosted=agent, hidden=True, clock_delta=1.)
