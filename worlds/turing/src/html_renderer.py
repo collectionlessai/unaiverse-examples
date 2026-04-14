@@ -29,7 +29,8 @@ def render(
     summary_html: str = "",
     scope_tab_buttons: str = "",
     scope_cms_html: str = "",
-    scope_lbs_html: str = "",
+    scope_podiums_html: str = "",
+    scope_grids_html: str = "",
     default_scope: str = "max",
     ops_json: str = "[]",
 ) -> str:
@@ -239,11 +240,7 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   background:var(--gradient-accent);opacity:0;
   transition:opacity .25s ease;
 }}
-.card:hover{{
-  border-color:var(--card-hover-border);
-  box-shadow:var(--shadow-md);
-  transform:translateY(-2px);
-}}
+.card:hover{{border-color:var(--card-hover-border);box-shadow:var(--shadow-md);transform:translateY(-2px)}}
 .card:hover::before{{opacity:1}}
 .card-val{{
   font-family:'Space Grotesk',sans-serif;
@@ -259,31 +256,6 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   transition:color .3s ease;
 }}
 .card.muted .card-val{{font-size:.9375rem;color:var(--text-muted)}}
-
-/* ═══════════════════════════════════════════════════════
-   TAB BAR
-   ═══════════════════════════════════════════════════════ */
-.tab-bar{{
-  display:flex;gap:4px;margin-bottom:24px;padding:4px;
-  background:var(--bg-subtle);border:1px solid var(--border);border-radius:10px;
-  overflow-x:auto;-webkit-overflow-scrolling:touch;
-  justify-content:center;
-  transition:background-color .3s ease,border-color .3s ease;
-}}
-.tab-bar::-webkit-scrollbar{{height:0;display:none}}
-.tab-btn{{
-  background:transparent;border:none;border-radius:7px;
-  padding:8px 20px;color:var(--text-muted);cursor:pointer;
-  font-family:'Inter',sans-serif;font-size:.8125rem;font-weight:600;
-  white-space:nowrap;
-  transition:all .2s cubic-bezier(.2,0,0,1);
-}}
-.tab-btn:hover{{color:var(--text-secondary);background:var(--hover-bg)}}
-.tab-btn.active{{
-  background:var(--tab-active-bg);
-  color:var(--tab-active-text);
-  box-shadow:var(--tab-active-shadow);
-}}
 
 /* ═══════════════════════════════════════════════════════
    SCOPE PANELS
@@ -311,7 +283,7 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
 }}
 .mid-cm{{flex:0 0 auto;min-width:0;display:flex}}
 .mid-chart{{
-  flex:1 1 300px;min-width:0;
+  flex:1 1 300px;min-width:0;overflow:hidden;
   background:var(--bg-paper);border:1px solid var(--border);border-radius:12px;
   padding:20px;
   transition:box-shadow .25s ease,border-color .25s ease,background-color .3s ease;
@@ -322,7 +294,6 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
 /* ═══════════════════════════════════════════════════════
    LEADERBOARD SECTION
    ═══════════════════════════════════════════════════════ */
-.lb-tabs{{margin-bottom:0}}
 .lb-panel{{display:none}}
 .lb-panel.visible{{display:block}}
 
@@ -331,13 +302,12 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
    ═══════════════════════════════════════════════════════ */
 .podium{{
   display:flex;justify-content:center;gap:16px;
-  margin-bottom:28px;padding:20px 0 4px;
+  margin-bottom:20px;padding:4px 0;
   flex-wrap:wrap;
 }}
 .podium-card{{
   background:var(--bg-paper);border:1px solid var(--border);border-radius:12px;
   padding:20px 28px;text-align:center;min-width:160px;
-  position:relative;overflow:hidden;
   transition:border-color .25s ease,box-shadow .25s ease,transform .25s cubic-bezier(.2,0,0,1),background-color .3s ease;
 }}
 .podium-card:hover{{
@@ -345,9 +315,6 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   box-shadow:var(--shadow-md);
   transform:translateY(-3px);
 }}
-.podium-1{{border-top:3px solid #FFD700}}
-.podium-2{{border-top:3px solid #C0C0C0}}
-.podium-3{{border-top:3px solid #CD7F32}}
 .podium-medal{{font-size:2rem;line-height:1;margin-bottom:6px}}
 .podium-rank{{
   font-family:'Space Grotesk',sans-serif;font-size:.6875rem;font-weight:600;
@@ -370,33 +337,86 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
 }}
 
 /* ═══════════════════════════════════════════════════════
+   UNIFIED CONTROL BAR (scope | search | lb-toggle)
+   ═══════════════════════════════════════════════════════ */
+.ctrl-bar{{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 6px;margin-bottom:20px;
+  background:var(--bg-subtle);border:1px solid var(--border);border-radius:10px;
+  flex-wrap:wrap;
+  transition:background-color .3s ease,border-color .3s ease;
+}}
+/* left group: scope buttons */
+.ctrl-scopes{{display:flex;gap:2px;flex-shrink:0}}
+/* center: search */
+.ctrl-search{{
+  flex:1 1 140px;min-width:0;
+  position:relative;
+}}
+.ctrl-search-input{{
+  width:100%;
+  background:var(--bg-paper);
+  border:1px solid var(--border);
+  border-radius:7px;
+  color:var(--text-primary);
+  font-family:'Inter',sans-serif;font-size:.8125rem;
+  padding:7px 10px 7px 32px;
+  outline:none;
+  transition:border-color .2s ease,background-color .3s ease;
+}}
+.ctrl-search-input:focus{{border-color:var(--primary)}}
+.ctrl-search-input::placeholder{{color:var(--text-disabled)}}
+.ctrl-search-icon{{
+  position:absolute;left:9px;top:50%;transform:translateY(-50%);
+  font-size:16px;color:var(--text-disabled);pointer-events:none;
+}}
+/* right group: lb toggle */
+.ctrl-lb{{display:flex;gap:2px;flex-shrink:0}}
+/* shared button style for ctrl-bar buttons */
+.ctrl-btn{{
+  background:transparent;border:none;border-radius:7px;
+  padding:7px 16px;color:var(--text-muted);cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:.8125rem;font-weight:600;
+  white-space:nowrap;
+  transition:all .2s cubic-bezier(.2,0,0,1);
+}}
+.ctrl-btn:hover{{color:var(--text-secondary);background:var(--hover-bg)}}
+.ctrl-btn.active{{
+  background:var(--tab-active-bg);
+  color:var(--tab-active-text);
+  box-shadow:var(--tab-active-shadow);
+}}
+/* separator between groups */
+.ctrl-sep{{
+  width:1px;height:22px;background:var(--border-strong);
+  flex-shrink:0;align-self:center;
+}}
+
+/* ═══════════════════════════════════════════════════════
    GRID.JS THEME OVERRIDES
    ═══════════════════════════════════════════════════════ */
+/* Kill all backgrounds the Mermaid theme injects */
+.gridjs-wrapper,
+.gridjs-container,
+.gridjs-head,
+.gridjs-footer,
+.gridjs-tbody,
+table.gridjs-table,
+tr.gridjs-tr,
+td.gridjs-td{{
+  background:transparent !important;
+}}
 .gridjs-wrapper{{
   border:1px solid var(--border) !important;
   border-radius:12px !important;
   overflow:hidden;
   box-shadow:none !important;
+  /* restore paper bg on the outer wrapper only */
   background:var(--bg-paper) !important;
   transition:border-color .25s ease,background-color .3s ease;
 }}
-.gridjs-container{{background:transparent !important}}
-.gridjs-head{{background:transparent !important;padding:12px 12px 0 !important}}
-.gridjs-search{{width:100%;max-width:320px}}
-.gridjs-search-input{{
-  width:100%;
-  background:var(--bg-subtle) !important;
-  border:1px solid var(--border) !important;
-  border-radius:8px !important;
-  color:var(--text-primary) !important;
-  font-family:'Inter',sans-serif !important;
-  font-size:.8125rem !important;
-  padding:8px 12px !important;
-  outline:none;
-  transition:border-color .2s ease,background-color .3s ease;
-}}
-.gridjs-search-input:focus{{border-color:var(--primary) !important;background:var(--bg-paper) !important}}
-.gridjs-search-input::placeholder{{color:var(--text-disabled) !important}}
+/* hide the built-in search bar (we have our own) */
+.gridjs-head{{display:none !important}}
 table.gridjs-table{{
   font-family:'Inter',sans-serif !important;
   font-size:.8125rem !important;
@@ -424,11 +444,13 @@ td.gridjs-td{{
   border-left:none !important;border-right:none !important;
   font-feature-settings:'tnum';
   color:var(--text-secondary) !important;
-  background:transparent !important;
   transition:color .3s ease !important;
 }}
 tr.gridjs-tr:nth-child(even) td.gridjs-td{{background:var(--table-stripe) !important}}
-tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;color:var(--text-primary) !important}}
+tr.gridjs-tr:hover td.gridjs-td{{
+  background:var(--table-row-hover) !important;
+  color:var(--text-primary) !important;
+}}
 .gridjs-footer{{
   background:var(--bg-paper) !important;
   border-top:1px solid var(--border) !important;
@@ -463,20 +485,34 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
   font-size:.8125rem !important;
   text-align:center !important;
   padding:24px !important;
+  background:transparent !important;
 }}
 /* peer_id monospace cell */
 .peer-cell{{
   font-family:'JetBrains Mono',monospace;
-  font-size:.75rem;
-  color:var(--text-secondary);
-  cursor:default;
+  font-size:.75rem;color:var(--text-secondary);cursor:default;
 }}
 /* rank cell */
 .rank-cell{{
   font-family:'Space Grotesk',sans-serif;
-  font-weight:600;
-  color:var(--text-muted);
-  font-size:.75rem;
+  font-weight:600;color:var(--text-muted);font-size:.75rem;
+}}
+/* column header info icon */
+.col-tip-icon{{
+  font-size:14px;color:var(--text-disabled);vertical-align:middle;line-height:1;
+  cursor:help;margin-left:3px;
+}}
+.col-tip-icon:hover{{color:var(--primary)}}
+/* floating tooltip (appended to body via JS) */
+.col-floating-tip{{
+  position:fixed;
+  background:var(--bg-elevated);color:var(--text-secondary);
+  border:1px solid var(--border);border-radius:8px;
+  padding:7px 11px;font-size:.72rem;font-weight:400;
+  white-space:normal;width:210px;max-width:90vw;
+  box-shadow:var(--shadow-md);z-index:9999;line-height:1.4;
+  pointer-events:none;
+  animation:fadeInUp .15s ease;
 }}
 
 /* ═══════════════════════════════════════════════════════
@@ -498,10 +534,6 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
    UTILITIES
    ═══════════════════════════════════════════════════════ */
 .empty{{color:var(--text-disabled);font-size:.8125rem;padding:24px 0;text-align:center}}
-.section-divider{{
-  border:none;border-top:1px solid var(--border-subtle);
-  margin:32px 0;
-}}
 
 /* Footer */
 .dashboard-footer{{
@@ -517,15 +549,12 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
 /* ═══════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════ */
-
-/* Tablet */
 @media(max-width:1024px){{
   .dashboard{{padding:20px 16px 32px}}
   .mid-row{{flex-direction:column}}
   .mid-cm{{width:100%;overflow-x:auto}}
 }}
 
-/* Mobile */
 @media(max-width:768px){{
   .dashboard{{padding:14px 12px 28px}}
   .dashboard-header{{margin-bottom:22px;padding-bottom:14px}}
@@ -536,24 +565,46 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
   .card{{padding:12px 10px 10px;border-radius:10px}}
   .card-val{{font-size:1.35rem}}
   .card-lbl{{font-size:.6rem}}
-  .tab-bar{{margin-bottom:18px;padding:3px}}
-  .tab-btn{{padding:6px 14px;font-size:.75rem}}
+  .ctrl-bar{{gap:4px;padding:4px}}
+  .ctrl-btn{{padding:6px 10px;font-size:.75rem}}
+  .ctrl-search-input{{font-size:.75rem}}
   .mid-chart{{padding:14px}}
   .plotly-chart{{min-height:200px}}
   .cm-table{{font-size:.75rem}}
   .cm-table td,.cm-table th{{padding:5px 7px}}
-  .podium{{gap:8px;padding:14px 0 4px}}
+  .podium{{gap:8px;padding:4px 0}}
   .podium-card{{min-width:120px;padding:14px 16px}}
   .podium-score{{font-size:1.2rem}}
+  .ctrl-sep{{display:none}}
+  /* Votee table (6 cols): show #(1), Peer(2), Turing score(6) — hide 3,4,5 */
+  .grid-container[data-gridid^="votee"] th.gridjs-th:nth-child(3),
+  .grid-container[data-gridid^="votee"] td.gridjs-td:nth-child(3),
+  .grid-container[data-gridid^="votee"] th.gridjs-th:nth-child(4),
+  .grid-container[data-gridid^="votee"] td.gridjs-td:nth-child(4),
+  .grid-container[data-gridid^="votee"] th.gridjs-th:nth-child(5),
+  .grid-container[data-gridid^="votee"] td.gridjs-td:nth-child(5){{display:none !important}}
+  /* Voter table (8 cols): show #(1), Peer(2), Detection score(8) — hide 3-7 */
+  .grid-container[data-gridid^="voter"] th.gridjs-th:nth-child(3),
+  .grid-container[data-gridid^="voter"] td.gridjs-td:nth-child(3),
+  .grid-container[data-gridid^="voter"] th.gridjs-th:nth-child(4),
+  .grid-container[data-gridid^="voter"] td.gridjs-td:nth-child(4),
+  .grid-container[data-gridid^="voter"] th.gridjs-th:nth-child(5),
+  .grid-container[data-gridid^="voter"] td.gridjs-td:nth-child(5),
+  .grid-container[data-gridid^="voter"] th.gridjs-th:nth-child(6),
+  .grid-container[data-gridid^="voter"] td.gridjs-td:nth-child(6),
+  .grid-container[data-gridid^="voter"] th.gridjs-th:nth-child(7),
+  .grid-container[data-gridid^="voter"] td.gridjs-td:nth-child(7){{display:none !important}}
 }}
 
-/* Small mobile */
 @media(max-width:480px){{
   .dashboard{{padding:10px 8px 20px}}
   .summary-bar{{grid-template-columns:repeat(2,1fr);gap:6px}}
   .card-val{{font-size:1.15rem}}
   .podium{{flex-direction:column;align-items:center}}
   .podium-card{{width:100%;max-width:280px}}
+  .ctrl-bar{{flex-direction:column;align-items:stretch}}
+  .ctrl-search{{flex:1 1 auto}}
+  .ctrl-scopes,.ctrl-lb{{justify-content:center}}
 }}
 
 /* ═══════════════════════════════════════════════════════
@@ -590,25 +641,51 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
     {summary_html}
   </section>
 
-  <!-- ─── SCOPE TABS ──────────────────────────────── -->
+  <!-- ─── LEADERBOARD ─────────────────────────────── -->
   <section class="anim-in" style="animation-delay:.10s">
-    <!-- LEADERBOARD: tabs + tables (scope-aware) -->
-    <div class="lb-tabs">
-      <div class="tab-bar">
-        <button class="tab-btn lb-tab active" data-lb="fooling" onclick="switchLB('fooling')">Best AI Fooling</button>
-        <button class="tab-btn lb-tab" data-lb="detecting" onclick="switchLB('detecting')">Best at Detecting</button>
+
+    <!-- Podium cards (top 3 per scope + lb) -->
+    {scope_podiums_html}
+
+    <!-- ─── UNIFIED CONTROL BAR ─────────────────────
+         Sits between podium and table.
+         scope buttons | peer search | lb toggle
+    ─────────────────────────────────────────────── -->
+    <div class="ctrl-bar" id="ctrl-bar">
+      <!-- Scope group -->
+      <div class="ctrl-scopes">
+        {scope_tab_buttons}
       </div>
-      {scope_lbs_html}
+      <div class="ctrl-sep"></div>
+      <!-- Peer search (filters the active Grid.js instance) -->
+      <div class="ctrl-search">
+        <span class="material-icons-outlined ctrl-search-icon">search</span>
+        <input
+          id="ctrl-search-input"
+          class="ctrl-search-input"
+          type="search"
+          placeholder="Search peers\u2026"
+          oninput="onSearchInput(this.value)"
+          autocomplete="off"
+        >
+      </div>
+      <div class="ctrl-sep"></div>
+      <!-- LB toggle group -->
+      <div class="ctrl-lb">
+        <button class="ctrl-btn lb-tab active" data-lb="fooling" onclick="switchLB('fooling')">Best Fooling</button>
+        <button class="ctrl-btn lb-tab" data-lb="detecting" onclick="switchLB('detecting')">Best Detecting</button>
+      </div>
     </div>
 
-    <div class="tab-bar">{scope_tab_buttons}</div>
+    <!-- Grid tables (per scope + lb) -->
+    {scope_grids_html}
 
     <!-- MID ROW: confusion matrix (left) + ops chart (right) -->
     <div class="mid-row">
       <div class="mid-cm">
         {scope_cms_html}
       </div>
-      <div class="mid-chart">
+      <div class="mid-chart" id="mid-chart">
         <div id="chart-ops" class="plotly-chart"></div>
       </div>
     </div>
@@ -688,13 +765,12 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
     document.querySelectorAll('.scope-panel').forEach(function(el){{
       el.classList.toggle('visible',el.dataset.scope===key);
     }});
-    document.querySelectorAll('.tab-btn[data-scope]').forEach(function(btn){{
+    document.querySelectorAll('.ctrl-btn[data-scope]').forEach(function(btn){{
       btn.classList.toggle('active',btn.dataset.scope===key);
     }});
     document.querySelectorAll('.scope-card').forEach(function(el){{
       el.style.display=el.dataset.scope===key?'':'none';
     }});
-    // Ensure Grid.js is initialised for active lb + new scope
     var lbType=_activeLB==='fooling'?'votee':'voter';
     ensureGrid(lbType+'-'+key, lbType==='votee'?VOTEE_COLUMNS:VOTER_COLUMNS);
   }}
@@ -713,7 +789,9 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
     document.querySelectorAll('.lb-tab').forEach(function(btn){{
       btn.classList.toggle('active',btn.dataset.lb===key);
     }});
-    // Ensure Grid.js is initialised for new lb + active scope
+    // clear search so it applies fresh to the new table
+    var si=document.getElementById('ctrl-search-input');
+    if(si) si.value='';
     var lbType=key==='fooling'?'votee':'voter';
     ensureGrid(lbType+'-'+_activeScope, lbType==='votee'?VOTEE_COLUMNS:VOTER_COLUMNS);
   }}
@@ -722,10 +800,46 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
   /* ═══════════════════════════════════════════════════
      GRID.JS COLUMN DEFINITIONS
      ═══════════════════════════════════════════════════ */
+  /* helper: column name with info icon (tooltip via JS) */
+  function colName(label, tip){{
+    if(!tip) return label;
+    return gridjs.html(
+      label +
+      '<span class="material-icons-outlined col-tip-icon" data-tip="'+tip+'">info</span>'
+    );
+  }}
+
+  /* Floating tooltip: attach to body so overflow:hidden can't clip it */
+  var _floatingTip=null;
+  document.addEventListener('mouseenter',function(e){{
+    var icon=e.target.closest&&e.target.closest('.col-tip-icon');
+    if(!icon) return;
+    var tip=icon.getAttribute('data-tip');
+    if(!tip) return;
+    if(_floatingTip) _floatingTip.remove();
+    _floatingTip=document.createElement('div');
+    _floatingTip.className='col-floating-tip';
+    _floatingTip.textContent=tip;
+    document.body.appendChild(_floatingTip);
+    var rect=icon.getBoundingClientRect();
+    var tw=_floatingTip.offsetWidth;
+    var left=rect.left+rect.width/2-tw/2;
+    if(left<4) left=4;
+    if(left+tw>window.innerWidth-4) left=window.innerWidth-tw-4;
+    _floatingTip.style.left=left+'px';
+    _floatingTip.style.top=(rect.bottom+6)+'px';
+  }},true);
+  document.addEventListener('mouseleave',function(e){{
+    if(e.target.closest&&e.target.closest('.col-tip-icon')&&_floatingTip){{
+      _floatingTip.remove();
+      _floatingTip=null;
+    }}
+  }},true);
+
   function fmtPeer(cell){{
     if(!cell) return gridjs.html('<span class="peer-cell">-</span>');
     var s=String(cell);
-    var short=s.length>14?s.substring(0,14)+'\\u2026':s;
+    var short=s.length>18?s.substring(0,18)+'\u2026':s;
     return gridjs.html('<span class="peer-cell" title="'+s+'">'+short+'</span>');
   }}
   function fmtNull(cell){{
@@ -736,29 +850,29 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
   }}
 
   var VOTEE_COLUMNS=[
-    {{id:'rank',    name:'#',               width:'52px',   sort:false, formatter:fmtRank}},
-    {{id:'peer_id', name:'Peer',                            sort:true,  formatter:fmtPeer}},
-    {{id:'votes',   name:'Votes received',                  sort:true}},
-    {{id:'fooling_rate', name:'Fooling rate %',             sort:true,  formatter:fmtNull}},
-    {{id:'avg_msgs',     name:'Avg msgs sent',              sort:true,  formatter:fmtNull}},
-    {{id:'turing_score', name:'Turing score',               sort:true,  formatter:fmtNull}},
+    {{id:'rank',         name:'#',   width:'52px', sort:false, formatter:fmtRank}},
+    {{id:'peer_id',      name:colName('Peer',''),  sort:true,  formatter:fmtPeer}},
+    {{id:'votes',        name:colName('Votes received',''), sort:true}},
+    {{id:'fooling_rate', name:colName('Fooling rate %','Percentage of voters who incorrectly classified this AI as human'), sort:true, formatter:fmtNull}},
+    {{id:'avg_msgs',     name:colName('Avg msgs sent','Average messages sent by this AI per conversation'), sort:true, formatter:fmtNull}},
+    {{id:'turing_score', name:colName('Turing score','fooling_rate \u00d7 avg_msgs / (avg_msgs + 5). Rewards sustained deception over longer conversations.'), sort:true, formatter:fmtNull}},
   ];
 
   var VOTER_COLUMNS=[
-    {{id:'rank',            name:'#',               width:'52px', sort:false, formatter:fmtRank}},
-    {{id:'peer_id',         name:'Peer',                          sort:true,  formatter:fmtPeer}},
-    {{id:'nature',          name:'Nature',                        sort:true}},
-    {{id:'votes',           name:'Votes cast',                    sort:true}},
-    {{id:'precision',       name:'Precision %',                   sort:true,  formatter:fmtNull}},
-    {{id:'recall',          name:'Recall %',                      sort:true,  formatter:fmtNull}},
-    {{id:'f1',              name:'F1 %',                          sort:true,  formatter:fmtNull}},
-    {{id:'detection_score', name:'Detection score',               sort:true,  formatter:fmtNull}},
+    {{id:'rank',            name:'#', width:'52px', sort:false, formatter:fmtRank}},
+    {{id:'peer_id',         name:colName('Peer',''), sort:true, formatter:fmtPeer}},
+    {{id:'nature',          name:colName('Nature','Whether this voter is a human or an AI agent'), sort:true}},
+    {{id:'votes',           name:colName('Votes cast',''), sort:true}},
+    {{id:'precision',       name:colName('Precision %','Of all peers this voter classified as human, what fraction actually were'), sort:true, formatter:fmtNull}},
+    {{id:'recall',          name:colName('Recall %','Of all actual humans, what fraction this voter correctly identified'), sort:true, formatter:fmtNull}},
+    {{id:'f1',              name:colName('F1 %','Harmonic mean of precision and recall'), sort:true, formatter:fmtNull}},
+    {{id:'detection_score', name:colName('Detection score','f1 \u00d7 votes / (votes + 10). Rewards sustained detection accuracy over many votes.'), sort:true, formatter:fmtNull}},
   ];
 
   /* ═══════════════════════════════════════════════════
      PODIUM RENDERER
      ═══════════════════════════════════════════════════ */
-  var MEDALS=['\\uD83E\\uDD47','\\uD83E\\uDD48','\\uD83E\\uDD49'];
+  var MEDALS=['\U0001F947','\U0001F948','\U0001F949'];
 
   function renderPodium(gridId, top3){{
     var containers=document.querySelectorAll('.podium-container[data-gridid="'+gridId+'"]');
@@ -770,10 +884,10 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
       var html='<div class="podium">';
       top3.forEach(function(entry,i){{
         var peerId=entry.peer_id||'';
-        var shortId=peerId.length>16?peerId.substring(0,16)+'\\u2026':peerId;
+        var shortId=peerId.length>18?peerId.substring(0,18)+'\u2026':peerId;
         var score=entry[scoreKey];
         var scoreStr=(score===null||score===undefined)?'-':score;
-        html+='<div class="podium-card podium-'+(i+1)+'">'
+        html+='<div class="podium-card">'
           +'<div class="podium-medal">'+MEDALS[i]+'</div>'
           +'<div class="podium-rank">#'+(i+1)+'</div>'
           +'<div class="podium-name" title="'+peerId+'">'+shortId+'</div>'
@@ -787,9 +901,9 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
   }}
 
   /* ═══════════════════════════════════════════════════
-     GRID.JS LAZY INITIALIZATION
+     GRID.JS LAZY INITIALIZATION + SEARCH
      ═══════════════════════════════════════════════════ */
-  var GRID_INSTANCES={{}};
+  var GRID_INSTANCES={{}};   /* gridId -> {{grid, allRows, columns}} */
 
   function ensureGrid(gridId, columns){{
     if(GRID_INSTANCES[gridId]) return;
@@ -801,13 +915,12 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
       containers.forEach(function(c){{
         c.innerHTML='<p class="empty">No data (minimum vote threshold not reached).</p>';
       }});
+      GRID_INSTANCES[gridId]={{}};
       return;
     }}
 
-    // Render podium from top 3
     renderPodium(gridId, data.slice(0,3));
 
-    // Build Grid.js data rows (array of values matching column order)
     var rows=data.map(function(r){{
       return columns.map(function(c){{
         var v=r[c.id];
@@ -815,35 +928,43 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
       }});
     }});
 
-    // Only render into the first visible container; clone config for others
-    var rendered=false;
-    containers.forEach(function(container){{
-      if(!rendered){{
-        new gridjs.Grid({{
-          columns: columns,
-          data: rows,
-          pagination: {{limit:10}},
-          sort: true,
-          search: true,
-          className: {{
-            container: 'gridjs-container',
-            table: 'gridjs-table',
-          }},
-          language: {{
-            search: {{placeholder: 'Search\\u2026'}},
-            pagination: {{
-              previous: '\\u2190',
-              next: '\\u2192',
-              showing: 'Showing',
-              results: function(){{ return 'results'; }},
-            }}
-          }}
-        }}).render(container);
-        rendered=true;
+    var container=containers[0];
+    var grid=new gridjs.Grid({{
+      columns: columns,
+      data: rows,
+      pagination: {{limit:20}},
+      sort: true,
+      search: false,
+      language: {{
+        pagination: {{
+          previous: '\u2190',
+          next: '\u2192',
+          showing: 'Showing',
+          results: function(){{ return 'results'; }},
+        }}
       }}
-    }});
-    GRID_INSTANCES[gridId]=true;
+    }}).render(container);
+
+    GRID_INSTANCES[gridId]={{grid:grid, allRows:rows, columns:columns}};
   }}
+
+  /* External search: filter allRows and update the grid */
+  function onSearchInput(q){{
+    var lbType=_activeLB==='fooling'?'votee':'voter';
+    var gridId=lbType+'-'+_activeScope;
+    var inst=GRID_INSTANCES[gridId];
+    if(!inst||!inst.grid) return;
+    q=q.toLowerCase().trim();
+    var filtered=q
+      ? inst.allRows.filter(function(row){{
+          return row.some(function(cell){{
+            return cell!==null&&String(cell).toLowerCase().indexOf(q)!==-1;
+          }});
+        }})
+      : inst.allRows;
+    inst.grid.updateConfig({{data:filtered}}).forceRender();
+  }}
+  window.onSearchInput=onSearchInput;
 
   /* ═══════════════════════════════════════════════════
      PLOTLY HELPERS
@@ -891,7 +1012,7 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
   function syncPlotlyTheme(){{
     var L=plotlyLayout();
     document.querySelectorAll('.plotly-chart').forEach(function(el){{
-      if(el.data && el.data.length) Plotly.relayout(el,L);
+      if(el.data&&el.data.length) Plotly.relayout(el,L);
     }});
   }}
 
@@ -899,8 +1020,6 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
   var OPS_DATA = {ops_json};
 
   if(typeof Plotly!=='undefined'){{
-
-    /* Hotel Ops time-series (spline) */
     var opsEl=document.getElementById('chart-ops');
     if(opsEl && OPS_DATA.length){{
       Plotly.newPlot(opsEl, OPS_DATA, plotlyLayout({{
@@ -908,13 +1027,20 @@ tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;co
         xaxis:{{type:'date'}},
         yaxis:{{title:{{text:'Count',font:{{size:10,color:'#677385'}}}}}}
       }}), PLOTLY_CFG);
+
+      /* ResizeObserver: re-fit chart whenever the card changes size */
+      try{{
+        new ResizeObserver(function(){{
+          Plotly.Plots.resize(opsEl);
+        }}).observe(document.getElementById('mid-chart'));
+      }}catch(e){{}}
+
     }} else if(opsEl){{
       opsEl.innerHTML='<div class="empty">No operational data yet.</div>';
     }}
-
   }} else {{
     document.querySelectorAll('.plotly-chart').forEach(function(el){{
-      el.innerHTML='<div class="empty">Charts unavailable \\u2014 Plotly.js did not load</div>';
+      el.innerHTML='<div class="empty">Charts unavailable \u2014 Plotly.js did not load</div>';
     }});
   }}
 
