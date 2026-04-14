@@ -326,7 +326,10 @@ class WStats(Stats):
         votes: list[dict], min_votes: int
     ) -> list[dict]:
         """Per-voter stats using binary classification metrics.
-        Positive class = "human". Sorted by F1 descending."""
+        Positive class = "human". Sorted by detection_score descending.
+        detection_score = f1 * votes / (votes + K) with K=10 — rewards
+        sustained accuracy over many votes, mirroring the Turing score."""
+        _K = 10
         # Build voter nature lookup: when a voter also appears as a votee,
         # their ground_truth reveals whether they are human or ai.
         nature_lookup: dict[str, str] = {}
@@ -378,17 +381,19 @@ class WStats(Stats):
             if e["total"] < min_votes:
                 continue
             prec, rec_, f1 = _prf(e["tp"], e["fp"], e["tn"], e["fn"])
-            sort_f1 = f1 if f1 is not None else -1.0
+            raw_detection = (f1 * e["total"] / (e["total"] + _K)) if f1 is not None else None
+            sort_detection = raw_detection if raw_detection is not None else -1.0
             rows.append({
-                "peer_id": vid,
-                "nature": nature_lookup.get(vid, "-"),
-                "votes": e["total"],
-                "precision": _fmt(prec),
-                "recall": _fmt(rec_),
-                "f1": _fmt(f1),
-                "_sort_f1": sort_f1,
+                "peer_id":         vid,
+                "nature":          nature_lookup.get(vid, "-"),
+                "votes":           e["total"],
+                "precision":       _fmt(prec),
+                "recall":          _fmt(rec_),
+                "f1":              _fmt(f1),
+                "detection_score": round(raw_detection * 100, 1) if raw_detection is not None else None,
+                "_sort_detection": sort_detection,
             })
-        rows.sort(key=lambda r: r["_sort_f1"], reverse=True)
+        rows.sort(key=lambda r: r["_sort_detection"], reverse=True)
         return rows
 
     @staticmethod
@@ -481,70 +486,6 @@ class WStats(Stats):
         body = "<tbody>" + "".join(body_rows) + "</tbody>"
         return f'<table class="cm-table">{header}{body}</table>'
 
-    def _render_sortable_table(
-        self,
-        headers: list[tuple[str, str, str]],  # (label, col_key, tooltip)
-        rows: list[dict],
-        numeric_cols: set[str],
-    ) -> str:
-        """Generic sortable HTML table. Third tuple element is an optional
-        tooltip; when non-empty an info icon is appended to the header."""
-        if not rows:
-            return '<p class="empty">No data (minimum vote threshold not reached).</p>'
-
-        th_cells = ""
-        for label, key, tooltip in headers:
-            tip = (
-                f'<span class="info-wrap">'
-                f'<span class="material-icons-outlined info-icon">info</span>'
-                f'<span class="info-tip">{self._esc(tooltip)}</span>'
-                f'</span>'
-                if tooltip else ""
-            )
-            th_cells += (
-                f'<th onclick="sortTable(this)" data-col="{self._esc(key)}">'
-                f'{self._esc(label)}{tip} <span class="sort-arrow">↕</span></th>'
-            )
-        head = f"<thead><tr>{th_cells}</tr></thead>"
-
-        tr_list = []
-        for row in rows:
-            tds = ""
-            for _label, key, _tip in headers:
-                raw = row.get(key)
-                if raw is None:
-                    tds += '<td data-val="">-</td>'
-                elif key == "peer_id":
-                    full = self._esc(str(raw))
-                    short = self._esc(str(raw)[:8])
-                    tds += f'<td data-val="{full}" title="{full}">{short}…</td>'
-                else:
-                    tds += f'<td data-val="{self._esc(str(raw))}">{self._esc(str(raw))}</td>'
-            tr_list.append(f"<tr>{tds}</tr>")
-        body = "<tbody>" + "".join(tr_list) + "</tbody>"
-        return f'<table class="lb-table sortable">{head}{body}</table>'
-
-    def _render_votee_table(self, rows: list[dict]) -> str:
-        headers = [
-            ("Peer", "peer_id", ""),
-            ("Votes received", "votes", ""),
-            ("Fooling rate %", "fooling_rate", "Percentage of voters who incorrectly classified this AI as human"),
-            ("Avg msgs sent",  "avg_msgs", "Average messages sent by this peer per conversation"),
-            ("Turing score",   "turing_score", "fooling_rate \u00d7 avg_msgs / (avg_msgs + 5). Rewards sustained deception over longer conversations."),
-        ]
-        return self._render_sortable_table(headers, rows, {"votes", "fooling_rate", "avg_msgs", "turing_score"})
-
-    def _render_voter_table(self, rows: list[dict]) -> str:
-        headers = [
-            ("Peer", "peer_id", ""),
-            ("Nature", "nature", "Whether this voter is a human or an AI agent"),
-            ("Votes cast", "votes", ""),
-            ("Precision %", "precision", "Of all peers this voter classified as human, what fraction actually were"),
-            ("Recall %", "recall", "Of all actual humans, what fraction this voter correctly identified"),
-            ("F1 %", "f1", "Harmonic mean of precision and recall"),
-        ]
-        return self._render_sortable_table(headers, rows, {"votes", "precision", "recall", "f1"})
-
     @staticmethod
     def _make_ops_plotly_json(ops_series: dict[str, list[tuple[int, int]]]) -> str:
         """Convert ops time-series to a JSON list of Plotly scatter traces."""
@@ -579,15 +520,42 @@ class WStats(Stats):
         )
 
     def _render_scope_block_lb(self, scope_key: str, scope_data: dict) -> str:
-        """Render the leaderboard panels for one scope (placed in lb section below mid-row).
-        Both lb-panels live inside the scope-panel so scope switching hides them together.
-        The LB toggle (fooling/detecting) controls .lb-panel.visible orthogonally."""
-        votee_html = self._render_votee_table(scope_data["votee"])
-        voter_html = self._render_voter_table(scope_data["voter"])
+        """Render the leaderboard panels for one scope.
+        Data is serialised as JSON into window.__LB_DATA; Grid.js tables and
+        podium cards are built entirely client-side so they paginate natively."""
+        _MAX_ROWS = 100
+
+        def _clean(rows: list[dict]) -> list[dict]:
+            """Add rank, strip internal _ keys, truncate to _MAX_ROWS."""
+            out = []
+            for i, row in enumerate(rows[:_MAX_ROWS], start=1):
+                r = {k: v for k, v in row.items() if not k.startswith("_")}
+                r["rank"] = i
+                out.append(r)
+            return out
+
+        votee_clean = _clean(scope_data["votee"])
+        voter_clean = _clean(scope_data["voter"])
+
+        esc_scope = self._esc(scope_key)
+        votee_json = json.dumps(votee_clean)
+        voter_json = json.dumps(voter_clean)
+
         return (
-            f'<div class="scope-panel" data-scope="{scope_key}">'
-            f'<div class="lb-panel visible" data-lb="fooling">{votee_html}</div>'
-            f'<div class="lb-panel" data-lb="detecting">{voter_html}</div>'
+            f'<div class="scope-panel" data-scope="{esc_scope}">'
+            f'<div class="lb-panel visible" data-lb="fooling">'
+            f'  <div class="podium-container" data-gridid="votee-{esc_scope}"></div>'
+            f'  <div class="grid-container" data-gridid="votee-{esc_scope}"></div>'
+            f'</div>'
+            f'<div class="lb-panel" data-lb="detecting">'
+            f'  <div class="podium-container" data-gridid="voter-{esc_scope}"></div>'
+            f'  <div class="grid-container" data-gridid="voter-{esc_scope}"></div>'
+            f'</div>'
+            f'<script>'
+            f'window.__LB_DATA=window.__LB_DATA||{{}};'
+            f'window.__LB_DATA["votee-{esc_scope}"]={votee_json};'
+            f'window.__LB_DATA["voter-{esc_scope}"]={voter_json};'
+            f'</script>'
             f'</div>'
         )
 
