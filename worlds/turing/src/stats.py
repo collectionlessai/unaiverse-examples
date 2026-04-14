@@ -519,14 +519,19 @@ class WStats(Stats):
             f'</div>'
         )
 
-    def _render_scope_block_lb(self, scope_key: str, scope_data: dict) -> str:
-        """Render the leaderboard panels for one scope.
-        Data is serialised as JSON into window.__LB_DATA; Grid.js tables and
-        podium cards are built entirely client-side so they paginate natively."""
+    def _render_scope_block_lb(
+        self, scope_key: str, scope_data: dict
+    ) -> tuple[str, str]:
+        """Render leaderboard panels for one scope, split into two HTML
+        fragments so the caller can place the control bar between them.
+
+        Returns (podium_html, grid_html):
+          podium_html — scope-panel with podium-container divs
+          grid_html   — scope-panel with grid-container divs + inline JSON data
+        """
         _MAX_ROWS = 100
 
         def _clean(rows: list[dict]) -> list[dict]:
-            """Add rank, strip internal _ keys, truncate to _MAX_ROWS."""
             out = []
             for i, row in enumerate(rows[:_MAX_ROWS], start=1):
                 r = {k: v for k, v in row.items() if not k.startswith("_")}
@@ -541,14 +546,23 @@ class WStats(Stats):
         votee_json = json.dumps(votee_clean)
         voter_json = json.dumps(voter_clean)
 
-        return (
+        podium_html = (
             f'<div class="scope-panel" data-scope="{esc_scope}">'
             f'<div class="lb-panel visible" data-lb="fooling">'
             f'  <div class="podium-container" data-gridid="votee-{esc_scope}"></div>'
-            f'  <div class="grid-container" data-gridid="votee-{esc_scope}"></div>'
             f'</div>'
             f'<div class="lb-panel" data-lb="detecting">'
             f'  <div class="podium-container" data-gridid="voter-{esc_scope}"></div>'
+            f'</div>'
+            f'</div>'
+        )
+
+        grid_html = (
+            f'<div class="scope-panel" data-scope="{esc_scope}">'
+            f'<div class="lb-panel visible" data-lb="fooling">'
+            f'  <div class="grid-container" data-gridid="votee-{esc_scope}"></div>'
+            f'</div>'
+            f'<div class="lb-panel" data-lb="detecting">'
             f'  <div class="grid-container" data-gridid="voter-{esc_scope}"></div>'
             f'</div>'
             f'<script>'
@@ -559,11 +573,14 @@ class WStats(Stats):
             f'</div>'
         )
 
+        return podium_html, grid_html
+
     def _render_page(
         self,
         summary_html: str,
         scope_cms_html: str,
-        scope_lbs_html: str,
+        scope_podiums_html: str,
+        scope_grids_html: str,
         ops_json: str,
     ) -> str:
         """Compose the full HTML document.
@@ -575,7 +592,7 @@ class WStats(Stats):
 
         default_scope = "max"  # Show max available
         scope_tab_buttons = "".join(
-            f'<button class="tab-btn" data-scope="{k}" onclick="switchScope(\'{k}\')">'
+            f'<button class="ctrl-btn" data-scope="{k}" onclick="switchScope(\'{k}\')">'
             f'{_SCOPE_LABELS[k]}</button>'
             for k in _SCOPE_WINDOWS_MS
         )
@@ -584,7 +601,8 @@ class WStats(Stats):
             summary_html=summary_html,
             scope_tab_buttons=scope_tab_buttons,
             scope_cms_html=scope_cms_html,
-            scope_lbs_html=scope_lbs_html,
+            scope_podiums_html=scope_podiums_html,
+            scope_grids_html=scope_grids_html,
             default_scope=default_scope,
             ops_json=ops_json,
         )
@@ -615,12 +633,18 @@ class WStats(Stats):
             self._render_scope_block_cm(scope_key, scope_data)
             for scope_key, scope_data in scopes.items()
         )
-        scope_lbs_html = "".join(
-            self._render_scope_block_lb(scope_key, scope_data)
-            for scope_key, scope_data in scopes.items()
-        )
+        podiums_parts, grids_parts = [], []
+        for scope_key, scope_data in scopes.items():
+            podium_html, grid_html = self._render_scope_block_lb(scope_key, scope_data)
+            podiums_parts.append(podium_html)
+            grids_parts.append(grid_html)
+        scope_podiums_html = "".join(podiums_parts)
+        scope_grids_html = "".join(grids_parts)
 
         ops_series = cache.get("ops_series", {})
         ops_json = self._make_ops_plotly_json(ops_series)
 
-        return self._render_page(summary_html, scope_cms_html, scope_lbs_html, ops_json)
+        return self._render_page(
+            summary_html, scope_cms_html,
+            scope_podiums_html, scope_grids_html, ops_json,
+        )
