@@ -73,15 +73,16 @@ from unaiverse.stats import Stats
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
+_MAX_MONTHS = 1
 _SCOPE_WINDOWS_MS: dict[str, int | None] = {
-    "all_time": None,
-    "7d":       7 * 24 * 3600 * 1000,
-    "24h":      24 * 3600 * 1000,
+    "max": _MAX_MONTHS * 30 * 24 * 3600 * 1000,
+    "7d": 7 * 24 * 3600 * 1000,
+    "24h": 24 * 3600 * 1000,
 }
 _SCOPE_LABELS: dict[str, str] = {
-    "all_time": "All time",
-    "7d":       "7 days",
-    "24h":      "24 hours",
+    "max": f"{_MAX_MONTHS} month{'' if _MAX_MONTHS == 1 else 's'} (Max)",
+    "7d": "7 days",
+    "24h": "24 hours",
 }
 _MIN_VOTES = 3  # suppress leaderboard rows with fewer votes
 _PALETTE = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f"]
@@ -110,7 +111,7 @@ class WStats(Stats):
     # ------------------------------------------------------------------ schema
 
     STORE_CONVERSATIONS: bool = True
-    LEADERBOARD_CACHE_TTL_SECONDS: int = 5
+    LEADERBOARD_CACHE_TTL_SECONDS: int = 60
 
     # World population is tracked as static facts via CUSTOM_WORLD_STATS_STATIC_SCHEMA;
     # the base class dynamic counters (world_masters, world_agents, …) are not used here.
@@ -171,9 +172,9 @@ class WStats(Stats):
         scopes: dict[str, dict] = {}
         for scope_key, scope_votes in buckets.items():
             scopes[scope_key] = {
-                "confusion":     self._compute_confusion_matrix(scope_votes),
-                "votee":         self._compute_votee_leaderboard(scope_votes, _MIN_VOTES),
-                "voter":         self._compute_voter_leaderboard(scope_votes, _MIN_VOTES),
+                "confusion": self._compute_confusion_matrix(scope_votes),
+                "votee": self._compute_votee_leaderboard(scope_votes, _MIN_VOTES),
+                "voter": self._compute_voter_leaderboard(scope_votes, _MIN_VOTES),
                 "n_total_votes": len(scope_votes),
             }
 
@@ -186,7 +187,7 @@ class WStats(Stats):
         }
         self._leaderboard_cache_ts_ms = now_ms
 
-    # =========================================================== data fetch
+    # =========================================================== data handling
 
     def _fetch_vote_history(self) -> list[dict]:
         """Return all turing_vote records from SQLite as parsed dicts."""
@@ -233,7 +234,7 @@ class WStats(Stats):
     def _bucket_by_scope(
         votes: list[dict], now_ms: int
     ) -> dict[str, list[dict]]:
-        """Split vote list into all_time / 7d / 24h buckets in one pass."""
+        """Split vote list into max / 7d / 24h buckets in one pass."""
         buckets: dict[str, list[dict]] = {k: [] for k in _SCOPE_WINDOWS_MS}
         for v in votes:
             ts = v.get("_ts", 0)
@@ -241,6 +242,18 @@ class WStats(Stats):
                 if window_ms is None or (now_ms - ts) <= window_ms:
                     buckets[scope].append(v)
         return buckets
+    
+    def _prune_db(self):
+        if not self.is_world or self._db_conn is None:
+            return
+        # Custom pruning: delete all dynamic records older than the max scope window.
+        max_window_ms = _SCOPE_WINDOWS_MS['max']
+        cutoff_ts = int(time.time() * 1000) - max_window_ms
+        self._db_conn.execute(
+            "DELETE FROM dynamic_stats WHERE timestamp < ?",
+            (cutoff_ts,)
+        )
+        # commit is called from Stats.save_to_disk() which is where _prune_db is called from, so no need to commit here.
 
     # ======================================================== aggregation
 
@@ -248,7 +261,7 @@ class WStats(Stats):
     def _compute_confusion_matrix(votes: list[dict]) -> dict:
         """2x2 confusion matrix: ground_truth x vote, counts + row %."""
         truths = ("human", "ai")
-        vote_cols = ("human", "ai", "unknown")
+        vote_cols = ("human", "ai")
         counts: dict[str, dict[str, int]] = {t: {v: 0 for v in vote_cols} for t in truths}
         for rec in votes:
             gt = rec.get("ground_truth")
@@ -256,37 +269,38 @@ class WStats(Stats):
             if gt in counts and vt in vote_cols:
                 counts[gt][vt] += 1
 
-        pct: dict[str, dict[str, float]] = {}
+        pct: dict[str, dict[str, float]] = {t: {v: .0 for v in vote_cols} for t in truths}
         for gt in truths:
             row_total = sum(counts[gt].values())
-            pct[gt] = {
-                vt: (counts[gt][vt] / row_total * 100 if row_total else 0.0)
-                for vt in vote_cols
-            }
+            for vt in vote_cols:
+                pct[gt][vt] = counts[gt][vt] / row_total * 100 if row_total else 0.0
         return {"counts": counts, "pct": pct}
 
     @staticmethod
     def _compute_votee_leaderboard(
         votes: list[dict], min_votes: int
     ) -> list[dict]:
-        """Per-votee stats. Primary metric: fooling rate (% votes disagreeing
-        with ground truth). Sorted by fooling rate descending."""
+        """Per-AI-votee stats. Primary metric: Turing score — fooling rate
+        weighted by average conversation length. Fooling over more messages is
+        harder (more exposure), so a longer conversation at the same fooling
+        rate scores higher. Formula: fooling_rate * avg_msgs / (avg_msgs + K)
+        with K=5. Sorted by Turing score descending."""
+        _K = 5
         by_votee: dict[str, dict] = {}
         for rec in votes:
             vid = rec.get("_votee_peer_id") or ""
-            if not vid:
+            gt = rec.get("ground_truth")
+            if not vid or gt != "ai":   # AI-only leaderboard
                 continue
             entry = by_votee.setdefault(vid, {
                 "peer_id": vid,
-                "ground_truth": rec.get("ground_truth", "?"),
                 "votes": 0,
                 "fooling": 0,
                 "msgs_total": 0,
             })
             entry["votes"] += 1
-            gt = rec.get("ground_truth")
             vt = rec.get("vote")
-            if gt and vt and vt != "unknown" and vt != gt:
+            if vt and vt != gt:
                 entry["fooling"] += 1
             entry["msgs_total"] += rec.get("msgs_from_votee", 0)
 
@@ -296,14 +310,15 @@ class WStats(Stats):
                 continue
             fooling_rate = e["fooling"] / e["votes"] * 100
             avg_msgs = e["msgs_total"] / e["votes"]
+            turing_score = fooling_rate * avg_msgs / (avg_msgs + _K)
             rows.append({
                 "peer_id":      vid,
-                "ground_truth": e["ground_truth"],
                 "votes":        e["votes"],
                 "fooling_rate": round(fooling_rate, 1),
                 "avg_msgs":     round(avg_msgs, 1),
+                "turing_score": round(turing_score, 1),
             })
-        rows.sort(key=lambda r: r["fooling_rate"], reverse=True)
+        rows.sort(key=lambda r: r["turing_score"], reverse=True)
         return rows
 
     @staticmethod
@@ -311,8 +326,16 @@ class WStats(Stats):
         votes: list[dict], min_votes: int
     ) -> list[dict]:
         """Per-voter stats using binary classification metrics.
-        Positive class = "human". Excludes "unknown" votes from P/R/F1.
-        Sorted by F1 descending (ties broken by accuracy)."""
+        Positive class = "human". Sorted by F1 descending."""
+        # Build voter nature lookup: when a voter also appears as a votee,
+        # their ground_truth reveals whether they are human or ai.
+        nature_lookup: dict[str, str] = {}
+        for rec in votes:
+            votee_id = rec.get("_votee_peer_id") or ""
+            gt = rec.get("ground_truth")
+            if votee_id and gt in ("human", "ai"):
+                nature_lookup[votee_id] = gt
+
         by_voter: dict[str, dict] = {}
         for rec in votes:
             vid = rec.get("voter") or ""
@@ -320,14 +343,13 @@ class WStats(Stats):
                 continue
             entry = by_voter.setdefault(vid, {
                 "peer_id": vid,
-                "total": 0, "unknown": 0,
+                "total": 0,
                 "tp": 0, "fp": 0, "tn": 0, "fn": 0,
             })
             entry["total"] += 1
             gt = rec.get("ground_truth")
             vt = rec.get("vote")
-            if vt == "unknown":
-                entry["unknown"] += 1
+            if not vt or vt not in ("human", "ai"):
                 continue
             if gt == "human" and vt == "human":
                 entry["tp"] += 1
@@ -339,9 +361,6 @@ class WStats(Stats):
                 entry["fn"] += 1
 
         def _prf(tp: int, fp: int, tn: int, fn: int) -> tuple:
-            correct = tp + tn
-            known = tp + fp + tn + fn
-            acc = correct / known if known else None
             prec = tp / (tp + fp) if (tp + fp) else None
             rec_ = tp / (tp + fn) if (tp + fn) else None
             f1 = (
@@ -349,7 +368,7 @@ class WStats(Stats):
                 if (prec is not None and rec_ is not None and (prec + rec_) > 0)
                 else None
             )
-            return acc, prec, rec_, f1
+            return prec, rec_, f1
 
         def _fmt(v: float | None) -> str:
             return f"{v * 100:.1f}" if v is not None else None  # type: ignore[return-value]
@@ -358,22 +377,18 @@ class WStats(Stats):
         for vid, e in by_voter.items():
             if e["total"] < min_votes:
                 continue
-            acc, prec, rec_, f1 = _prf(e["tp"], e["fp"], e["tn"], e["fn"])
-            unknown_rate = e["unknown"] / e["total"] * 100
+            prec, rec_, f1 = _prf(e["tp"], e["fp"], e["tn"], e["fn"])
             sort_f1 = f1 if f1 is not None else -1.0
-            sort_acc = acc if acc is not None else -1.0
             rows.append({
-                "peer_id":      vid,
-                "votes":        e["total"],
-                "accuracy":     _fmt(acc),
-                "precision":    _fmt(prec),
-                "recall":       _fmt(rec_),
-                "f1":           _fmt(f1),
-                "unknown_rate": round(unknown_rate, 1),
-                "_sort_f1":     sort_f1,
-                "_sort_acc":    sort_acc,
+                "peer_id": vid,
+                "nature": nature_lookup.get(vid, "-"),
+                "votes": e["total"],
+                "precision": _fmt(prec),
+                "recall": _fmt(rec_),
+                "f1": _fmt(f1),
+                "_sort_f1": sort_f1,
             })
-        rows.sort(key=lambda r: (r["_sort_f1"], r["_sort_acc"]), reverse=True)
+        rows.sort(key=lambda r: r["_sort_f1"], reverse=True)
         return rows
 
     @staticmethod
@@ -408,10 +423,11 @@ class WStats(Stats):
             return f'<div class="{cls}"><span class="card-val">{self._esc(value)}</span><span class="card-lbl">{self._esc(label)}</span></div>'
 
         static_cards = "".join([
-            _card("Total agents", static_stats.get("n_total_agents", 0)),
-            _card("Humans",        static_stats.get("n_humans", 0)),
-            _card("AIs",           static_stats.get("n_ais", 0)),
+            _card("Total agents",  static_stats.get("n_total_agents", 0)),
+            # _card("Humans",        static_stats.get("n_humans", 0)),
+            # _card("AIs",           static_stats.get("n_ais", 0)),
             _card("Active rooms",  global_counters.get("n_active_rooms", 0)),
+            _card("Active floors", global_counters.get("n_active_floors", 0)),
         ])
 
         # n_total_votes varies per scope - render one card per scope, hide/show via JS
@@ -425,11 +441,11 @@ class WStats(Stats):
             )
 
         age_s = max(0, (int(time.time() * 1000) - global_counters.get("refreshed_ms", int(time.time() * 1000))) // 1000)
-        refresh_card = _card("Refreshed", f"{age_s}s ago", "muted")
+        # refresh_card = _card("Refreshed", f"{age_s}s ago", "muted")
 
         return (
             f'<div class="summary-bar">'
-            f'{static_cards}{scope_vote_cards}{refresh_card}'
+            f'{static_cards}{scope_vote_cards}'  # {refresh_card}'
             f'</div>'
         )
 
@@ -439,7 +455,7 @@ class WStats(Stats):
         counts = cm.get("counts", {})
         pct = cm.get("pct", {})
         truths = ("human", "ai")
-        vote_cols = ("human", "ai", "unknown")
+        vote_cols = ("human", "ai")
 
         def _bg(p: float) -> str:
             # white → soft blue-green
@@ -467,25 +483,34 @@ class WStats(Stats):
 
     def _render_sortable_table(
         self,
-        headers: list[tuple[str, str]],  # (label, col_key)
+        headers: list[tuple[str, str, str]],  # (label, col_key, tooltip)
         rows: list[dict],
         numeric_cols: set[str],
     ) -> str:
-        """Generic sortable HTML table. Numeric cols use data-val for JS sort."""
+        """Generic sortable HTML table. Third tuple element is an optional
+        tooltip; when non-empty an info icon is appended to the header."""
         if not rows:
             return '<p class="empty">No data (minimum vote threshold not reached).</p>'
 
-        th_cells = "".join(
-            f'<th onclick="sortTable(this)" data-col="{self._esc(key)}">'
-            f'{self._esc(label)} <span class="sort-arrow">↕</span></th>'
-            for label, key in headers
-        )
+        th_cells = ""
+        for label, key, tooltip in headers:
+            tip = (
+                f'<span class="info-wrap">'
+                f'<span class="material-icons-outlined info-icon">info</span>'
+                f'<span class="info-tip">{self._esc(tooltip)}</span>'
+                f'</span>'
+                if tooltip else ""
+            )
+            th_cells += (
+                f'<th onclick="sortTable(this)" data-col="{self._esc(key)}">'
+                f'{self._esc(label)}{tip} <span class="sort-arrow">↕</span></th>'
+            )
         head = f"<thead><tr>{th_cells}</tr></thead>"
 
         tr_list = []
         for row in rows:
             tds = ""
-            for _label, key in headers:
+            for _label, key, _tip in headers:
                 raw = row.get(key)
                 if raw is None:
                     tds += '<td data-val="">-</td>'
@@ -493,8 +518,6 @@ class WStats(Stats):
                     full = self._esc(str(raw))
                     short = self._esc(str(raw)[:8])
                     tds += f'<td data-val="{full}" title="{full}">{short}…</td>'
-                elif key in numeric_cols:
-                    tds += f'<td data-val="{self._esc(str(raw))}">{self._esc(str(raw))}</td>'
                 else:
                     tds += f'<td data-val="{self._esc(str(raw))}">{self._esc(str(raw))}</td>'
             tr_list.append(f"<tr>{tds}</tr>")
@@ -503,25 +526,24 @@ class WStats(Stats):
 
     def _render_votee_table(self, rows: list[dict]) -> str:
         headers = [
-            ("Peer", "peer_id"),
-            ("Truth", "ground_truth"),
-            ("Votes received", "votes"),
-            ("Fooling rate %", "fooling_rate"),
-            ("Avg msgs sent", "avg_msgs"),
+            ("Peer", "peer_id", ""),
+            ("Votes received", "votes", ""),
+            ("Fooling rate %", "fooling_rate", "Percentage of voters who incorrectly classified this AI as human"),
+            ("Avg msgs sent",  "avg_msgs", "Average messages sent by this peer per conversation"),
+            ("Turing score",   "turing_score", "fooling_rate \u00d7 avg_msgs / (avg_msgs + 5). Rewards sustained deception over longer conversations."),
         ]
-        return self._render_sortable_table(headers, rows, {"votes", "fooling_rate", "avg_msgs"})
+        return self._render_sortable_table(headers, rows, {"votes", "fooling_rate", "avg_msgs", "turing_score"})
 
     def _render_voter_table(self, rows: list[dict]) -> str:
         headers = [
-            ("Peer", "peer_id"),
-            ("Votes cast", "votes"),
-            ("Accuracy %", "accuracy"),
-            ("Precision %", "precision"),
-            ("Recall %", "recall"),
-            ("F1 %", "f1"),
-            ("Unknown %", "unknown_rate"),
+            ("Peer", "peer_id", ""),
+            ("Nature", "nature", "Whether this voter is a human or an AI agent"),
+            ("Votes cast", "votes", ""),
+            ("Precision %", "precision", "Of all peers this voter classified as human, what fraction actually were"),
+            ("Recall %", "recall", "Of all actual humans, what fraction this voter correctly identified"),
+            ("F1 %", "f1", "Harmonic mean of precision and recall"),
         ]
-        return self._render_sortable_table(headers, rows, {"votes", "accuracy", "precision", "recall", "f1", "unknown_rate"})
+        return self._render_sortable_table(headers, rows, {"votes", "precision", "recall", "f1"})
 
     @staticmethod
     def _make_ops_plotly_json(ops_series: dict[str, list[tuple[int, int]]]) -> str:
@@ -542,73 +564,39 @@ class WStats(Stats):
                 "y": ys,
                 "name": _HOTEL_OPS_LABELS.get(stat_name, stat_name),
                 "type": "scatter",
-                "mode": "lines+markers",
-                "line": {"color": colour, "width": 2},
-                "marker": {"size": 4},
+                "mode": "lines",
+                "line": {"color": colour, "width": 2, "shape": "spline"},
             })
         return json.dumps(traces)
 
-    @staticmethod
-    def _make_top_foolers_json(votee_rows: list[dict]) -> str:
-        """Top-12 votees by fooling rate - vertical bar chart, coloured by ground_truth."""
-        top = votee_rows[:12]
-        labels = [str(r["peer_id"])[:12] for r in top]
-        values = [r["fooling_rate"] for r in top]
-        colors = [
-            "#00D4AA" if r.get("ground_truth") == "ai" else "#FFB347"
-            for r in top
-        ]
-        trace = {
-            "x": labels,
-            "y": values,
-            "type": "bar",
-            "marker": {"color": colors, "line": {"width": 0}},
-            "text": [str(v) for v in values],
-            "textposition": "outside",
-            "hoverinfo": "x+y",
-        }
-        return json.dumps([trace])
-
-    @staticmethod
-    def _make_top_detectors_json(voter_rows: list[dict]) -> str:
-        """Top-12 voters by F1 - horizontal bar chart."""
-        top = voter_rows[:12]
-        labels = [str(r["peer_id"])[:12] for r in top]
-        values = [float(r["f1"]) if r.get("f1") is not None else 0.0 for r in top]
-        trace = {
-            "x": values,
-            "y": labels,
-            "type": "bar",
-            "orientation": "h",
-            "marker": {"color": "#1A5CFF", "line": {"width": 0}},
-            "text": [str(v) for v in values],
-            "textposition": "outside",
-            "hoverinfo": "x+y",
-        }
-        return json.dumps([trace])
-
-    def _render_scope_block(self, scope_key: str, scope_data: dict) -> str:
-        """Render one full scope section (confusion + votee + voter tables)."""
+    def _render_scope_block_cm(self, scope_key: str, scope_data: dict) -> str:
+        """Render the confusion matrix panel for one scope (placed in mid-row left column)."""
         cm_html = self._render_confusion_table(scope_data["confusion"])
+        return (
+            f'<div class="scope-panel" data-scope="{scope_key}">'
+            f'<div class="cm-card">{cm_html}</div>'
+            f'</div>'
+        )
+
+    def _render_scope_block_lb(self, scope_key: str, scope_data: dict) -> str:
+        """Render the leaderboard panels for one scope (placed in lb section below mid-row).
+        Both lb-panels live inside the scope-panel so scope switching hides them together.
+        The LB toggle (fooling/detecting) controls .lb-panel.visible orthogonally."""
         votee_html = self._render_votee_table(scope_data["votee"])
         voter_html = self._render_voter_table(scope_data["voter"])
         return (
-            f'<section class="scope-panel" data-scope="{scope_key}">'
-            f'<div class="two-col">'
-            f'<div class="col-narrow"><h2>Confusion matrix</h2>{cm_html}</div>'
-            f'<div class="col-wide"><h2>Best at fooling</h2>{votee_html}</div>'
+            f'<div class="scope-panel" data-scope="{scope_key}">'
+            f'<div class="lb-panel visible" data-lb="fooling">{votee_html}</div>'
+            f'<div class="lb-panel" data-lb="detecting">{voter_html}</div>'
             f'</div>'
-            f'<h2>Best at detecting</h2>{voter_html}'
-            f'</section>'
         )
 
     def _render_page(
         self,
         summary_html: str,
-        scope_blocks_html: str,
+        scope_cms_html: str,
+        scope_lbs_html: str,
         ops_json: str,
-        top_foolers_json: str,
-        top_detectors_json: str,
     ) -> str:
         """Compose the full HTML document.
         The html_renderer import is deferred here so that module-level exec on
@@ -617,7 +605,7 @@ class WStats(Stats):
         """
         from .html_renderer import render  # safe: only reached after is_world guard
 
-        default_scope = "all_time"
+        default_scope = "max"  # Show max available
         scope_tab_buttons = "".join(
             f'<button class="tab-btn" data-scope="{k}" onclick="switchScope(\'{k}\')">'
             f'{_SCOPE_LABELS[k]}</button>'
@@ -627,11 +615,10 @@ class WStats(Stats):
         return render(
             summary_html=summary_html,
             scope_tab_buttons=scope_tab_buttons,
-            scope_blocks_html=scope_blocks_html,
+            scope_cms_html=scope_cms_html,
+            scope_lbs_html=scope_lbs_html,
             default_scope=default_scope,
             ops_json=ops_json,
-            top_foolers_json=top_foolers_json,
-            top_detectors_json=top_detectors_json,
         )
 
     # ========================================================== plot() entry
@@ -656,23 +643,16 @@ class WStats(Stats):
 
         summary_html = self._render_summary_bar(static_stats, scope_counters, global_counters)
 
-        scope_blocks_html = "".join(
-            self._render_scope_block(scope_key, scope_data)
+        scope_cms_html = "".join(
+            self._render_scope_block_cm(scope_key, scope_data)
+            for scope_key, scope_data in scopes.items()
+        )
+        scope_lbs_html = "".join(
+            self._render_scope_block_lb(scope_key, scope_data)
             for scope_key, scope_data in scopes.items()
         )
 
         ops_series = cache.get("ops_series", {})
-        all_time_votee = scopes.get("all_time", {}).get("votee", [])
-        all_time_voter = scopes.get("all_time", {}).get("voter", [])
-
         ops_json = self._make_ops_plotly_json(ops_series)
-        top_foolers_json = self._make_top_foolers_json(all_time_votee)
-        top_detectors_json = self._make_top_detectors_json(all_time_voter)
 
-        return self._render_page(
-            summary_html,
-            scope_blocks_html,
-            ops_json,
-            top_foolers_json,
-            top_detectors_json,
-        )
+        return self._render_page(summary_html, scope_cms_html, scope_lbs_html, ops_json)

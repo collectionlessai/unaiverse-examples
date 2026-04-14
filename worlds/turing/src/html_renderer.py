@@ -7,14 +7,15 @@ aesthetics, Plotly.js charts, and Google Fonts typography.
 
 Usage::
 
-    from turing_leaderboard_template import render, THEMES
+    from html_renderer import render
 
     html = render(
         summary_html=build_summary_cards(),
         scope_tab_buttons=build_tabs(),
-        scope_blocks_html=build_scope_panels(),
-        default_scope="overall",
-        ops_html=build_occupancy_chart(),
+        scope_cms_html=build_cm_panels(),
+        scope_lbs_html=build_lb_panels(),
+        default_scope="max",
+        ops_json=build_ops_json(),
     )
 
 Iframe theme detection (auto):
@@ -27,11 +28,10 @@ Iframe theme detection (auto):
 def render(
     summary_html: str = "",
     scope_tab_buttons: str = "",
-    scope_blocks_html: str = "",
-    default_scope: str = "overall",
+    scope_cms_html: str = "",
+    scope_lbs_html: str = "",
+    default_scope: str = "max",
     ops_json: str = "[]",
-    top_foolers_json: str = "[]",
-    top_detectors_json: str = "[]",
 ) -> str:
     """Return the complete leaderboard HTML."""
 
@@ -265,6 +265,7 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   display:flex;gap:4px;margin-bottom:24px;padding:4px;
   background:var(--bg-subtle);border:1px solid var(--border);border-radius:10px;
   overflow-x:auto;-webkit-overflow-scrolling:touch;
+  justify-content:center;
   transition:background-color .3s ease,border-color .3s ease;
 }}
 .tab-bar::-webkit-scrollbar{{height:0;display:none}}
@@ -283,13 +284,45 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
 }}
 
 /* ═══════════════════════════════════════════════════════
-   SCOPE PANELS & TWO-COLUMN LAYOUT
+   SCOPE PANELS
    ═══════════════════════════════════════════════════════ */
 .scope-panel{{display:none}}
 .scope-panel.visible{{display:block;animation:fadeInUp .3s ease}}
-.two-col{{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}}
-.col-narrow{{flex:0 0 auto;max-width:380px}}
-.col-wide{{flex:1 1 300px;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}}
+.mid-cm .scope-panel.visible{{display:flex;flex:1}}
+
+/* ═══════════════════════════════════════════════════════
+   CONFUSION MATRIX CARD
+   ═══════════════════════════════════════════════════════ */
+.cm-card{{
+  background:var(--bg-paper);border:1px solid var(--border);border-radius:12px;
+  padding:20px;height:100%;display:flex;align-items:center;justify-content:center;
+  transition:box-shadow .25s ease,border-color .25s ease,background-color .3s ease;
+}}
+.cm-card:hover{{border-color:var(--card-hover-border);box-shadow:var(--shadow-sm)}}
+
+/* ═══════════════════════════════════════════════════════
+   MID ROW: confusion matrix + ops chart side by side
+   ═══════════════════════════════════════════════════════ */
+.mid-row{{
+  display:flex;gap:20px;align-items:stretch;
+  margin-bottom:28px;flex-wrap:wrap;
+}}
+.mid-cm{{flex:0 0 auto;min-width:0;display:flex}}
+.mid-chart{{
+  flex:1 1 300px;min-width:0;
+  background:var(--bg-paper);border:1px solid var(--border);border-radius:12px;
+  padding:20px;
+  transition:box-shadow .25s ease,border-color .25s ease,background-color .3s ease;
+}}
+.mid-chart:hover{{border-color:var(--card-hover-border);box-shadow:var(--shadow-sm)}}
+.plotly-chart{{width:100%;min-height:260px}}
+
+/* ═══════════════════════════════════════════════════════
+   LEADERBOARD SECTION
+   ═══════════════════════════════════════════════════════ */
+.lb-tabs{{margin-bottom:0}}
+.lb-panel{{display:none}}
+.lb-panel.visible{{display:block}}
 
 /* ═══════════════════════════════════════════════════════
    LEADERBOARD TABLE
@@ -301,7 +334,7 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   text-transform:uppercase;letter-spacing:.06em;
   padding:11px 14px;
   border-bottom:2px solid var(--border);
-  cursor:pointer;user-select:none;text-align:center;white-space:nowrap;
+  cursor:pointer;user-select:none;text-align:right;white-space:nowrap;
   transition:color .15s ease,background-color .3s ease;
 }}
 .lb-table th:hover{{color:var(--primary)}}
@@ -318,6 +351,36 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
 .sort-arrow{{font-size:.65rem;color:var(--text-disabled);margin-left:3px}}
 
 /* ═══════════════════════════════════════════════════════
+   INFO ICON + TOOLTIP
+   ═══════════════════════════════════════════════════════ */
+.info-wrap{{
+  position:relative;display:inline-block;vertical-align:middle;
+  margin-left:4px;cursor:help;
+}}
+.info-icon{{
+  font-size:16px;color:var(--text-disabled);
+  vertical-align:middle;line-height:1;
+}}
+.info-wrap:hover .info-icon{{color:var(--primary)}}
+.info-tip{{
+  display:none;position:absolute;bottom:calc(100% + 8px);left:50%;
+  transform:translateX(-50%);
+  background:var(--bg-elevated);color:var(--text-secondary);
+  border:1px solid var(--border);border-radius:8px;
+  padding:8px 12px;font-size:.75rem;font-weight:400;
+  text-transform:none;letter-spacing:normal;
+  white-space:normal;width:220px;
+  box-shadow:var(--shadow-md);z-index:100;
+  line-height:1.4;pointer-events:none;
+}}
+.info-tip::after{{
+  content:'';position:absolute;top:100%;left:50%;
+  transform:translateX(-50%);
+  border:6px solid transparent;border-top-color:var(--border);
+}}
+.info-wrap:hover .info-tip{{display:block}}
+
+/* ═══════════════════════════════════════════════════════
    CONFUSION MATRIX TABLE
    ═══════════════════════════════════════════════════════ */
 .cm-table{{border-collapse:collapse;font-size:.8125rem}}
@@ -330,29 +393,7 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   font-weight:600;font-size:.75rem;
 }}
 .cm-table td{{color:#1a1a1a;font-weight:600}}
-
-/* ═══════════════════════════════════════════════════════
-   CHARTS
-   ═══════════════════════════════════════════════════════ */
-.charts-section{{margin-bottom:32px}}
-.charts-grid{{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(360px,1fr));
-  gap:14px;
-}}
-.chart-card{{
-  background:var(--bg-paper);border:1px solid var(--border);border-radius:12px;
-  padding:20px;
-  transition:box-shadow .25s ease,border-color .25s ease,background-color .3s ease;
-}}
-.chart-card:hover{{border-color:var(--card-hover-border);box-shadow:var(--shadow-sm)}}
-.chart-card h3{{margin-bottom:14px}}
-.plotly-chart{{width:100%;min-height:260px}}
-
-/* ═══════════════════════════════════════════════════════
-   OPS / OCCUPANCY PANEL
-   ═══════════════════════════════════════════════════════ */
-.ops-panel{{margin-top:8px}}
+.cm-table td:first-child{{color:var(--text-secondary);background:transparent}}
 
 /* ═══════════════════════════════════════════════════════
    UTILITIES
@@ -381,9 +422,8 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
 /* Tablet */
 @media(max-width:1024px){{
   .dashboard{{padding:20px 16px 32px}}
-  .two-col{{flex-direction:column}}
-  .col-narrow{{max-width:100%;width:100%;overflow-x:auto}}
-  .charts-grid{{grid-template-columns:1fr}}
+  .mid-row{{flex-direction:column}}
+  .mid-cm{{width:100%;overflow-x:auto}}
 }}
 
 /* Mobile */
@@ -399,7 +439,7 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   .card-lbl{{font-size:.6rem}}
   .tab-bar{{margin-bottom:18px;padding:3px}}
   .tab-btn{{padding:6px 14px;font-size:.75rem}}
-  .chart-card{{padding:14px}}
+  .mid-chart{{padding:14px}}
   .plotly-chart{{min-height:200px}}
   .lb-table{{font-size:.75rem}}
   .lb-table th{{padding:8px 10px;font-size:.6rem}}
@@ -413,7 +453,6 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   .dashboard{{padding:10px 8px 20px}}
   .summary-bar{{grid-template-columns:repeat(2,1fr);gap:6px}}
   .card-val{{font-size:1.15rem}}
-  .charts-grid{{grid-template-columns:1fr}}
 }}
 
 /* ═══════════════════════════════════════════════════════
@@ -450,32 +489,27 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
     {summary_html}
   </section>
 
-  <!-- ─── SCOPE TABS + CONTENT ────────────────────── -->
+  <!-- ─── SCOPE TABS ──────────────────────────────── -->
   <section class="anim-in" style="animation-delay:.10s">
-    <div class="tab-bar">{scope_tab_buttons}</div>
-    {scope_blocks_html}
-  </section>
-
-  <!-- ─── ANALYTICS CHARTS ────────────────────────── -->
-  <section class="charts-section anim-in" style="animation-delay:.15s">
-    <h2>Analytics</h2>
-    <div class="charts-grid">
-      <div class="chart-card">
-        <h3>Best at Fooling</h3>
-        <div id="chart-trend" class="plotly-chart"></div>
+    <!-- LEADERBOARD: tabs + tables (scope-aware) -->
+    <div class="lb-tabs">
+      <div class="tab-bar">
+        <button class="tab-btn lb-tab active" data-lb="fooling" onclick="switchLB('fooling')">Best AI Fooling</button>
+        <button class="tab-btn lb-tab" data-lb="detecting" onclick="switchLB('detecting')">Best at Detecting</button>
       </div>
-      <div class="chart-card">
-        <h3>Best at Detecting</h3>
-        <div id="chart-distribution" class="plotly-chart"></div>
-      </div>
+      {scope_lbs_html}
     </div>
-  </section>
+    
+    <div class="tab-bar">{scope_tab_buttons}</div>
 
-  <!-- ─── OCCUPANCY ───────────────────────────────── -->
-  <section class="ops-panel anim-in" style="animation-delay:.20s">
-    <h2>Hotel Occupancy</h2>
-    <div class="chart-card">
-      <div id="chart-ops" class="plotly-chart"></div>
+    <!-- MID ROW: confusion matrix (left) + ops chart (right) -->
+    <div class="mid-row">
+      <div class="mid-cm">
+        {scope_cms_html}
+      </div>
+      <div class="mid-chart">
+        <div id="chart-ops" class="plotly-chart"></div>
+      </div>
     </div>
   </section>
 
@@ -551,7 +585,7 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
     document.querySelectorAll('.scope-panel').forEach(function(el){{
       el.classList.toggle('visible',el.dataset.scope===key);
     }});
-    document.querySelectorAll('.tab-btn').forEach(function(btn){{
+    document.querySelectorAll('.tab-btn[data-scope]').forEach(function(btn){{
       btn.classList.toggle('active',btn.dataset.scope===key);
     }});
     document.querySelectorAll('.scope-card').forEach(function(el){{
@@ -560,6 +594,22 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   }}
   window.switchScope=switchScope;
   switchScope(DEFAULT);
+
+  /* ═══════════════════════════════════════════════════
+     LEADERBOARD TOGGLE
+     ═══════════════════════════════════════════════════ */
+  var _activeLB='fooling';
+
+  function switchLB(key){{
+    _activeLB=key;
+    document.querySelectorAll('.lb-panel').forEach(function(el){{
+      el.classList.toggle('visible',el.dataset.lb===key);
+    }});
+    document.querySelectorAll('.lb-tab').forEach(function(btn){{
+      btn.classList.toggle('active',btn.dataset.lb===key);
+    }});
+  }}
+  window.switchLB=switchLB;
 
   /* ═══════════════════════════════════════════════════
      TABLE SORTING
@@ -578,8 +628,8 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
     rows.sort(function(a,b){{
       var av=a.querySelectorAll('td')[idx].dataset.val;
       var bv=b.querySelectorAll('td')[idx].dataset.val;
-      var an=parseFloat(av),bn=parseFloat(bv);
-      if(!isNaN(an)&&!isNaN(bn)) return asc?an-bn:bn-an;
+      var an=Number(av),bn=Number(bv);
+      if(!isNaN(an)&&!isNaN(bn)&&av.trim()!=="") return asc?an-bn:bn-an;
       return asc?av.localeCompare(bv):bv.localeCompare(av);
     }});
     rows.forEach(function(r){{ tbody.appendChild(r); }});
@@ -636,13 +686,11 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   }}
 
   /* ─── Embedded server-side data ── */
-  var OPS_DATA    = {ops_json};
-  var TREND_DATA  = {top_foolers_json};
-  var DIST_DATA   = {top_detectors_json};
+  var OPS_DATA = {ops_json};
 
   if(typeof Plotly!=='undefined'){{
 
-    /* Hotel Occupancy time-series */
+    /* Hotel Ops time-series (spline) */
     var opsEl=document.getElementById('chart-ops');
     if(opsEl && OPS_DATA.length){{
       Plotly.newPlot(opsEl, OPS_DATA, plotlyLayout({{
@@ -654,33 +702,9 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
       opsEl.innerHTML='<div class="empty">No operational data yet.</div>';
     }}
 
-    /* Best at Fooling - vertical bar */
-    var trendEl=document.getElementById('chart-trend');
-    if(trendEl && TREND_DATA.length){{
-      Plotly.newPlot(trendEl, TREND_DATA, plotlyLayout({{
-        yaxis:{{title:{{text:'Fooling rate %',font:{{size:10,color:'#677385'}}}}}},
-        showlegend:false
-      }}), PLOTLY_CFG);
-    }} else if(trendEl){{
-      trendEl.innerHTML='<div class="empty">No vote data yet.</div>';
-    }}
-
-    /* Best at Detecting - horizontal bar */
-    var distEl=document.getElementById('chart-distribution');
-    if(distEl && DIST_DATA.length){{
-      Plotly.newPlot(distEl, DIST_DATA, plotlyLayout({{
-        margin:{{l:90,r:40,t:8,b:36}},
-        xaxis:{{title:{{text:'F1 %',font:{{size:10,color:'#677385'}}}}}},
-        yaxis:{{tickfont:{{family:'Inter',size:11}}}},
-        showlegend:false
-      }}), PLOTLY_CFG);
-    }} else if(distEl){{
-      distEl.innerHTML='<div class="empty">No vote data yet.</div>';
-    }}
-
   }} else {{
     document.querySelectorAll('.plotly-chart').forEach(function(el){{
-      el.innerHTML='<div class="empty">Charts unavailable - Plotly.js did not load</div>';
+      el.innerHTML='<div class="empty">Charts unavailable \u2014 Plotly.js did not load</div>';
     }});
   }}
 
