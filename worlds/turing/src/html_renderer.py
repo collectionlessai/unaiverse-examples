@@ -3,7 +3,7 @@ Turing Hotel Leaderboard - Premium Dashboard Template
 =====================================================
 
 Responsive, theme-aware (dark/light) HTML dashboard with Material Design
-aesthetics, Plotly.js charts, and Google Fonts typography.
+aesthetics, Plotly.js charts, Grid.js tables, and Google Fonts typography.
 
 Usage::
 
@@ -47,6 +47,8 @@ def render(
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet">
+<script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
 
 <style>
 /* ═══════════════════════════════════════════════════════
@@ -325,60 +327,157 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
 .lb-panel.visible{{display:block}}
 
 /* ═══════════════════════════════════════════════════════
-   LEADERBOARD TABLE
+   PODIUM
    ═══════════════════════════════════════════════════════ */
-.lb-table{{border-collapse:collapse;font-size:.8125rem;width:100%}}
-.lb-table th{{
-  background:var(--table-header-bg);
-  color:var(--text-muted);font-weight:700;font-size:.6875rem;
-  text-transform:uppercase;letter-spacing:.06em;
-  padding:11px 14px;
-  border-bottom:2px solid var(--border);
-  cursor:pointer;user-select:none;text-align:right;white-space:nowrap;
-  transition:color .15s ease,background-color .3s ease;
+.podium{{
+  display:flex;justify-content:center;gap:16px;
+  margin-bottom:28px;padding:20px 0 4px;
+  flex-wrap:wrap;
 }}
-.lb-table th:hover{{color:var(--primary)}}
-.lb-table th:first-child,.lb-table td:first-child{{text-align:left}}
-.lb-table td{{
-  padding:9px 14px;text-align:right;
-  border-bottom:1px solid var(--border-subtle);
-  font-feature-settings:'tnum';color:var(--text-secondary);
-  transition:background-color .1s ease,color .3s ease;
+.podium-card{{
+  background:var(--bg-paper);border:1px solid var(--border);border-radius:12px;
+  padding:20px 28px;text-align:center;min-width:160px;
+  position:relative;overflow:hidden;
+  transition:border-color .25s ease,box-shadow .25s ease,transform .25s cubic-bezier(.2,0,0,1),background-color .3s ease;
 }}
-.lb-table tbody tr:nth-child(even){{background:var(--table-stripe)}}
-.lb-table tbody tr:hover{{background:var(--table-row-hover)}}
-.lb-table tbody tr:hover td{{color:var(--text-primary)}}
-.sort-arrow{{font-size:.65rem;color:var(--text-disabled);margin-left:3px}}
+.podium-card:hover{{
+  border-color:var(--card-hover-border);
+  box-shadow:var(--shadow-md);
+  transform:translateY(-3px);
+}}
+.podium-1{{border-top:3px solid #FFD700}}
+.podium-2{{border-top:3px solid #C0C0C0}}
+.podium-3{{border-top:3px solid #CD7F32}}
+.podium-medal{{font-size:2rem;line-height:1;margin-bottom:6px}}
+.podium-rank{{
+  font-family:'Space Grotesk',sans-serif;font-size:.6875rem;font-weight:600;
+  color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;
+}}
+.podium-name{{
+  font-family:'JetBrains Mono',monospace;font-size:.8125rem;
+  color:var(--text-secondary);margin:8px 0 4px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  max-width:160px;
+}}
+.podium-score{{
+  font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;
+  color:var(--text-primary);line-height:1.15;
+  transition:color .3s ease;
+}}
+.podium-score-label{{
+  font-size:.6rem;font-weight:600;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:.06em;margin-top:3px;
+}}
 
 /* ═══════════════════════════════════════════════════════
-   INFO ICON + TOOLTIP
+   GRID.JS THEME OVERRIDES
    ═══════════════════════════════════════════════════════ */
-.info-wrap{{
-  position:relative;display:inline-block;vertical-align:middle;
-  margin-left:4px;cursor:help;
+.gridjs-wrapper{{
+  border:1px solid var(--border) !important;
+  border-radius:12px !important;
+  overflow:hidden;
+  box-shadow:none !important;
+  background:var(--bg-paper) !important;
+  transition:border-color .25s ease,background-color .3s ease;
 }}
-.info-icon{{
-  font-size:16px;color:var(--text-disabled);
-  vertical-align:middle;line-height:1;
+.gridjs-container{{background:transparent !important}}
+.gridjs-head{{background:transparent !important;padding:12px 12px 0 !important}}
+.gridjs-search{{width:100%;max-width:320px}}
+.gridjs-search-input{{
+  width:100%;
+  background:var(--bg-subtle) !important;
+  border:1px solid var(--border) !important;
+  border-radius:8px !important;
+  color:var(--text-primary) !important;
+  font-family:'Inter',sans-serif !important;
+  font-size:.8125rem !important;
+  padding:8px 12px !important;
+  outline:none;
+  transition:border-color .2s ease,background-color .3s ease;
 }}
-.info-wrap:hover .info-icon{{color:var(--primary)}}
-.info-tip{{
-  display:none;position:absolute;bottom:calc(100% + 8px);left:50%;
-  transform:translateX(-50%);
-  background:var(--bg-elevated);color:var(--text-secondary);
-  border:1px solid var(--border);border-radius:8px;
-  padding:8px 12px;font-size:.75rem;font-weight:400;
-  text-transform:none;letter-spacing:normal;
-  white-space:normal;width:220px;
-  box-shadow:var(--shadow-md);z-index:100;
-  line-height:1.4;pointer-events:none;
+.gridjs-search-input:focus{{border-color:var(--primary) !important;background:var(--bg-paper) !important}}
+.gridjs-search-input::placeholder{{color:var(--text-disabled) !important}}
+table.gridjs-table{{
+  font-family:'Inter',sans-serif !important;
+  font-size:.8125rem !important;
+  width:100% !important;
+  border-collapse:collapse !important;
 }}
-.info-tip::after{{
-  content:'';position:absolute;top:100%;left:50%;
-  transform:translateX(-50%);
-  border:6px solid transparent;border-top-color:var(--border);
+.gridjs-thead .gridjs-tr{{background:var(--table-header-bg) !important}}
+th.gridjs-th{{
+  background:var(--table-header-bg) !important;
+  color:var(--text-muted) !important;
+  font-weight:700 !important;font-size:.6875rem !important;
+  text-transform:uppercase !important;letter-spacing:.06em !important;
+  padding:11px 14px !important;
+  border-bottom:2px solid var(--border) !important;
+  border-top:none !important;border-left:none !important;border-right:none !important;
+  white-space:nowrap !important;
+  user-select:none !important;
+  transition:color .15s ease !important;
 }}
-.info-wrap:hover .info-tip{{display:block}}
+th.gridjs-th:hover,.gridjs-th-sort:hover{{color:var(--primary) !important}}
+th.gridjs-th-sort .gridjs-sort{{opacity:1}}
+td.gridjs-td{{
+  padding:9px 14px !important;
+  border-bottom:1px solid var(--border-subtle) !important;
+  border-left:none !important;border-right:none !important;
+  font-feature-settings:'tnum';
+  color:var(--text-secondary) !important;
+  background:transparent !important;
+  transition:color .3s ease !important;
+}}
+tr.gridjs-tr:nth-child(even) td.gridjs-td{{background:var(--table-stripe) !important}}
+tr.gridjs-tr:hover td.gridjs-td{{background:var(--table-row-hover) !important;color:var(--text-primary) !important}}
+.gridjs-footer{{
+  background:var(--bg-paper) !important;
+  border-top:1px solid var(--border) !important;
+  padding:10px 14px !important;
+  transition:background-color .3s ease,border-color .3s ease;
+}}
+.gridjs-pagination{{color:var(--text-muted) !important;font-size:.75rem !important}}
+.gridjs-pagination .gridjs-summary{{color:var(--text-muted) !important}}
+.gridjs-pages button{{
+  background:var(--bg-subtle) !important;
+  color:var(--text-secondary) !important;
+  border:1px solid var(--border) !important;
+  border-radius:6px !important;
+  font-family:'Inter',sans-serif !important;
+  font-size:.75rem !important;
+  cursor:pointer;
+  transition:all .15s ease !important;
+}}
+.gridjs-pages button:hover:not([disabled]){{
+  border-color:var(--primary) !important;color:var(--primary) !important;
+  background:var(--primary-a12) !important;
+}}
+.gridjs-pages button.gridjs-currentPage{{
+  background:var(--tab-active-bg) !important;
+  color:var(--tab-active-text) !important;
+  border-color:var(--primary) !important;
+  font-weight:600 !important;
+}}
+.gridjs-pages button[disabled]{{opacity:.35 !important;cursor:default !important}}
+.gridjs-notfound,.gridjs-loading{{
+  color:var(--text-disabled) !important;
+  font-size:.8125rem !important;
+  text-align:center !important;
+  padding:24px !important;
+}}
+/* peer_id monospace cell */
+.peer-cell{{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.75rem;
+  color:var(--text-secondary);
+  cursor:default;
+}}
+/* rank cell */
+.rank-cell{{
+  font-family:'Space Grotesk',sans-serif;
+  font-weight:600;
+  color:var(--text-muted);
+  font-size:.75rem;
+}}
 
 /* ═══════════════════════════════════════════════════════
    CONFUSION MATRIX TABLE
@@ -441,11 +540,11 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   .tab-btn{{padding:6px 14px;font-size:.75rem}}
   .mid-chart{{padding:14px}}
   .plotly-chart{{min-height:200px}}
-  .lb-table{{font-size:.75rem}}
-  .lb-table th{{padding:8px 10px;font-size:.6rem}}
-  .lb-table td{{padding:7px 10px}}
   .cm-table{{font-size:.75rem}}
   .cm-table td,.cm-table th{{padding:5px 7px}}
+  .podium{{gap:8px;padding:14px 0 4px}}
+  .podium-card{{min-width:120px;padding:14px 16px}}
+  .podium-score{{font-size:1.2rem}}
 }}
 
 /* Small mobile */
@@ -453,6 +552,8 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
   .dashboard{{padding:10px 8px 20px}}
   .summary-bar{{grid-template-columns:repeat(2,1fr);gap:6px}}
   .card-val{{font-size:1.15rem}}
+  .podium{{flex-direction:column;align-items:center}}
+  .podium-card{{width:100%;max-width:280px}}
 }}
 
 /* ═══════════════════════════════════════════════════════
@@ -499,7 +600,7 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
       </div>
       {scope_lbs_html}
     </div>
-    
+
     <div class="tab-bar">{scope_tab_buttons}</div>
 
     <!-- MID ROW: confusion matrix (left) + ops chart (right) -->
@@ -580,8 +681,10 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
      SCOPE SWITCHING
      ═══════════════════════════════════════════════════ */
   var DEFAULT='{default_scope}';
+  var _activeScope=DEFAULT;
 
   function switchScope(key){{
+    _activeScope=key;
     document.querySelectorAll('.scope-panel').forEach(function(el){{
       el.classList.toggle('visible',el.dataset.scope===key);
     }});
@@ -591,9 +694,11 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
     document.querySelectorAll('.scope-card').forEach(function(el){{
       el.style.display=el.dataset.scope===key?'':'none';
     }});
+    // Ensure Grid.js is initialised for active lb + new scope
+    var lbType=_activeLB==='fooling'?'votee':'voter';
+    ensureGrid(lbType+'-'+key, lbType==='votee'?VOTEE_COLUMNS:VOTER_COLUMNS);
   }}
   window.switchScope=switchScope;
-  switchScope(DEFAULT);
 
   /* ═══════════════════════════════════════════════════
      LEADERBOARD TOGGLE
@@ -608,32 +713,137 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
     document.querySelectorAll('.lb-tab').forEach(function(btn){{
       btn.classList.toggle('active',btn.dataset.lb===key);
     }});
+    // Ensure Grid.js is initialised for new lb + active scope
+    var lbType=key==='fooling'?'votee':'voter';
+    ensureGrid(lbType+'-'+_activeScope, lbType==='votee'?VOTEE_COLUMNS:VOTER_COLUMNS);
   }}
   window.switchLB=switchLB;
 
   /* ═══════════════════════════════════════════════════
-     TABLE SORTING
+     GRID.JS COLUMN DEFINITIONS
      ═══════════════════════════════════════════════════ */
-  window.sortTable=function(th){{
-    var tbl=th.closest('table'),tbody=tbl.querySelector('tbody');
-    var rows=Array.from(tbody.querySelectorAll('tr'));
-    var asc=th.dataset.asc!=='1';
-    th.dataset.asc=asc?'1':'0';
-    tbl.querySelectorAll('th').forEach(function(h){{
-      var a=h.querySelector('.sort-arrow'); if(a) a.textContent='\u21C5';
+  function fmtPeer(cell){{
+    if(!cell) return gridjs.html('<span class="peer-cell">-</span>');
+    var s=String(cell);
+    var short=s.length>14?s.substring(0,14)+'\\u2026':s;
+    return gridjs.html('<span class="peer-cell" title="'+s+'">'+short+'</span>');
+  }}
+  function fmtNull(cell){{
+    return (cell===null||cell===undefined||cell==='')?'-':cell;
+  }}
+  function fmtRank(cell){{
+    return gridjs.html('<span class="rank-cell">'+cell+'</span>');
+  }}
+
+  var VOTEE_COLUMNS=[
+    {{id:'rank',    name:'#',               width:'52px',   sort:false, formatter:fmtRank}},
+    {{id:'peer_id', name:'Peer',                            sort:true,  formatter:fmtPeer}},
+    {{id:'votes',   name:'Votes received',                  sort:true}},
+    {{id:'fooling_rate', name:'Fooling rate %',             sort:true,  formatter:fmtNull}},
+    {{id:'avg_msgs',     name:'Avg msgs sent',              sort:true,  formatter:fmtNull}},
+    {{id:'turing_score', name:'Turing score',               sort:true,  formatter:fmtNull}},
+  ];
+
+  var VOTER_COLUMNS=[
+    {{id:'rank',            name:'#',               width:'52px', sort:false, formatter:fmtRank}},
+    {{id:'peer_id',         name:'Peer',                          sort:true,  formatter:fmtPeer}},
+    {{id:'nature',          name:'Nature',                        sort:true}},
+    {{id:'votes',           name:'Votes cast',                    sort:true}},
+    {{id:'precision',       name:'Precision %',                   sort:true,  formatter:fmtNull}},
+    {{id:'recall',          name:'Recall %',                      sort:true,  formatter:fmtNull}},
+    {{id:'f1',              name:'F1 %',                          sort:true,  formatter:fmtNull}},
+    {{id:'detection_score', name:'Detection score',               sort:true,  formatter:fmtNull}},
+  ];
+
+  /* ═══════════════════════════════════════════════════
+     PODIUM RENDERER
+     ═══════════════════════════════════════════════════ */
+  var MEDALS=['\\uD83E\\uDD47','\\uD83E\\uDD48','\\uD83E\\uDD49'];
+
+  function renderPodium(gridId, top3){{
+    var containers=document.querySelectorAll('.podium-container[data-gridid="'+gridId+'"]');
+    containers.forEach(function(container){{
+      if(!top3||!top3.length){{ container.style.display='none'; return; }}
+      var isFooling=gridId.indexOf('votee')===0;
+      var scoreKey=isFooling?'turing_score':'detection_score';
+      var scoreLabel=isFooling?'Turing Score':'Detection Score';
+      var html='<div class="podium">';
+      top3.forEach(function(entry,i){{
+        var peerId=entry.peer_id||'';
+        var shortId=peerId.length>16?peerId.substring(0,16)+'\\u2026':peerId;
+        var score=entry[scoreKey];
+        var scoreStr=(score===null||score===undefined)?'-':score;
+        html+='<div class="podium-card podium-'+(i+1)+'">'
+          +'<div class="podium-medal">'+MEDALS[i]+'</div>'
+          +'<div class="podium-rank">#'+(i+1)+'</div>'
+          +'<div class="podium-name" title="'+peerId+'">'+shortId+'</div>'
+          +'<div class="podium-score">'+scoreStr+'</div>'
+          +'<div class="podium-score-label">'+scoreLabel+'</div>'
+          +'</div>';
+      }});
+      html+='</div>';
+      container.innerHTML=html;
     }});
-    var arrow=th.querySelector('.sort-arrow');
-    if(arrow) arrow.textContent=asc?'\u25B2':'\u25BC';
-    var idx=Array.from(th.parentNode.children).indexOf(th);
-    rows.sort(function(a,b){{
-      var av=a.querySelectorAll('td')[idx].dataset.val;
-      var bv=b.querySelectorAll('td')[idx].dataset.val;
-      var an=Number(av),bn=Number(bv);
-      if(!isNaN(an)&&!isNaN(bn)&&av.trim()!=="") return asc?an-bn:bn-an;
-      return asc?av.localeCompare(bv):bv.localeCompare(av);
+  }}
+
+  /* ═══════════════════════════════════════════════════
+     GRID.JS LAZY INITIALIZATION
+     ═══════════════════════════════════════════════════ */
+  var GRID_INSTANCES={{}};
+
+  function ensureGrid(gridId, columns){{
+    if(GRID_INSTANCES[gridId]) return;
+    var containers=document.querySelectorAll('.grid-container[data-gridid="'+gridId+'"]');
+    if(!containers.length) return;
+    var data=(window.__LB_DATA||{{}})[gridId];
+
+    if(!data||!data.length){{
+      containers.forEach(function(c){{
+        c.innerHTML='<p class="empty">No data (minimum vote threshold not reached).</p>';
+      }});
+      return;
+    }}
+
+    // Render podium from top 3
+    renderPodium(gridId, data.slice(0,3));
+
+    // Build Grid.js data rows (array of values matching column order)
+    var rows=data.map(function(r){{
+      return columns.map(function(c){{
+        var v=r[c.id];
+        return (v===undefined||v===null)?null:v;
+      }});
     }});
-    rows.forEach(function(r){{ tbody.appendChild(r); }});
-  }};
+
+    // Only render into the first visible container; clone config for others
+    var rendered=false;
+    containers.forEach(function(container){{
+      if(!rendered){{
+        new gridjs.Grid({{
+          columns: columns,
+          data: rows,
+          pagination: {{limit:10}},
+          sort: true,
+          search: true,
+          className: {{
+            container: 'gridjs-container',
+            table: 'gridjs-table',
+          }},
+          language: {{
+            search: {{placeholder: 'Search\\u2026'}},
+            pagination: {{
+              previous: '\\u2190',
+              next: '\\u2192',
+              showing: 'Showing',
+              results: function(){{ return 'results'; }},
+            }}
+          }}
+        }}).render(container);
+        rendered=true;
+      }}
+    }});
+    GRID_INSTANCES[gridId]=true;
+  }}
 
   /* ═══════════════════════════════════════════════════
      PLOTLY HELPERS
@@ -704,9 +914,12 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
 
   }} else {{
     document.querySelectorAll('.plotly-chart').forEach(function(el){{
-      el.innerHTML='<div class="empty">Charts unavailable \u2014 Plotly.js did not load</div>';
+      el.innerHTML='<div class="empty">Charts unavailable \\u2014 Plotly.js did not load</div>';
     }});
   }}
+
+  /* ─── Bootstrap default view ── */
+  switchScope(DEFAULT);
 
 }})();
 </script>
