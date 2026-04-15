@@ -116,30 +116,18 @@ class WStats(Stats):
     # World population is tracked as static facts via CUSTOM_WORLD_STATS_STATIC_SCHEMA;
     # the base class dynamic counters (world_masters, world_agents, …) are not used here.
     CORE_WORLD_STATS_DYNAMIC_SCHEMA: dict = {}
+    
+    CUSTOM_WORLD_STATS_DYNAMIC_SCHEMA = {k: (int, 0) for k in _HOTEL_OPS_STATS}
+    
+    CUSTOM_WORLD_STATS_STATIC_SCHEMA = {
+        # World-population stats written by the world.
+        "n_total_agents":  (int, 0),
+        }
 
     CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA = {
         "turing_vote":              (dict, None),
         "conversation_chunk":       (dict, None),
-        "hotel_n_floors_active":    (int, 0),
-        "hotel_n_rooms_active":     (int, 0),
-        "hotel_n_rooms_overbooked": (int, 0),
-        "hotel_n_agents_present":   (int, 0),
-        "hotel_n_agents_waiting":   (int, 0),
-    }
-
-    CUSTOM_AGENT_STATS_DYNAMIC_SCHEMA = {
-        # Floor operational metrics (scalar → val_num in SQLite, indexed).
-        "floor_n_rooms_active": (int, 0),
-        "floor_n_guests":       (int, 0),
-        "floor_churn_count":    (int, 0),
-    }
-
-    CUSTOM_WORLD_STATS_STATIC_SCHEMA = {
-        # World-population stats written by the world.
-        "n_total_agents":  (int, 0),
-        "n_humans":        (int, 0),
-        "n_ais":           (int, 0),
-    }
+        }
 
     # ------------------------------------------------------------------- init
 
