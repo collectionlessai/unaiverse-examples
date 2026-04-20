@@ -1,0 +1,461 @@
+{
+    "machine": {
+        "role": "guest",
+        "initial_state": "init",
+        "msg": "Welcome to the Turing Hotel &#127976;, it's amazing to have a new guest!",
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
+        }
+    },
+    "states": {
+        "init": {
+            "action": "init",
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "ready": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "reached_hotel_manager": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#127970; Hotel manager contacted",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "hall": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#127970; In the hall, waiting to be sent to floor",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "reached_floor_manager": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#129692; Floor manager contacted",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "floor": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#129692; In the floor, ready to declare sponsorship",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "ready_for_room": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128993; Sponsorship declared, waiting to be sent to room",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "room_round_table": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128172; Sitting at the chat table",
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "msg_prepared": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "room_voting_booth": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128499;&#65039; In the voting booth",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "ready_to_leave_floor": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#129692; Leaving floor",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        }
+    },
+    "transitions": {
+        "init": [
+            {
+                "on": {
+                    "action": "process",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            },
+            {
+                "on": {
+                    "action": "skip_confirmation",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            }
+        ],
+        "ready": [
+            {
+                "on": {
+                    "action": "connect_to_hotel_manager",
+                    "action_kwargs": {},
+                    "msg": "&#128279; Connecting to a randomly selected hotel manager",
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "reached_hotel_manager"
+            }
+        ],
+        "reached_hotel_manager": [
+            {
+                "on": {
+                    "action": "hotel_manager_ack",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "hall"
+            }
+        ],
+        "hall": [
+            {
+                "on": {
+                    "action": "connect_to_floor_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "reached_floor_manager"
+            }
+        ],
+        "reached_floor_manager": [
+            {
+                "on": {
+                    "action": "floor_manager_ack",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "floor"
+            }
+        ],
+        "floor": [
+            {
+                "on": {
+                    "action": "send_guest_sponsor",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready_for_room"
+            }
+        ],
+        "ready_for_room": [
+            {
+                "on": {
+                    "action": "goto_room",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "room_round_table"
+            }
+        ],
+        "room_round_table": [
+            {
+                "on": {
+                    "action": "process",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "msg_prepared"
+            },
+            {
+                "on": {
+                    "action": "get_msgs",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "room_round_table"
+            },
+            {
+                "on": {
+                    "action": "get_status_msg",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "room_round_table"
+            },
+            {
+                "on": {
+                    "action": "goto_voting_booth",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "room_voting_booth"
+            }
+        ],
+        "msg_prepared": [
+            {
+                "on": {
+                    "action": "send_msg",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "room_round_table"
+            }
+        ],
+        "room_voting_booth": [
+            {
+                "on": {
+                    "action": "get_msgs",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "room_voting_booth"
+            },
+            {
+                "on": {
+                    "action": "process",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready_to_leave_floor"
+            }
+        ],
+        "ready_to_leave_floor": [
+            {
+                "on": {
+                    "action": "disconnect_floor_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "hall"
+            }
+        ]
+    },
+    "teleports": {
+        "reached_hotel_manager": [
+            {
+                "on": {
+                    "action": "lost_hotel_manager",
+                    "action_kwargs": {
+                        "just_reached": true
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            },
+            {
+                "on": {
+                    "action": "disconnect_hotel_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 30
+                },
+                "goto": "ready"
+            }
+        ],
+        "hall": [
+            {
+                "on": {
+                    "action": "lost_hotel_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            },
+            {
+                "on": {
+                    "action": "floor_manager_ack",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "floor"
+            }
+        ],
+        "reached_floor_manager": [
+            {
+                "on": {
+                    "action": "lost_floor_manager",
+                    "action_kwargs": {
+                        "just_reached": true
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "hall"
+            },
+            {
+                "on": {
+                    "action": "disconnect_floor_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 30
+                },
+                "goto": "hall"
+            }
+        ],
+        "floor": [
+            {
+                "on": {
+                    "action": "lost_floor_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "hall"
+            }
+        ],
+        "ready_for_room": [
+            {
+                "on": {
+                    "action": "lost_floor_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "hall"
+            }
+        ],
+        "room_round_table": [
+            {
+                "on": {
+                    "action": "lost_floor_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "hall"
+            }
+        ],
+        "msg_prepared": [
+            {
+                "on": {
+                    "action": "lost_floor_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "hall"
+            }
+        ],
+        "room_voting_booth": [
+            {
+                "on": {
+                    "action": "lost_floor_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "hall"
+            }
+        ]
+    }
+}
