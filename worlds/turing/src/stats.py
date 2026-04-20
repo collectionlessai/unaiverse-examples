@@ -113,10 +113,6 @@ class WStats(Stats):
     STORE_CONVERSATIONS: bool = True
     LEADERBOARD_CACHE_TTL_SECONDS: int = 60
 
-    # World population is tracked as static facts via CUSTOM_WORLD_STATS_STATIC_SCHEMA;
-    # the base class dynamic counters (world_masters, world_agents, …) are not used here.
-    CORE_WORLD_STATS_DYNAMIC_SCHEMA: dict = {}
-    
     CUSTOM_WORLD_STATS_DYNAMIC_SCHEMA = {k: (int, 0) for k in _HOTEL_OPS_STATS}
     
     CUSTOM_WORLD_STATS_STATIC_SCHEMA = {

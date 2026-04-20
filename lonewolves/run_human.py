@@ -30,7 +30,7 @@ agent = Agent(proc=HumanModule(),
               proc_opts={})
 
 # Node hosting agent
-node_agent = Node(node_name=cmd_args.node, hosted=agent, hidden=True, clock_delta=1.)
+node_agent = Node(node_name=cmd_args.node, hosted=agent, hidden=False, clock_delta=1.)
 
 # Running node
 try:
