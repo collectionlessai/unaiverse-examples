@@ -17,6 +17,7 @@ class WAgent(Agent):
 
         self._fake_name = None  # Your fake name
         self._history_senders = set()
+        self._history_guests = set()
         self._history_as_list: list[str] = []  # The list of messages of the whole conversation happened so far
         self._history: str | None = None  # A long-string version of the whole conversation
         self._ignore_messages: bool = True
@@ -45,6 +46,8 @@ class WAgent(Agent):
     async def back_to_hall(self):
         self._fake_name = None
         self._history_as_list = []
+        self._history_guests = set()
+        self._history_senders = set()
         self._history = None
         self._ignore_messages = True
 
@@ -170,6 +173,7 @@ class WAgent(Agent):
             other_fake_names = msg[msg.find(sub) + len(sub):].split(".")[0]
 
             # Preparing the incipit part of the history
+            self._history_guests = {x.strip() for x in other_fake_names.split(",")}
             self._history_as_list = [Config.history_incipit.
                                      replace("<YOUR_NAME>", self._fake_name).
                                      replace("<OTHER_NAMES>", other_fake_names)]
@@ -190,6 +194,20 @@ class WAgent(Agent):
             # Adding the vote request message to history, and setting default stdin of the processor to the UUID
             # communicated by sending this status message
             self.__add_to_history(msg, timestamp=self.clock.get_time(), process_uuid=process_uuid)
+
+        elif msg.startswith("[JOINED_MSG]"):
+
+            # Removing the initial [...] tag
+            msg = re.sub(r'^\[.*?]\s*', '', msg)
+
+            # Adding to guest list
+            self._history_guests.add(msg.split(":")[1].strip())
+
+        elif msg.startswith("[LEFT_MSG]") or msg.startswith("[DISCO_MSG]"):
+
+            # Removing the initial [...] tag
+            msg = re.sub(r'^\[.*?]\s*', '', msg)
+
         else:
 
             # Removing the initial [...] tag
@@ -295,7 +313,7 @@ class WAgent(Agent):
                 self._history_senders.add(sender)
                 self._history_as_list[0] = (Config.history_incipit.
                                             replace("<YOUR_NAME>", self._fake_name).
-                                            replace("<OTHER_NAMES>", sorted(list(self._history_senders))))
+                                            replace("<OTHER_NAMES>", ",".join(sorted(list(self._history_guests)))))
 
         timestamp = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
         self._history_as_list.append(f"({timestamp}) {sender}: {msg_only}")
