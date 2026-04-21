@@ -40,8 +40,8 @@ class Config:
                             f"this room. You can stay here for "
                             f"{test_duration} seconds.")
     joined_message = f"[JOINED_MSG] A new agent joined the room: <SOME_NAME>"
-    left_message = f"[LEFT_MSG] Agent <SOME_NAME> left the room"
-    disconnected_message = f"[DISCO_MSG] Agent <SOME_NAME> disconnected"
+    left_message = f"[LEFT_MSG] An agent left the room: <SOME_NAME>"
+    disconnected_message = f"[DISCO_MSG] An agent disconnected: <SOME_NAME>"
     reminder_message = (f"[GEN_MSG] You will stay in this room for <TIME_LEFT> seconds, but you can type "
                         f"'{exit_trigger_message}' "
                         f"at any time "

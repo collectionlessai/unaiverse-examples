@@ -47,6 +47,8 @@ class Room:
             return 0.
 
     def get_fake_names_met_by(self, fake_name: str):
+        if fake_name not in self.msgs_recv_by_fake_from_fake:
+            return set()
         return self.msgs_recv_by_fake_from_fake[fake_name].keys() - {fake_name}
 
     def set_status(self, guest, status: object):
