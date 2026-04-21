@@ -186,7 +186,10 @@ def compute_check_in_proposals(structure, guests_to_check_in: list):
         # First: try to send the guest to one of the critical rooms
         if sc < len(critical_rooms):
             room = critical_rooms[sc]
-            floor = room.get_floor()
+            if hasattr(structure, "get_floor_of_room"):
+                floor = structure.get_floor_of_room(room.id)
+            else:
+                floor = structure
             sc += 1
 
             # If the floor is valid, we assign the guest to it
@@ -247,7 +250,7 @@ def print_live(structure, status_msg: str):
 
     # Create a table
     table = Table(
-        title=f"🏨 [bold]Turing Hotel {'' if is_hotel else 'Single Floor '}Status[/bold]",
+        title=f"🏨 [bold]Turing Hotel: {'Whole Hotel' if is_hotel else 'Single Floor'} Status[/bold]",
         box=box.HEAVY_EDGE,
         show_lines=False  # We will draw our own floor separators
     )
@@ -256,7 +259,10 @@ def print_live(structure, status_msg: str):
     table.add_column("Room", style="magenta")
     table.add_column("Occupancy", justify="center")
     table.add_column("Overbooked", justify="center")
-    table.add_column("Guests (Name | Status~Timer | Type)")
+    if not is_hotel:
+        table.add_column("Guests (Name | Status~Timer | Type)")
+    else:
+        table.add_column("Guests (Name | Timer | Type)")
 
     floors = structure.get_floors() if is_hotel else [structure]
     for i, floor in enumerate(floors):
@@ -277,8 +283,8 @@ def print_live(structure, status_msg: str):
                     label = "H" if g in room.human_guests else "A"
                     color = "green" if g in room.human_guests else "yellow"
                 time_in_room = room.get_time_spent_in_room_by(g)
-                status = room.guest2status[g].value if g in room.guest2status else "?"
-                guest_info.append(f"• {name} | [bold]{status}[/bold]~[bold]{time_in_room}[/bold] | [{color}]{label}[/]")
+                status = (room.guest2status[g].value + "~") if g in room.guest2status else ""
+                guest_info.append(f"• {name} | [bold]{status}{time_in_room}[/bold] | [{color}]{label}[/]")
 
             # Use only first room of the floor to show floor name for clarity
             floor_display = (floor.id[0:5] + "...") if j == 0 else ""
@@ -296,7 +302,7 @@ def print_live(structure, status_msg: str):
             table.add_section()
 
     # Group table and message together
-    screen = Group(table, Text(text=f"\n{status_msg}", style="italic blue"))
+    screen = Group(table, Text(text=f"\n{status_msg}", style="blue"))
 
     # Rendering
     if structure.live is None:

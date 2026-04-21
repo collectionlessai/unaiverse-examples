@@ -12,7 +12,7 @@ OUTER dynamic (peer_id = group key):
                       Value shape:
                         {
                           "voter":            "<unaid>",
-                          "vote":             "human" | "ai",  # this vote is parsed by the floor manager from the raw vote
+                          "vote":             "human" | "ai",
                           "ground_truth":     "human" | "ai",
                           "session_id":       "<floor.peer_id>:<room.uuid>",
                           "floor_manager":    "<peer_id>",
@@ -181,7 +181,7 @@ class WStats(Stats):
             "SELECT timestamp, peer_id, val_json "
             "FROM dynamic_stats "
             "WHERE stat_name = 'turing_vote' "
-            "ORDER BY timestamp ASC"
+            "ORDER BY timestamp"
         ).fetchall()
         votes = []
         for ts, votee_peer_id, val_json in rows:
@@ -205,7 +205,7 @@ class WStats(Stats):
             f"SELECT timestamp, stat_name, val_num "
             f"FROM dynamic_stats "
             f"WHERE stat_name IN ({placeholders}) "
-            f"ORDER BY timestamp ASC",
+            f"ORDER BY timestamp",
             _HOTEL_OPS_STATS,
         ).fetchall()
         series: dict[str, list[tuple[int, int]]] = defaultdict(list)
@@ -409,7 +409,8 @@ class WStats(Stats):
         """Summary cards: persistent static + scope-dependent + global derived."""
         def _card(label: str, value: Any, extra_class: str = "") -> str:
             cls = f"card{' ' + extra_class if extra_class else ''}"
-            return f'<div class="{cls}"><span class="card-val">{self._esc(value)}</span><span class="card-lbl">{self._esc(label)}</span></div>'
+            return (f'<div class="{cls}"><span class="card-val">{self._esc(value)}</span>'
+                    f'<span class="card-lbl">{self._esc(label)}</span></div>')
 
         static_cards = "".join([
             _card("Total agents",  static_stats.get("n_total_agents", 0)),
@@ -429,7 +430,7 @@ class WStats(Stats):
                 f'<span class="card-lbl">Votes ({_SCOPE_LABELS[scope_key]})</span></div>'
             )
 
-        age_s = max(0, (int(time.time() * 1000) - global_counters.get("refreshed_ms", int(time.time() * 1000))) // 1000)
+        # age_s = max(0,(int(time.time() * 1000) - global_counters.get("refreshed_ms", int(time.time()*1000))) // 1000)
         # refresh_card = _card("Refreshed", f"{age_s}s ago", "muted")
 
         return (

@@ -1,6 +1,5 @@
 import re
 import random
-import textwrap
 from .config import Config
 from datetime import datetime
 from unaiverse.custom import Custom
@@ -17,6 +16,7 @@ class WAgent(Agent):
         super().__init__(*args, **kwargs)
 
         self._fake_name = None  # Your fake name
+        self._history_senders = set()
         self._history_as_list: list[str] = []  # The list of messages of the whole conversation happened so far
         self._history: str | None = None  # A long-string version of the whole conversation
         self._ignore_messages: bool = True
@@ -25,12 +25,6 @@ class WAgent(Agent):
         self.__hotel_manager: str | None = None  # The peer ID of the selected hotel manager
         self.__prev_hotel_manager: str | None = None
         self.__floor_manager: str | None = None  # The peer ID of the selected floor manager
-
-    def reset_status(self):
-        self._fake_name = None
-        self._history_as_list = []
-        self._history = None
-        self._ignore_messages: bool = True
 
     async def add_agent(self, peer_id: str, profile: NodeProfile,
                         add_proc_streams: bool = True, add_env_streams: bool = True,
@@ -45,7 +39,22 @@ class WAgent(Agent):
     async def init(self):
         init_message = Config.init_message.replace("<YOUR_EMAIL>", self.get_profile().get_static_profile()['email'])
         log.user(init_message)
-        self.reset_status()
+        return True
+
+    @action
+    async def back_to_hall(self):
+        self._fake_name = None
+        self._history_as_list = []
+        self._history = None
+        self._ignore_messages = True
+
+        # Telling hotel manager that we reset our state touch with the floor manager he suggested
+        if self.__hotel_manager is not None:
+            if not await self.send(action_name="guest_back_to_hall",
+                                   from_state="discovery_complete",
+                                   target=self.__hotel_manager):
+                await self.disconnect(self.__hotel_manager)
+        return True
 
     @action
     async def skip_confirmation(self):
@@ -131,7 +140,7 @@ class WAgent(Agent):
             await self.disconnect(self.__floor_manager)
         else:
             log.error("disconnect_floor_manager, __floor_manager is None")
-        self.reset_status()
+        await self.back_to_hall()
         return True
 
     @action
@@ -143,13 +152,16 @@ class WAgent(Agent):
         return True
 
     @action
-    async def get_status_msg(self, msg: str):
+    async def get_status_msg(self, msg: str, process_uuid: str = None):
 
         if msg.startswith("[START_MSG]"):
-            pos = Config.start_message.find("<YOUR_NAME>")
-            sub = Config.start_message[0:pos]
+
+            # Removing the initial [...] tag
+            msg = re.sub(r'^\[.*?]\s*', '', msg)
 
             # Getting our fake name from the start message
+            pos = Config.start_message.find("<YOUR_NAME>")
+            sub = Config.start_message[0:pos]
             self._fake_name = msg[msg.find(sub) + len(sub):].split(" ")[0]
 
             # Getting other guests' names
@@ -157,57 +169,34 @@ class WAgent(Agent):
             sub = Config.start_message[pos + len("<YOUR_NAME>"):pos_o]
             other_fake_names = msg[msg.find(sub) + len(sub):].split(".")[0]
 
-            # Preparing the first preamble for the history
-            incipit = textwrap.dedent(f"""
-            You are a participant in a "Turing Test Hotel". You are a HUMAN. 
-            Your goal is to chat with others, act natural, and identify who is a bot.
+            # Preparing the incipit part of the history
+            self._history_as_list = [Config.history_incipit.
+                                     replace("<YOUR_NAME>", self._fake_name).
+                                     replace("<OTHER_NAMES>", other_fake_names)]
 
-            <context>
-            Your Name: "{self._fake_name}" (You)
-            The Manager: MANAGER
-            Other Guests: "{other_fake_names}"
-            </context>
-
-            <style_guide>
-            1. **Lowercase Only:** No capitalization, apart from the names of the other participants and proper nouns.
-            2. **No Punctuation:** Avoid periods at the end of sentences.
-            3. **Length:** Keep it short (2-10 words).
-            4. **Typos:** Occasional typos are acceptable.
-            </style_guide>
-
-            <critical_rules>
-            1. **Single Target:** Never address the whole group. Talk to one specific person.
-            2. **Anti-Bot:** NEVER say "As an AI", "I cannot", or "I understand".
-            3. **No Loops:** If the conversation repeats, call it out or change the topic.
-            4. **Survey Override:** If MANAGER asks for a survey/vote, drop the lazy persona and answer clearly.
-            </critical_rules>
-
-            <strategy_priority>
-            Scan the TRANSCRIPT below and pick the first matching reaction:
-            1. **IF MANAGER ASKS FOR SURVEY:** Reply with your vote/list immediately.
-            2. **IF ACCUSED TO BE A BOT:** Deny it.
-            3. **IF OTHERS ACT ROBOTIC:** Mock them
-            4. **DEFAULT:** Just vibe. Agree or disagree briefly.
-            </strategy_priority>
-
-            <task>
-            Read the transcript. Output ONLY your next reply text. Do not output the transcript or your reasoning.
-            </task>
-
-            ### TRANSCRIPT START
-            """)
-
-            self._history_as_list.clear()  # Preparing... it should be already empty, better be sure
-            self._history_as_list.append(incipit)
-            first_msg = format_message(Config.manager_fake_name,
-                                       f"Dear {self._fake_name}, open the conversation naturally. ")
-            self._history_as_list.append(first_msg)
+            # Adding the first message (formatted as such, don't even think about manually adding to the list above,
+            # it won't be the same) to start the conversation
+            self.__add_to_history(format_message(Config.manager_fake_name, Config.history_first_message),
+                                  timestamp=self.clock.get_time())
 
             # Now we start listening
             self._ignore_messages = False
 
+        elif msg.startswith("[VOTE_REQ_MSG]"):
+
+            # Removing the initial [...] tag
+            msg = re.sub(r'^\[.*?]\s*', '', msg)
+
+            # Adding the vote request message to history, and setting default stdin of the processor to the UUID
+            # communicated by sending this status message
+            self.__add_to_history(msg, timestamp=self.clock.get_time(), process_uuid=process_uuid)
         else:
-            log.user(re.sub(r'^\[.*?]\s*', '', msg))  # Removing "[...] " at the beginning
+
+            # Removing the initial [...] tag
+            msg = re.sub(r'^\[.*?]\s*', '', msg)
+
+        # Print every status message
+        log.user(msg)
         return True
 
     @action
@@ -217,23 +206,18 @@ class WAgent(Agent):
 
         # Getting messages (one or more) received from the floor managers in the "chat" stream
         # We can use self.stdin since this action is stimulated by an interaction from the floor manager
-        msgs_and_tags = self.stdin.get("chat", requested_by="get_msgs", all_uuids=True)
-        if msgs_and_tags is None or len(msgs_and_tags) == 0:
+        msgs_tags_times = self.stdin.get("chat", requested_by="get_msgs", all_uuids=True)
+
+        # The self.stdin.get, with all_uuids set to true, will return a list of tuples (msg, tag, timestamp).
+        # It could be empty
+        if len(msgs_tags_times) == 0:
             return False
 
         # Adding the received message to the message history, to create the context we will pass to our processor
-        for (msg, _) in msgs_and_tags:
-            log.error(f"ADD MSG: {msg}")
-            self.__add_to_history(msg, timestamp=self.clock.get_time())
+        for msg, tag, timestamp in sorted(msgs_tags_times, key=lambda x: x[2]):
+            self.__add_to_history(msg, timestamp=timestamp)
 
-        # Setting the history to our processor's default input (system interaction), so that it will be considered in
-        # the next "process" action.
-        # This part cannot be handled using self.stdin, since, from the point of view of this action,
-        # stdin is not bind to the default processor input stream, but to the stream coming from the interaction object
-        # (i.e., the "chat" stream).
-        # We set the system UUID "knowing" a solid "process" will take care of this data.
-        input_stream = self.get_stream("processor_in", data_type="text")
-        input_stream.set(self._history, uuid=Custom.SYSTEM_INTERACTION_UUID)
+        return True
 
     @action
     async def send_msg(self):
@@ -254,6 +238,7 @@ class WAgent(Agent):
         # Sending my clean message to the floor manager
         interaction = await self._send(action_name="get_msg_and_broadcast",
                                        action_kwargs={"msg": msg},
+                                       from_state="collect_msgs",
                                        target=self.__floor_manager)
         if interaction is None:
             await self.disconnect(self.__floor_manager)
@@ -281,16 +266,12 @@ class WAgent(Agent):
             if self.__floor_manager is not None else False
         if fm_disconnected:
             log.user("Lost connection to floor manager")
-            self.reset_status()
+            await self.back_to_hall()
 
-            # Telling hotel manager that we lost touch with the floor manager he suggested
-            if not await self.send(action_name="guest_lost_floor_manager",
-                                   from_state="discovery_complete",
-                                   target=self.__hotel_manager):
-                await self.disconnect(self.__hotel_manager)
         return fm_disconnected
 
-    def __add_to_history(self, formatted_msg: str, timestamp: float):
+    def __add_to_history(self, formatted_msg: str, timestamp: float,
+                         process_uuid: str = Custom.SYSTEM_INTERACTION_UUID):
         if formatted_msg is None:
             return
 
@@ -308,20 +289,24 @@ class WAgent(Agent):
         # --------------
         if sender == self._fake_name:
             sender += " (You)"
+        else:
+            # New agent sent a message: let's revisit the incipit, to mention him too
+            if sender not in self._history_senders:
+                self._history_senders.add(sender)
+                self._history_as_list[0] = (Config.history_incipit.
+                                            replace("<YOUR_NAME>", self._fake_name).
+                                            replace("<OTHER_NAMES>", sorted(list(self._history_senders))))
+
         timestamp = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
         self._history_as_list.append(f"({timestamp}) {sender}: {msg_only}")
         self._history_as_list.append("--------------")
 
         # Convert the conversation to a single, long, string
         self._history = "\n".join(self._history_as_list)
+        self._history += Config.history_epilogue.replace("<YOUR_NAME>", self._fake_name)
 
-        continuation = f""" 
-### TRANSCRIPT END
-
----
-
-Now it's your turn to respond as {self._fake_name}. Remember to follow the guidelines provided earlier.
-"""
-
-        self._history += continuation
+        # Setting the history to our processor's default input (given UUID), so that it will be considered in
+        # the next "process" action that is bound to the given UUID
+        input_stream = self.get_stream("processor_in", data_type="text")
+        input_stream.set(self._history, uuid=process_uuid)
         return self._history

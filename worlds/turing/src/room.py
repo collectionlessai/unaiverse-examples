@@ -28,8 +28,9 @@ class Room:
         self.next_fake_name_index = 0
         self.guest2fake: dict[str, str] = {}  # peer ID -> fake name
         self.fake2guest: dict[str, str] = {}  # fake name -> peer ID
-        self.guest2insert_time: dict[str, float] = {}  # peer ID -> float time
-        self.guest2status: dict[str, str] = {}  # peer ID -> status string
+        self.guest2insert_time: dict[str, float] = {}
+        self.guest2status_time: dict[str, float] = {}  # peer ID -> float time
+        self.guest2status: dict[str, object] = {}  # peer ID -> status object
 
         self.msgs_sent_by_fake_to_fake: dict[str, dict[str, int]]= {}  # peer ID, peer ID -> number of exchanges
         self.msgs_recv_by_fake_from_fake: dict[str, dict[str, int]] = {}  # peer ID, peer ID -> number of exchanges
@@ -42,6 +43,25 @@ class Room:
     def get_time_spent_in_room_by(self, guest):
         if guest in self.guest2insert_time:
             return int(time.perf_counter() - self.guest2insert_time[guest])
+        else:
+            return 0.
+
+    def get_fake_names_met_by(self, fake_name: str):
+        return self.msgs_recv_by_fake_from_fake[fake_name].keys() - {fake_name}
+
+    def set_status(self, guest, status: object):
+        self.guest2status[guest] = status
+        self.guest2status_time[guest] = time.perf_counter()
+
+    def get_status(self, guest):
+        if guest in self.guest2status:
+            return self.guest2status[guest]
+        else:
+            return None
+
+    def get_time_in_current_status(self, guest):
+        if guest in self.guest2status_time:
+            return int(time.perf_counter() - self.guest2status_time[guest])
         else:
             return 0.
 
@@ -134,6 +154,8 @@ class Room:
                 del self.guest2insert_time[guest]
             if guest in self.guest2status:
                 del self.guest2status[guest]
+            if guest in self.guest2status_time:
+                del self.guest2status_time[guest]
             if fake_name in self.msgs_sent_by_fake_to_fake:
                 del self.msgs_sent_by_fake_to_fake[fake_name]
             if fake_name in self.msgs_recv_by_fake_from_fake:

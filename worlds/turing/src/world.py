@@ -87,7 +87,7 @@ class WWorld(World):
         behav.add_transit("init", "discovery_complete", action="discover_floor_managers")
         behav.add_transit("init", "discovery_complete", action="nop", teleport=True)
         behav.add_transit("discovery_complete", "discovery_complete",
-                          action="guest_lost_floor_manager", ready=False)
+                          action="guest_back_to_hall", ready=False)
         behav.add_transit("discovery_complete", "checked_in", action="check_in")
         behav.add_transit("discovery_complete", "ready_for_news", action="nop", teleport=True)
         behav.add_transit("checked_in", "ready_for_news", action="send_to_floor")
@@ -177,6 +177,8 @@ class WWorld(World):
                           ready=False)
         behav.add_transit("hall", "floor", action="floor_manager_ack", args={}, teleport=True)
         behav.add_transit("hall", "ready", action="lost_hotel_manager", args={}, teleport=True)
+        behav.add_transit("hall", "hall", action="back_to_hall", args={},
+                          delay=Config.wait_to_know_target_floor_for)
         behav.add_transit("reached_floor_manager", "floor", action="floor_manager_ack", args={})
         behav.add_transit("reached_floor_manager", "hall", action="lost_floor_manager",
                           args={"just_reached": True}, teleport=True)
@@ -199,13 +201,13 @@ class WWorld(World):
                           teleport=True)
         behav.add_transit("msg_prepared", "room_round_table", action="send_msg", args={})
         behav.add_transit("msg_prepared", "hall", action="lost_floor_manager", args={}, teleport=True)
-        behav.add_transit("room_voting_booth", "room_voting_booth", action="get_msgs", args={},
+        behav.add_transit("room_voting_booth", "room_voting_booth", action="get_status_msg", args={},
                           ready=False)
         behav.add_transit("room_voting_booth", "ready_to_leave_floor", action="process", args={},
                           ready=False)
         behav.add_transit("room_voting_booth", "hall", action="lost_floor_manager", args={},
                           teleport=True)
-        behav.add_transit("ready_to_leave_floor", "hall", action="disconnect_floor_manager", args={})
+        behav.add_transit("ready_to_leave_floor", "hall", action="back_to_hall", args={})
 
         behav.save(os.path.join(self.world_folder, 'guest.json'), only_if_changed=dummy_agent)
         behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'guest.pdf'))

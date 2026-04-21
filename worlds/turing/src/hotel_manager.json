@@ -71,7 +71,7 @@
         "discovery_complete": [
             {
                 "on": {
-                    "action": "guest_lost_floor_manager",
+                    "action": "guest_back_to_hall",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": false,
