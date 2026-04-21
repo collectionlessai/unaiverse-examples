@@ -107,6 +107,7 @@ class WAgent(Agent):
                                        "floor_manager": floor.floor_manager
                                    },
                                    from_state="hall",
+                                   id="FLOOR",  # There can be only one interaction about connecting to floor manager
                                    target=guest):
                 await self.disconnect(guest)
             else:
@@ -250,7 +251,7 @@ class WAgent(Agent):
             updates = floor_stream.get("update_hotel", all_uuids=True)
 
             # For each update packet (one per UUID)...
-            for (update_str, update_tag) in updates:
+            for (update_str, update_tag, update_time) in updates:
 
                 # Filtering out empty packets
                 if update_str is None:
@@ -498,7 +499,7 @@ class WAgent(Agent):
             # Getting all samples stored in such a stream (all UUIDs)
             votes = votes_stream.get("get_votes", all_uuids=True)
 
-            for vote_str in votes:
+            for vote_str, _, _ in votes:
 
                 # Filtering out empty packets
                 if vote_str is None:
@@ -553,8 +554,7 @@ class WAgent(Agent):
                                           peer_id=_votee_unaid_, timestamp=int_timestamp)
 
     @action
-    async def guest_lost_floor_manager(self, interaction: Interaction | None = None):
-        log.error("***** GUEST LOST FLOOR MANAGER ****** @@@")
+    async def guest_back_to_hall(self, interaction: Interaction | None = None):
         guest = interaction.requester
         self.hotel.eject(guest)
         return True

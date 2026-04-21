@@ -155,6 +155,18 @@
                     "time_to_wait_before_running": 0.0
                 },
                 "goto": "reached_floor_manager"
+            },
+            {
+                "on": {
+                    "action": "back_to_hall",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 30
+                },
+                "goto": "hall"
             }
         ],
         "reached_floor_manager": [
@@ -266,7 +278,7 @@
         "room_voting_booth": [
             {
                 "on": {
-                    "action": "get_msgs",
+                    "action": "get_status_msg",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": false,
@@ -292,7 +304,7 @@
         "ready_to_leave_floor": [
             {
                 "on": {
-                    "action": "disconnect_floor_manager",
+                    "action": "back_to_hall",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,

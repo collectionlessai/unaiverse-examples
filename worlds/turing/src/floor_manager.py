@@ -1,5 +1,6 @@
 import copy
 import json
+import time
 import uuid
 from enum import Enum
 from .floor import Floor
@@ -14,10 +15,11 @@ from .utils import compute_check_in_proposals, format_message
 
 
 class GuestStatus(Enum):
-    WAITING_TO_JOIN_ROOM = "WAIT"
-    JUST_ARRIVED_AT_ROUND_TABLE = "<CHAT>"
+    TOLD_TO_JOIN_ROOM = "MOVING"
+    JUST_ARRIVED_AT_ROUND_TABLE = ">CHAT"
     AT_ROUND_TABLE = "CHAT"
-    JUST_ARRIVED_IN_VOTING_BOOTH = "<VOTING>"
+    TOLD_TO_MOVE_TO_VOTING_BOOTH = "MOVING"
+    JUST_ARRIVED_IN_VOTING_BOOTH = ">VOTING"
     IN_VOTING_BOOTH = "VOTING"
 
 
@@ -46,7 +48,8 @@ class WAgent(Agent):
         # in which they communicate who is their hotel manager)
         self._sponsored_guests = {}
 
-        self._guest2vote_request = {}  # Guest who got the survey message -> (UUID of the request message, ask time)
+        self._guest2vote_request = {}  # Guest who got the survey message -> UUID of the request message
+        self._guest2reminder_time = {}  # Guest who got the survey message -> last reminder message time
         self._wants_to_exist = set()  # Guest who wants to leave
 
         # Creating the pubsub stream where this manager will broadcast floor-related updates
@@ -85,6 +88,8 @@ class WAgent(Agent):
             del self._guest2vote_request[peer_id]
         if peer_id in self._wants_to_exist:
             self._wants_to_exist.remove(peer_id)
+        if peer_id in self._guest2reminder_time:
+            del self._guest2reminder_time[peer_id]
 
     def on_tick(self):
         connected_hotel_managers = self.get_agents_by_role("hotel_manager")
@@ -93,14 +98,12 @@ class WAgent(Agent):
                          f"| Guests: {len(self.floor.get_guests())}/{len(connected_guests)}")
 
     async def guest_joined_room(self, interaction: Interaction | None = None):
-        log.error("CALLBACK")
         if interaction is None:
-            log.error("FALSE")
             return False
 
         guest = interaction.target[0]
-        self.floor.get_room_of(guest).guest2status[guest] = GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE
-        log.error("TRUE")
+        self.floor.get_room_of(guest).set_status(guest, GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE)
+        self._guest2reminder_time[guest] = time.perf_counter()
         return True
 
     async def guest_joined_voting_booth(self, interaction: Interaction | None = None):
@@ -111,21 +114,16 @@ class WAgent(Agent):
         if self.floor.is_in_a_room(guest):
             room = self.floor.get_room_of(guest)
             if room is not None:
-                room.guest2status[guest] = GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH
+                room.set_status(guest, GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH)
         return True
 
     @action
     async def get_guest_sponsor(self, hotel_manager: str | None = None, interaction: Interaction | None = None):
-        log.error(hotel_manager)
-        log.error(hotel_manager not in self.world_agents)
-        log.error(interaction is None)
         if hotel_manager is None or hotel_manager not in self.world_agents or interaction is None:
-            log.error("RET FALSE")
             return False
 
         guest = interaction.requester
         role = self.get_role(guest)
-        log.error(f"role = {role}")
         if role == "guest":
             self._sponsored_guests[guest] = hotel_manager  # Check-in order will follow the order in this dict, FIFO
             return True
@@ -136,7 +134,6 @@ class WAgent(Agent):
     async def check_in(self):
 
         # Getting list of guests to be checked in
-        log.error(f"self._sponsored_guests={self._sponsored_guests}")
         if len(self._sponsored_guests) > 0:
 
             # A guest to check in is one that is not in a room yet
@@ -174,7 +171,7 @@ class WAgent(Agent):
                 if self.floor.insert(guest, self.floor.get_profile_of(guest), hotel_manager, room):
 
                     # Marking the guest as somebody who was asked to go to a room (handled in the joined_room callback)
-                    room.guest2status[guest] = GuestStatus.WAITING_TO_JOIN_ROOM
+                    room.set_status(guest, GuestStatus.TOLD_TO_JOIN_ROOM)
 
                     at_least_one_sent = True
 
@@ -189,30 +186,49 @@ class WAgent(Agent):
                 room = self.floor.get_room_of(guest)
 
                 # A guest wants to exit or it is timeout! Test ended, GET OUT OF HERE!
-                if (room.guest2status[guest] is GuestStatus.AT_ROUND_TABLE and
-                        (room.get_time_spent_in_room_by(guest) >= Config.test_duration or guest in self._wants_to_exist)):
+                if (room.get_status(guest) == GuestStatus.AT_ROUND_TABLE and
+                        (room.get_time_in_current_status(guest) >= Config.test_duration or
+                         guest in self._wants_to_exist)):
                     if not await self.send(action_name="goto_voting_booth",
                                            from_state="room_round_table",
                                            callback="guest_joined_voting_booth",
                                            target=guest):
                         await self.disconnect(guest)
                     something_was_sent = True
+                    room.set_status(guest, GuestStatus.TOLD_TO_MOVE_TO_VOTING_BOOTH)
                     continue
 
-                # Too much time in voting both: GET OUT OF HERE!
-                if (room.guest2status[guest] is GuestStatus.IN_VOTING_BOOTH and
-                        ((self.clock.get_time() - self._guest2vote_request[guest][1]) > Config.survey_reply_time)):
+                # Too much time in voting booth: GET OUT OF HERE!
+                if (room.get_status(guest) == GuestStatus.IN_VOTING_BOOTH and
+                        room.get_time_in_current_status(guest) > Config.survey_reply_time):
+                    await self.disconnect(guest)
+                    continue
+
+                # Too much time to join the room we told you: GET OUT OF HERE!
+                if (room.get_status(guest) == GuestStatus.TOLD_TO_JOIN_ROOM and
+                        room.get_time_in_current_status(guest) > Config.moving_time):
+                    await self.disconnect(guest)
+                    continue
+
+                # Too much time in to move to the voting booth and get vote request message: GET OUT OF HERE!
+                if (room.get_status(guest) == GuestStatus.TOLD_TO_MOVE_TO_VOTING_BOOTH and
+                        room.get_time_in_current_status(guest) > Config.moving_time):
                     await self.disconnect(guest)
                     continue
 
                 # This guest just confirmed that he entered the room, let's send him the 'start conversation' message,
                 # and let's tell the others that he joined
-                if room.guest2status[guest] is GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE:
+                if room.get_status(guest) == GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE:
                     other_guests_names = sorted([room.fake_name_of(_guest)
                                                  for _guest in room.get_guests() if _guest != guest])
-                    start_message = (Config.start_message.
+                    if len(other_guests_names) == 0:
+                        start_message = Config.start_message_nobody
+                    else:
+                        start_message = Config.start_message
+                    start_message = (start_message.
                                      replace("<YOUR_NAME>", room.fake_name_of(guest)).
                                      replace("<OTHER_NAMES>", ", ".join(other_guests_names)))
+                    log.error(f"@@@@ SENDING INIT MESSAGE: {format_message(Config.manager_fake_name, start_message)}")
                     if not await self.send(action_name="get_status_msg",
                                            action_kwargs={"msg": format_message(Config.manager_fake_name,
                                                                                 start_message)},
@@ -230,31 +246,14 @@ class WAgent(Agent):
                                                        from_state="room_round_table",
                                                        target=_guest):
                                     await self.disconnect(_guest)
-                    room.guest2status[guest] = GuestStatus.AT_ROUND_TABLE
+                    room.set_status(guest, GuestStatus.AT_ROUND_TABLE)
                     continue
-
-                # From time to time send a reminder
-                if int(self.clock.get_time()) % Config.send_reminder_every == 0:
-                    for _guest in room.get_guests():
-                        if room.guest2status[_guest] is not GuestStatus.AT_ROUND_TABLE:
-                            continue
-                        if not await self.send(action_name="get_status_msg",
-                                               action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                                    Config.reminder_message)},
-                                               from_state="room_round_table",
-                                               target=_guest):
-                            await self.disconnect(_guest)
-                        else:
-                            something_was_sent = True
 
                 # This guest just confirmed that he left the room, let's send him the process 'survey' request
                 # and let's tell the others that he left
-                if room.guest2status[guest] is GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH:
-                    log.error(f"Looking for the fake name of {guest}")
-                    log.error(f"Fake names of guests: {room.fake2guest}")
+                if room.get_status(guest) == GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH:
                     fake_name = room.fake_name_of(guest)
-                    other_guests_names = sorted([room.fake_name_of(_guest)
-                                                 for _guest in room.get_guests() if _guest != guest])
+                    other_guests_names = sorted(list(room.get_fake_names_met_by(fake_name)))
                     survey_msg = (
                         Config.survey_message if len(other_guests_names) > 0 else Config.survey_message_nobody).replace(
                         "<YOUR_NAME>", room.fake_name_of(guest)).replace("<OTHER_NAMES>", ", ".join(other_guests_names))
@@ -264,19 +263,17 @@ class WAgent(Agent):
                     # sending as bare data_samples with no stream association would keep the message hidden to the GUI)
                     interaction = await self._send(action_name="process",
                                                    from_state="room_voting_booth",
-                                                   streams=["chat"],
                                                    target=guest)
                     if interaction is None:
                         await self.disconnect(guest)
                     else:
                         something_was_sent = True
-                        log.error(f"@@@@ ADDING to self._guest2vote_request, guest={guest}")
-                        self._guest2vote_request[guest] = (interaction.uuid, self.clock.get_time())
-                        if not await self.send(action_name="get_msgs",
-                                               data_samples={"chat": format_message(Config.manager_fake_name,
-                                                                                    survey_msg)},
+                        self._guest2vote_request[guest] = interaction.uuid
+                        if not await self.send(action_name="get_status_msg",
+                                               action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                                    survey_msg),
+                                                              "process_uuid": interaction.uuid},
                                                from_state="room_voting_booth",
-                                               id=interaction.id,
                                                target=guest):
                             await self.disconnect(guest)
 
@@ -290,8 +287,23 @@ class WAgent(Agent):
                                                        from_state="room_round_table",
                                                        target=_guest):
                                     await self.disconnect(_guest)
-                        room.guest2status[guest] = GuestStatus.IN_VOTING_BOOTH
+                        room.set_status(guest, GuestStatus.IN_VOTING_BOOTH)
                     continue
+
+                # From time to time send a reminder
+                if (room.get_status(guest) == GuestStatus.AT_ROUND_TABLE and
+                        (time.perf_counter() - self._guest2reminder_time[guest]) > Config.send_reminder_every):
+                    reminder_msg = (Config.reminder_message.
+                                    replace("<TIME_LEFT>", str(room.get_time_in_current_status(guest))))
+                    if not await self.send(action_name="get_status_msg",
+                                           action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                                reminder_msg)},
+                                           from_state="room_round_table",
+                                           target=guest):
+                        await self.disconnect(guest)
+                    else:
+                        something_was_sent = True
+                    self._guest2reminder_time[guest] = time.perf_counter()
 
         return something_was_sent
 
@@ -380,7 +392,7 @@ class WAgent(Agent):
         for guest in self.floor.get_guests():
             if guest not in self._guest2vote_request:
                 continue
-            vote_interaction_uuid, vote_asked_time = self._guest2vote_request[guest]
+            vote_interaction_uuid = self._guest2vote_request[guest]
             guest_processor_stream = self.get_stream("processor", guest, data_type="text")
             vote_msg = guest_processor_stream.get(requested_by="send_votes", uuid=vote_interaction_uuid)
             if vote_msg is None:
@@ -417,7 +429,12 @@ class WAgent(Agent):
 
             await self.send(data_samples={"votes": json.dumps(vote_dict)},
                             target=hotel_manager)
+
+            # Sending vote completes the path of an agent in the floor, hence we reset all its information
+            # (so he can be checked in again, if he stays in this floor and sends again its sponsorship)
             del self._guest2vote_request[guest]
+            del self._guest2reminder_time[guest]
+            del self._sponsored_guests[guest]
             self.floor.eject(guest)
             some_votes_were_found = True
         return some_votes_were_found
