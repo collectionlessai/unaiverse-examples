@@ -31,16 +31,23 @@ class WWorld(World):
         stats = WStats(is_world=True, db_path=os.path.join(world_folder, "stats", "world_stats.db"))
         super().__init__(world_folder=world_folder, stats=stats, **kwargs)
 
-        # Loading lists of hotel and floor managers
+        # List of hotel and floor managers (they are dynamically updated from file "managers.txt")
         self.hotel_managers = set()
         self.floor_managers = set()
+
+        # Loading lists of hotel and floor managers from "managers.txt"
         self.load_managers_from_file()
+
+        # Tracking changes to file "managers".txt (to update the lists when the file changes)
         self.managers_file_tracker = FileTracker(folder=world_folder, ext=".txt", prefix="managers.txt")
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
+
+        # If "managers.txt" changed, reload file
         if self.managers_file_tracker.something_changed():
             self.load_managers_from_file()
 
+        # Role is assigned in function of the contents of the lists of hotel and floor managers
         unaid = build_unaid(profile)
         if unaid in self.hotel_managers:
             log.user(f"Assigning role of hotel manager to: {unaid}")
@@ -52,6 +59,7 @@ class WWorld(World):
         return "guest"
 
     def load_managers_from_file(self):
+        """Load list of managers from file (CSV file, every line is: floor|manager,unaid)."""
         with open(os.path.join(self.world_folder, "managers.txt"), "r") as f:
             managers = {line.strip() for line in f}
             for manager in managers:
@@ -66,7 +74,7 @@ class WWorld(World):
                     log.error(f"Invalid line in managers.txt file (skipping): {manager}")
 
     def create_behav_files(self):
-        """Create role-behavior JSON files: if you manually create the JSON files, no need to implement this method."""
+        """Create role-behavior JSON files."""
         sys.path.append(self.world_folder)
 
         # ROLE 1/3: hotel manager
@@ -100,8 +108,8 @@ class WWorld(World):
         behav.add_transit("votes_processed", "init", action="send_violations")
         behav.add_transit("votes_processed", "init", action="nop", teleport=True)
 
-        behav.save(os.path.join(self.world_folder, 'hotel_manager.json'), only_if_changed=dummy_agent)
-        behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'hotel_manager.pdf'))
+        if behav.save(os.path.join(self.world_folder, 'hotel_manager.json'), only_if_changed=dummy_agent):
+            behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'hotel_manager.pdf'))
 
         # ROLE 2/3: floor manager
         from .floor_manager import WAgent
@@ -141,8 +149,8 @@ class WWorld(World):
         behav.add_transit("collect_msgs", "collect_msgs", action="get_msg_and_broadcast", ready=False)
         behav.add_transit("collect_msgs", "init", action="nop", teleport=True)
 
-        behav.save(os.path.join(self.world_folder, 'floor_manager.json'), only_if_changed=dummy_agent)
-        behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'floor_manager.pdf'))
+        if behav.save(os.path.join(self.world_folder, 'floor_manager.json'), only_if_changed=dummy_agent):
+            behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'floor_manager.pdf'))
 
         # ROLE 3/3: guest
         from .guest import WAgent
@@ -153,15 +161,18 @@ class WWorld(World):
 
         behav.add_state("init", action="init", blocking=False)
         behav.add_state("ready", blocking=True)
-        behav.add_state("reached_hotel_manager", blocking=False, msg="🏢 Entered the hotel (hotel manager contacted)")
-        behav.add_state("hall", blocking=False, msg="🏢 In the hall (waiting to be sent to a floor)")
-        behav.add_state("reached_floor_manager", blocking=False, msg="🪜 Floor manager contacted")
-        behav.add_state("floor", blocking=False, msg="🪜 In the floor, ready to go to room")
+        behav.add_state("reached_hotel_manager", blocking=False,
+                        msg="🏢 Entered the hotel (hotel manager contacted)")
+        behav.add_state("hall", blocking=False, msg="🏢 Walking though the hall (waiting to be sent to a floor)")
+        behav.add_state("reached_floor_manager", blocking=False,
+                        msg="🪜 Going upstairs (floor manager contacted)")
+        behav.add_state("floor", blocking=False, msg="🪜 Reached the right floor (waiting to be sent to a room)")
         behav.add_state("ready_for_room", blocking=False)
         behav.add_state("room_round_table", blocking=True)
         behav.add_state("msg_prepared", blocking=False)
-        behav.add_state("room_voting_booth", blocking=False, msg="🗳️ In the voting booth")
-        behav.add_state("vote_provided", blocking=False, msg="✅ Vote provided")
+        behav.add_state("room_voting_booth", blocking=False,
+                        msg="🗳️ Entered the voting booth (waiting for vote request)")
+        behav.add_state("vote_provided", blocking=False, msg="✅ Vote provided (ok!)")
 
         behav.add_transit("init", "ready", action="process", args={})
         behav.add_transit("init", "ready", action="skip_confirmation")
@@ -177,7 +188,7 @@ class WWorld(World):
                           delay=Config.disconnect_non_responsive_managers_after, teleport=True)
         behav.add_transit("floor", "ready_for_room", action="send_guest_sponsor", args={})
         behav.add_transit("ready_for_room", "room_round_table", action="goto_room", args={},
-                          msg="💬 Sitting at the chat table",
+                          msg="💬 Entered the room, sitting at the chat table (waiting for the start message)",
                           ready=False)
         behav.add_transit("room_round_table", "msg_prepared", action="process", args={},
                           avoid_changing_ready=True)
@@ -194,5 +205,5 @@ class WWorld(World):
         behav.add_transit("room_voting_booth", "hall", action="goto_hall", args={}, ready=False)
         behav.add_transit("vote_provided", "hall", action="goto_hall", args={}, ready=False)
 
-        behav.save(os.path.join(self.world_folder, 'guest.json'), only_if_changed=dummy_agent)
-        behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'guest.pdf'))
+        if behav.save(os.path.join(self.world_folder, 'guest.json'), only_if_changed=dummy_agent):
+            behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'guest.pdf'))

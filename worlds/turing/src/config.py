@@ -1,20 +1,35 @@
+"""
+       █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
+      ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█
+       ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
+       ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░
+                 A Collectionless AI Project (https://collectionless.ai)
+                 Registration/Login: https://unaiverse.io
+                 Code Repositories:  https://github.com/collectionlessai/
+                 Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
+"""
 import textwrap
 
 
 # Generic options to configure the Turing Test Hotel
+# All time measures are in SECONDS.
 class Config:
     test_duration = 30  # Seconds (int)
     survey_reply_time = 30  # Seconds
-    moving_time = 5  # Seconds
+    moving_time = 5  # Time to move from the floor entrance to the chat table or from the chat table to the voting both
     max_time_in_every_state = max([test_duration, survey_reply_time, moving_time]) + moving_time + 5  # Add a gap
     max_guests_per_room = 2
     max_overbooked_guests = 1
     rooms_per_floor = 3
-    min_msgs_from_votee = 3
-    send_reminder_every = 10
-    send_floor_updates_every = 3
-    disconnect_non_responsive_managers_after = 30
-    exit_trigger_message = "exit"
+    min_msgs_from_votee = 3  # Minimum number of received messages from somebody to vote hit
+    send_reminder_every = 10  # Reminder on how to exit the room and vote
+    send_floor_updates_every = 3  # From floor manager to hotel manager
+    disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
+    exit_trigger_message = "exit"  # The message that an agent can write to early stop the conversation and vote
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
     manager_fake_name = "MANAGER"
@@ -655,7 +670,17 @@ class Config:
         GOOD: "..."
         
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        SECTION 9 — FINAL INSTRUCTION
+        SECTION 8 — EARLY EXIT
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━        
+        The conversation will last {test_duration} seconds.
+        Then you will get a message from the MANAGER, asking for your vote about the identity (human or bot) of the 
+        other participants.
+        If you think to certainly know who the bots are before the end of the conversation, then you can say 
+        'exit' (ONLY 'exit') and you will be asked for a vote.
+        Do not exit too early, wait for some messages from the participants.
+        
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        SECTION 10 — FINAL INSTRUCTION
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         Read the TRANSCRIPT below from start to finish.
         Then:
