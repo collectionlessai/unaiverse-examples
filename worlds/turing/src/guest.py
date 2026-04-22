@@ -36,14 +36,34 @@ class WAgent(Agent):
                                        add_proc_streams=add_proc_streams, add_env_streams=add_env_streams,
                                        add_pubsub_streams=False)
 
-    @action
-    async def init(self):
-        init_message = Config.init_message.replace("<YOUR_EMAIL>", self.get_profile().get_static_profile()['email'])
-        log.user(init_message)
-        return True
+    async def on_tick(self):
 
-    @action
-    async def back_to_hall(self):
+        # Checking if we lost connection to the hotel manager
+        if self.__hotel_manager is not None and await self.disconnected(agent=self.__hotel_manager):
+            log.user("Lost connection to hotel manager")
+            self.__hotel_manager = None  # Clearing
+            await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
+
+            self.reset_status()
+            await self.behav.act_ghost_transition(to_state="ready")
+
+        # Checking if we lost connection to the floor manager
+        elif self.__floor_manager is not None and await self.disconnected(agent=self.__floor_manager):
+            log.user("Lost connection to floor manager")
+            self.__floor_manager = None
+
+            self.reset_status()
+            await self.behav.act_ghost_transition(to_state="hall")
+
+        # Checking time spent in current state
+        if self.behav.get_time_spent_in_current_state() > Config.max_time_in_every_state:
+            await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
+            await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
+
+            self.reset_status()
+            await self.behav.act_ghost_transition(to_state="ready")
+
+    def reset_status(self) -> None:
         self._fake_name = None
         self._history_as_list = []
         self._history_guests = set()
@@ -51,12 +71,15 @@ class WAgent(Agent):
         self._history = None
         self._ignore_messages = True
 
-        # Telling hotel manager that we reset our state touch with the floor manager he suggested
-        if self.__hotel_manager is not None:
-            if not await self.send(action_name="guest_back_to_hall",
-                                   from_state="discovery_complete",
-                                   target=self.__hotel_manager):
-                await self.disconnect(self.__hotel_manager)
+    @action
+    async def init(self):
+        init_message = Config.init_message.replace("<YOUR_EMAIL>", self.get_profile().get_static_profile()['email'])
+        log.user(init_message)
+        return True
+
+    @action
+    async def goto_hall(self):
+        self.reset_status()
         return True
 
     @action
@@ -92,7 +115,6 @@ class WAgent(Agent):
             # Discarding this manager, in case of failure
             if not connected:
                 all_hotel_managers.remove(selected_hotel_manager)
-                log.error(len(all_hotel_managers))
 
         self.__prev_hotel_manager = self.__hotel_manager
         self.__hotel_manager = selected_hotel_manager
@@ -108,13 +130,13 @@ class WAgent(Agent):
     async def disconnect_hotel_manager(self):
         if self.__hotel_manager is not None:
             await self.disconnect(self.__hotel_manager)
+            self.__hotel_manager = None
         return True
 
     @action
     async def connect_to_floor_manager(self, floor_manager: str | None = None):
         if await self.connect_to(floor_manager):
             self.__floor_manager = floor_manager
-            log.error("connect_to_floor_manager, __floor_manager is None")
             return True
         else:
             return False
@@ -133,7 +155,6 @@ class WAgent(Agent):
     @action
     async def floor_manager_ack(self):
         if self.__floor_manager is None:
-            log.error("floor_manager_ack, __floor_manager is None")
             return False
         return await self.connected(self.__floor_manager, handshake_completed=True)
 
@@ -141,9 +162,8 @@ class WAgent(Agent):
     async def disconnect_floor_manager(self):
         if self.__floor_manager is not None:
             await self.disconnect(self.__floor_manager)
-        else:
-            log.error("disconnect_floor_manager, __floor_manager is None")
-        await self.back_to_hall()
+            self.__floor_manager = None
+        self.reset_status()
         return True
 
     @action
@@ -160,17 +180,21 @@ class WAgent(Agent):
         if msg.startswith("[START_MSG]"):
 
             # Removing the initial [...] tag
-            msg = re.sub(r'^\[.*?]\s*', '', msg)
+            msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
+            msg_no_tag_with_wildcards = re.sub(r'^\[.*?]\s*', '', Config.start_message)
 
             # Getting our fake name from the start message
-            pos = Config.start_message.find("<YOUR_NAME>")
-            sub = Config.start_message[0:pos]
-            self._fake_name = msg[msg.find(sub) + len(sub):].split(" ")[0]
+            pos = msg_no_tag_with_wildcards.find("<YOUR_NAME>")
+            sub = msg_no_tag_with_wildcards[0:pos]
+            self._fake_name = msg_no_tag[msg_no_tag.find(sub) + len(sub):].split(" ")[0]
 
             # Getting other guests' names
             pos_o = Config.start_message.find("<OTHER_NAMES>")
-            sub = Config.start_message[pos + len("<YOUR_NAME>"):pos_o]
-            other_fake_names = msg[msg.find(sub) + len(sub):].split(".")[0]
+            if pos_o < 0:
+                other_fake_names = ""
+            else:
+                sub = Config.start_message[pos + len("<YOUR_NAME>"):pos_o]
+                other_fake_names = msg_no_tag[msg_no_tag.find(sub) + len(sub):].split(".")[0]
 
             # Preparing the incipit part of the history
             self._history_guests = {x.strip() for x in other_fake_names.split(",")}
@@ -180,41 +204,46 @@ class WAgent(Agent):
 
             # Adding the first message (formatted as such, don't even think about manually adding to the list above,
             # it won't be the same) to start the conversation
-            self.__add_to_history(format_message(Config.manager_fake_name, Config.history_first_message),
+            self.__add_to_history(format_message(Config.manager_fake_name,
+                                                 Config.history_first_message.replace("<YOUR_NAME>", self._fake_name)),
                                   timestamp=self.clock.get_time())
 
             # Now we start listening
             self._ignore_messages = False
 
-        elif msg.startswith("[VOTE_REQ_MSG]"):
+        if not self._ignore_messages:
+            if msg.startswith("[START_MSG]"):
 
-            # Removing the initial [...] tag
-            msg = re.sub(r'^\[.*?]\s*', '', msg)
+                # Removing the initial [...] tag
+                msg = re.sub(r'^\[.*?]\s*', '', msg)
 
-            # Adding the vote request message to history, and setting default stdin of the processor to the UUID
-            # communicated by sending this status message
-            self.__add_to_history(msg, timestamp=self.clock.get_time(), process_uuid=process_uuid)
+            elif msg.startswith("[VOTE_REQ_MSG]"):
 
-        elif msg.startswith("[JOINED_MSG]"):
+                # Removing the initial [...] tag
+                msg = re.sub(r'^\[.*?]\s*', '', msg)
 
-            # Removing the initial [...] tag
-            msg = re.sub(r'^\[.*?]\s*', '', msg)
+                # Adding the vote request message to history, and setting default stdin of the processor to the UUID
+                # communicated by sending this status message
+                self.__add_to_history(msg, timestamp=self.clock.get_time(), process_uuid=process_uuid)
 
-            # Adding to guest list
-            self._history_guests.add(msg.split(":")[1].strip())
+            elif msg.startswith("[JOINED_MSG]"):
 
-        elif msg.startswith("[LEFT_MSG]") or msg.startswith("[DISCO_MSG]"):
+                # Removing the initial [...] tag
+                msg = re.sub(r'^\[.*?]\s*', '', msg)
 
-            # Removing the initial [...] tag
-            msg = re.sub(r'^\[.*?]\s*', '', msg)
+                # Adding to guest list
+                self._history_guests.add(msg.split(":")[1].strip())
 
-        else:
+            elif msg.startswith("[LEFT_MSG]") or msg.startswith("[DISCO_MSG]"):
 
-            # Removing the initial [...] tag
-            msg = re.sub(r'^\[.*?]\s*', '', msg)
+                # Removing the initial [...] tag
+                msg = re.sub(r'^\[.*?]\s*', '', msg)
 
-        # Print every status message
-        log.user(msg)
+            else:
+                return False  # Unknown message type
+
+            # Print every known status message
+            log.user(msg)
         return True
 
     @action
@@ -266,27 +295,6 @@ class WAgent(Agent):
         msg = format_message(f"{self._fake_name}", msg)
         self.__add_to_history(msg, timestamp=self.clock.get_time())
         return True
-
-    @action
-    async def lost_hotel_manager(self, just_reached: bool = False):
-        hm_disconnected = await self.disconnected(agent=self.__hotel_manager,
-                                                  handshake_completed=not just_reached) \
-            if self.__hotel_manager is not None else False
-        if hm_disconnected:
-            log.user("Lost connection to hotel manager")
-            self.__hotel_manager = None
-        return hm_disconnected
-
-    @action
-    async def lost_floor_manager(self, just_reached: bool = False):
-        fm_disconnected = await self.disconnected(agent=self.__floor_manager,
-                                                  handshake_completed=not just_reached) \
-            if self.__floor_manager is not None else False
-        if fm_disconnected:
-            log.user("Lost connection to floor manager")
-            await self.back_to_hall()
-
-        return fm_disconnected
 
     def __add_to_history(self, formatted_msg: str, timestamp: float,
                          process_uuid: str = Custom.SYSTEM_INTERACTION_UUID):

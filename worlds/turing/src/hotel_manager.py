@@ -33,7 +33,7 @@ class WAgent(Agent):
         self._last_update_received_at = "..."
         self._last_guest_send_to_floor_at = "..."
 
-    def on_tick(self):
+    async def on_tick(self):
         connected_floor_managers = self.get_agents_by_role("floor_manager")
         connected_guests = self.get_agents_by_role("guest")
         self.hotel.print(f"Floor managers: {len(self.hotel.get_floor_managers())}/{len(connected_floor_managers)} "
@@ -63,8 +63,7 @@ class WAgent(Agent):
 
         if peer_id in self.hotel.get_floor_managers():
             self.remove_floor_by_floor_manager(peer_id)
-        if peer_id in self.hotel.get_guests() or peer_id in self.hotel.get_expected_guests():
-            self.hotel.eject(peer_id)
+        self.hotel.eject(peer_id)
 
     @action
     async def discover_floor_managers(self):
@@ -182,17 +181,30 @@ class WAgent(Agent):
             return _update_dict
 
         def _update_floor(_floor_id: str, _update_dict: dict):
+            incoherence_detected = False
 
             # Reference to the floor
             _floor = self.hotel.get_floor(_floor_id)
 
+            # Unknown guests in the floor
+            unk_guests = [x for x in _floor.get_guests() if x.startswith(Config.unknown_guest_name)]
+
             # Handling new ejections of guests
             for (_room_id, _guest) in _update_dict["ejected_guests"]:
+                if not self.hotel.is_in_a_floor(_guest):
+                    if len(unk_guests) > 0:
+                        _guest = unk_guests.pop(0)
+                    else:
+                        incoherence_detected = True
+                elif not _floor.is_in_a_room(_guest) or not _floor.get_room_of(_guest).id != _room_id:
+                    incoherence_detected = True
                 self.hotel.eject(_guest)
 
             # Handling new insertions of guests
             for (_room_id, _guest, _hotel_manager_who_handled_the_guest) in _update_dict["inserted_guests"]:
                 self.hotel.insert(_guest, _floor_id, _room_id, _hotel_manager_who_handled_the_guest)
+
+            return not incoherence_detected
 
         def _create_or_recreate_floor(_floor_manager: str, _update_dict: dict, _update_tag: int,
                                       _consider_guest_updates: bool, _fill_floor: bool):
@@ -210,7 +222,7 @@ class WAgent(Agent):
 
             # Inserting/ejecting
             if _consider_guest_updates:
-                _update_floor(_update_dict["floor_id"], _update_dict)
+                _update_floor(_update_dict["floor_id"], _update_dict)  # Here we do not check the return value
 
             # Saving update tag
             self._floor_update_tags[_update_dict["floor_id"]] = _update_tag
@@ -227,6 +239,7 @@ class WAgent(Agent):
                         while True:
                             unk_name = Config.unknown_guest_name + str(j)
                             if self.hotel.is_in_a_floor(unk_name):
+                                j += 1
                                 continue
                             else:
                                 self.hotel.insert(unk_name, _floor.id, _room_id,
@@ -277,7 +290,7 @@ class WAgent(Agent):
 
                     # If some tags were missed, the floor is rebuilt
                     if (self._floor_update_tags[floor_id] + 1) != update_tag:
-                        log.error(f"Received a  floor update packet "
+                        log.error(f"Received a floor update packet "
                                   f"with tag {update_tag}, and the last received tag was "
                                   f"{self._floor_update_tags[floor_id]}: "
                                   f"something was missed, resetting floor")
@@ -294,12 +307,17 @@ class WAgent(Agent):
                 else:
 
                     # Handling new insertion/ejections of guests
-                    _update_floor(floor_id, update_dict)
+                    if not _update_floor(floor_id, update_dict):
 
-                    # Saving update tag
-                    self._floor_update_tags[update_dict["floor_id"]] = update_tag
+                        # Some issue were found while trying to update the floor, let's kill it
+                        _create_or_recreate_floor(floor_manager, update_dict, update_tag,
+                                                  _consider_guest_updates=True, _fill_floor=True)
+                    else:
 
-                # Checking issues
+                        # Saving update tag
+                        self._floor_update_tags[update_dict["floor_id"]] = update_tag
+
+                # Checking issues after update
                 floor = self.hotel.get_floor(floor_id)
                 for room_id, guest_count in update_dict["floor_status"]:
 
@@ -554,7 +572,6 @@ class WAgent(Agent):
                                           peer_id=_votee_unaid_, timestamp=int_timestamp)
 
     @action
-    async def guest_back_to_hall(self, interaction: Interaction | None = None):
-        guest = interaction.requester
+    async def guest_back_to_hall(self, guest: str | None = None):
         self.hotel.eject(guest)
         return True

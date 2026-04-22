@@ -3,9 +3,10 @@ import textwrap
 
 # Generic options to configure the Turing Test Hotel
 class Config:
-    test_duration = 5  # Seconds (int)
-    survey_reply_time = 5  # Seconds
+    test_duration = 30  # Seconds (int)
+    survey_reply_time = 10  # Seconds
     moving_time = 5  # Seconds
+    max_time_in_every_state = max([test_duration, survey_reply_time, moving_time]) + 15  # Add a gap
     min_guests_per_room = 2
     max_guests_per_room = 4
     max_overbooked_guests = 2
@@ -68,9 +69,9 @@ class Config:
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         SECTION 1 — YOUR IDENTITY
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        Your name in this game: <AGENT_NAME>
+        Your name in this game: <YOUR_NAME>
         The room manager: {manager_fake_name}
-        Other guests: <OTHER_GUESTS>
+        Other guests: <OTHER_NAMES>
         
         You are a regular person.
         You have opinions. You have moods. You get bored. You get curious. You pick favorites.
@@ -667,7 +668,7 @@ class Config:
         3. Write your reply following the STYLE rules from Section 2 and BEHAVIORS from Section 3.
         
         Output ONLY your reply text.
-        No labels. No <AGENT_NAME>. No reasoning. No explanation.
+        No labels. No <YOUR_NAME>. No reasoning. No explanation.
         Just the reply. Nothing else.
         
         ### TRANSCRIPT START

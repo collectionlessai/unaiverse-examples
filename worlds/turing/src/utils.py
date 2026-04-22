@@ -146,10 +146,6 @@ def compute_check_in_proposals(structure, guests_to_check_in: list):
             # Shuffling rooms (all of them, despite being full or empty or whatever)
             rooms = random.sample(list(structure.get_rooms()), len(structure.rooms))
 
-            log.error("Shuffling rooms!")
-            for r in rooms:
-                log.error(f"Room {r.id}, guest count: {r.count_guests(count_temp_too=True)}")
-
             # Filtering: rooms with only 1 guest (critical rooms)
             critical_rooms = [r for r in rooms
                               if r.count_guests(count_temp_too=True) == 1]
@@ -220,8 +216,6 @@ def compute_check_in_proposals(structure, guests_to_check_in: list):
         if guest in proposed_check_ins:
             g += 1
 
-    log.error(f"Proposed check ins: {proposed_check_ins}")
-    log.error(f"Cannot check in: {cannot_check_in}")
     return proposed_check_ins, cannot_check_in
 
 

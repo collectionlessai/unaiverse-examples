@@ -162,34 +162,23 @@ class WWorld(World):
         behav.add_state("room_round_table", blocking=True, msg="💬 Sitting at the chat table")
         behav.add_state("msg_prepared", blocking=False)
         behav.add_state("room_voting_booth", blocking=False, msg="🗳️ In the voting booth")
-        behav.add_state("ready_to_leave_floor", blocking=False, msg="🪜 Leaving floor")
+        behav.add_state("vote_provided", blocking=False, msg="✅ Vote provided")
 
         behav.add_transit("init", "ready", action="process", args={})
         behav.add_transit("init", "ready", action="skip_confirmation")
         behav.add_transit("ready", "reached_hotel_manager", action="connect_to_hotel_manager",
                           msg="🔗 Connecting to a randomly selected hotel manager")
         behav.add_transit("reached_hotel_manager", "hall", action="hotel_manager_ack", args={})
-        behav.add_transit("reached_hotel_manager", "ready", action="lost_hotel_manager",
-                          args={"just_reached": True}, teleport=True)
         behav.add_transit("reached_hotel_manager", "ready", action="disconnect_hotel_manager",
                           args={}, delay=Config.disconnect_managers_after, teleport=True)
         behav.add_transit("hall", "reached_floor_manager", action="connect_to_floor_manager", args={},
                           ready=False)
-        behav.add_transit("hall", "floor", action="floor_manager_ack", args={}, teleport=True)
-        behav.add_transit("hall", "ready", action="lost_hotel_manager", args={}, teleport=True)
-        behav.add_transit("hall", "hall", action="back_to_hall", args={},
-                          delay=Config.wait_to_know_target_floor_for)
         behav.add_transit("reached_floor_manager", "floor", action="floor_manager_ack", args={})
-        behav.add_transit("reached_floor_manager", "hall", action="lost_floor_manager",
-                          args={"just_reached": True}, teleport=True)
         behav.add_transit("reached_floor_manager", "hall", action="disconnect_floor_manager", args={},
                           delay=Config.disconnect_managers_after, teleport=True)
         behav.add_transit("floor", "ready_for_room", action="send_guest_sponsor", args={})
-        behav.add_transit("floor", "hall", action="lost_floor_manager", args={}, teleport=True)
         behav.add_transit("ready_for_room", "room_round_table", action="goto_room", args={},
                           ready=False)
-        behav.add_transit("ready_for_room", "hall", action="lost_floor_manager", args={},
-                          teleport=True)
         behav.add_transit("room_round_table", "msg_prepared", action="process", args={},
                           avoid_changing_ready=True)
         behav.add_transit("room_round_table", "room_round_table", action="get_msgs", args={})
@@ -197,17 +186,13 @@ class WWorld(World):
                           ready=False)
         behav.add_transit("room_round_table", "room_voting_booth", action="goto_voting_booth",
                           args={}, ready=False)
-        behav.add_transit("room_round_table", "hall", action="lost_floor_manager", args={},
-                          teleport=True)
         behav.add_transit("msg_prepared", "room_round_table", action="send_msg", args={})
-        behav.add_transit("msg_prepared", "hall", action="lost_floor_manager", args={}, teleport=True)
         behav.add_transit("room_voting_booth", "room_voting_booth", action="get_status_msg", args={},
                           ready=False)
-        behav.add_transit("room_voting_booth", "ready_to_leave_floor", action="process", args={},
+        behav.add_transit("room_voting_booth", "vote_provided", action="process", args={},
                           ready=False)
-        behav.add_transit("room_voting_booth", "hall", action="lost_floor_manager", args={},
-                          teleport=True)
-        behav.add_transit("ready_to_leave_floor", "hall", action="back_to_hall", args={})
+        behav.add_transit("room_voting_booth", "hall", action="goto_hall", args={}, ready=False)
+        behav.add_transit("vote_provided", "hall", action="goto_hall", args={}, ready=False)
 
         behav.save(os.path.join(self.world_folder, 'guest.json'), only_if_changed=dummy_agent)
         behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'guest.pdf'))
