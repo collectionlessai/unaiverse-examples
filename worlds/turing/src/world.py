@@ -174,7 +174,8 @@ class WWorld(World):
                         msg="🗳️ Entered the voting booth (waiting for vote request)")
         behav.add_state("vote_provided", blocking=False, msg="✅ Vote provided (ok!)")
 
-        behav.add_transit("init", "ready", action="process", args={})
+        behav.add_transit("init", "ready", action="process", args={},
+                          avoid_changing_ready=True)
         behav.add_transit("init", "ready", action="skip_confirmation")
         behav.add_transit("ready", "reached_hotel_manager", action="connect_to_hotel_manager",
                           msg="🔗 Connecting to a randomly selected hotel manager")
