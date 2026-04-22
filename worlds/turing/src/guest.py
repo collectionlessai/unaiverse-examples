@@ -212,12 +212,7 @@ class WAgent(Agent):
             self._ignore_messages = False
 
         if not self._ignore_messages:
-            if msg.startswith("[START_MSG]"):
-
-                # Removing the initial [...] tag
-                msg = re.sub(r'^\[.*?]\s*', '', msg)
-
-            elif msg.startswith("[VOTE_REQ_MSG]"):
+            if msg.startswith("[VOTE_REQ_MSG]"):
 
                 # Removing the initial [...] tag
                 msg = re.sub(r'^\[.*?]\s*', '', msg)
@@ -234,7 +229,10 @@ class WAgent(Agent):
                 # Adding to guest list
                 self._history_guests.add(msg.split(":")[1].strip())
 
-            elif msg.startswith("[LEFT_MSG]") or msg.startswith("[DISCO_MSG]"):
+            elif (msg.startswith("[START_MSG]") or
+                  msg.startswith("[LEFT_MSG]") or
+                  msg.startswith("[DISCO_MSG]") or
+                  msg.startswith("[GEN_MSG]")):
 
                 # Removing the initial [...] tag
                 msg = re.sub(r'^\[.*?]\s*', '', msg)

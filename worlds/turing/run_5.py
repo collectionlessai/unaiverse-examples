@@ -17,4 +17,4 @@ agent = Agent(proc=processor,
 node = Node(node_name="Jenny", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Running node
-node.run(join_world="TuringHotel")
+node.run(join_world="_TuringHotel")
