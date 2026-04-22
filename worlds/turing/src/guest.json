@@ -34,21 +34,21 @@
         "hall": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#127970; In the hall (waiting to be sent to a floor)",
+            "msg": "&#127970; Walking though the hall (waiting to be sent to a floor)",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
         "reached_floor_manager": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#129692; Floor manager contacted",
+            "msg": "&#129692; Going upstairs (floor manager contacted)",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
         "floor": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#129692; In the floor, ready to go to room",
+            "msg": "&#129692; Reached the right floor (waiting to be sent to a room)",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
@@ -76,14 +76,14 @@
         "room_voting_booth": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#128499;&#65039; In the voting booth",
+            "msg": "&#128499;&#65039; Entered the voting booth (waiting for vote request)",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
         "vote_provided": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9989; Vote provided",
+            "msg": "&#9989; Vote provided (ok!)",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         }
@@ -95,7 +95,7 @@
                     "action": "process",
                     "action_kwargs": {},
                     "msg": null,
-                    "ready": false,
+                    "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
                     "time_to_wait_before_running": 0.0
@@ -190,7 +190,7 @@
                 "on": {
                     "action": "goto_room",
                     "action_kwargs": {},
-                    "msg": "&#128172; Sitting at the chat table",
+                    "msg": "&#128172; Entered the room, sitting at the chat table (waiting for the start message)",
                     "ready": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
