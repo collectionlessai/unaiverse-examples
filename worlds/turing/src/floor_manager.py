@@ -346,17 +346,19 @@ class WAgent(Agent):
 
                 # From time to time send a reminder
                 if (room.get_status(guest) == GuestStatus.AT_ROUND_TABLE and
-                        (time.perf_counter() - self._guest2reminder_time[guest]) > Config.send_reminder_every):
+                        ((time.perf_counter() - self._guest2reminder_time[guest]) > Config.send_reminder_every)):
+                    time_left = Config.test_duration - room.get_time_in_current_status(guest)
                     reminder_msg = (Config.reminder_message.
-                                    replace("<TIME_LEFT>", str(room.get_time_in_current_status(guest))))
-                    if not await self.send(action_name="get_status_msg",
-                                           action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                                reminder_msg)},
-                                           from_state="room_round_table",
-                                           target=guest):
-                        await self.disconnect(guest)
-                    else:
-                        something_was_sent = True
+                                    replace("<TIME_LEFT>", str(time_left)))
+                    if time_left > 0:
+                        if not await self.send(action_name="get_status_msg",
+                                               action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                                    reminder_msg)},
+                                               from_state="room_round_table",
+                                               target=guest):
+                            await self.disconnect(guest)
+                        else:
+                            something_was_sent = True
                     self._guest2reminder_time[guest] = time.perf_counter()
 
         return something_was_sent

@@ -4,23 +4,19 @@ import textwrap
 # Generic options to configure the Turing Test Hotel
 class Config:
     test_duration = 30  # Seconds (int)
-    survey_reply_time = 10  # Seconds
+    survey_reply_time = 30  # Seconds
     moving_time = 5  # Seconds
-    max_time_in_every_state = max([test_duration, survey_reply_time, moving_time]) + 15  # Add a gap
-    min_guests_per_room = 2
-    max_guests_per_room = 4
-    max_overbooked_guests = 2
+    max_time_in_every_state = max([test_duration, survey_reply_time, moving_time]) + moving_time + 5  # Add a gap
+    max_guests_per_room = 2
+    max_overbooked_guests = 1
     rooms_per_floor = 3
     min_msgs_from_votee = 3
-    send_reminder_every = 5
+    send_reminder_every = 10
     send_floor_updates_every = 3
-    disconnect_managers_after = 30
-    wait_to_know_target_floor_for = 30
+    disconnect_non_responsive_managers_after = 30
     exit_trigger_message = "exit"
-
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
                     "viewform?usp=pp_url&entry.1591917462=<email>")
-
     manager_fake_name = "MANAGER"
     unknown_guest_name = "unk"
     sender_prefix = "**"

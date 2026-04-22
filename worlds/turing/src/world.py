@@ -153,13 +153,12 @@ class WWorld(World):
 
         behav.add_state("init", action="init", blocking=False)
         behav.add_state("ready", blocking=True)
-        behav.add_state("reached_hotel_manager", blocking=False, msg="🏢 Hotel manager contacted")
-        behav.add_state("hall", blocking=False, msg="🏢 In the hall, waiting to be sent to floor")
+        behav.add_state("reached_hotel_manager", blocking=False, msg="🏢 Entered the hotel (hotel manager contacted)")
+        behav.add_state("hall", blocking=False, msg="🏢 In the hall (waiting to be sent to a floor)")
         behav.add_state("reached_floor_manager", blocking=False, msg="🪜 Floor manager contacted")
-        behav.add_state("floor", blocking=False, msg="🪜 In the floor, ready to declare sponsorship")
-        behav.add_state("ready_for_room", blocking=False,
-                        msg="🟡 Sponsorship declared, waiting to be sent to room")
-        behav.add_state("room_round_table", blocking=True, msg="💬 Sitting at the chat table")
+        behav.add_state("floor", blocking=False, msg="🪜 In the floor, ready to go to room")
+        behav.add_state("ready_for_room", blocking=False)
+        behav.add_state("room_round_table", blocking=True)
         behav.add_state("msg_prepared", blocking=False)
         behav.add_state("room_voting_booth", blocking=False, msg="🗳️ In the voting booth")
         behav.add_state("vote_provided", blocking=False, msg="✅ Vote provided")
@@ -170,14 +169,15 @@ class WWorld(World):
                           msg="🔗 Connecting to a randomly selected hotel manager")
         behav.add_transit("reached_hotel_manager", "hall", action="hotel_manager_ack", args={})
         behav.add_transit("reached_hotel_manager", "ready", action="disconnect_hotel_manager",
-                          args={}, delay=Config.disconnect_managers_after, teleport=True)
+                          args={}, delay=Config.disconnect_non_responsive_managers_after, teleport=True)
         behav.add_transit("hall", "reached_floor_manager", action="connect_to_floor_manager", args={},
                           ready=False)
         behav.add_transit("reached_floor_manager", "floor", action="floor_manager_ack", args={})
         behav.add_transit("reached_floor_manager", "hall", action="disconnect_floor_manager", args={},
-                          delay=Config.disconnect_managers_after, teleport=True)
+                          delay=Config.disconnect_non_responsive_managers_after, teleport=True)
         behav.add_transit("floor", "ready_for_room", action="send_guest_sponsor", args={})
         behav.add_transit("ready_for_room", "room_round_table", action="goto_room", args={},
+                          msg="💬 Sitting at the chat table",
                           ready=False)
         behav.add_transit("room_round_table", "msg_prepared", action="process", args={},
                           avoid_changing_ready=True)
