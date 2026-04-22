@@ -15,10 +15,10 @@ from .utils import compute_check_in_proposals, format_message
 
 
 class GuestStatus(Enum):
-    TOLD_TO_JOIN_ROOM = "MOVING"
+    TOLD_TO_JOIN_ROOM = "MOVE>CHAT"
     JUST_ARRIVED_AT_ROUND_TABLE = ">CHAT"
     AT_ROUND_TABLE = "CHAT"
-    TOLD_TO_MOVE_TO_VOTING_BOOTH = "MOVING"
+    TOLD_TO_MOVE_TO_VOTING_BOOTH = "MOVE>VOTING"
     JUST_ARRIVED_IN_VOTING_BOOTH = ">VOTING"
     IN_VOTING_BOOTH = "VOTING"
 
@@ -48,7 +48,7 @@ class WAgent(Agent):
         # in which they communicate who is their hotel manager)
         self._sponsored_guests = {}
 
-        self._guest2vote_request = {}  # Guest who got the survey message -> UUID of the request message
+        self._guest2vote_info = {}  # Guest who got the survey message -> [UUID of the request message, vote dict]
         self._guest2reminder_time = {}  # Guest who got the survey message -> last reminder message time
         self._wants_to_exist = set()  # Guest who wants to leave
 
@@ -79,24 +79,18 @@ class WAgent(Agent):
                                            action_kwargs={"msg": disconnected_message},
                                            target=_guest):
                         await self.disconnect(_guest)
-            self.floor.eject(peer_id)  # Send him out
 
-        # Clearing remaining attributes (some of them might be also have already cleared, better be sure)
-        if peer_id in self._sponsored_guests:
-            del self._sponsored_guests[peer_id]
-        if peer_id in self._guest2vote_request:
-            del self._guest2vote_request[peer_id]
-        if peer_id in self._wants_to_exist:
-            self._wants_to_exist.remove(peer_id)
-        if peer_id in self._guest2reminder_time:
-            del self._guest2reminder_time[peer_id]
+        self.__eject_and_clear_guest(peer_id)  # Send him out and clear all his info
+        if peer_id in self._guest2vote_info:
+            del self._guest2vote_info[peer_id]
 
-    def on_tick(self):
+    async def on_tick(self):
         connected_hotel_managers = self.get_agents_by_role("hotel_manager")
         connected_guests = self.get_agents_by_role("guest")
         self.floor.print(f"Hotel managers: {len(connected_hotel_managers)} "
                          f"| Guests: {len(self.floor.get_guests())}/{len(connected_guests)}")
 
+    @action
     async def guest_joined_room(self, interaction: Interaction | None = None):
         if interaction is None:
             return False
@@ -106,6 +100,7 @@ class WAgent(Agent):
         self._guest2reminder_time[guest] = time.perf_counter()
         return True
 
+    @action
     async def guest_joined_voting_booth(self, interaction: Interaction | None = None):
         if interaction is None:
             return False
@@ -115,6 +110,64 @@ class WAgent(Agent):
             room = self.floor.get_room_of(guest)
             if room is not None:
                 room.set_status(guest, GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH)
+        return True
+
+    @action
+    async def guest_back_to_hall(self, guest: str | None = None, interaction: Interaction | None = None):
+        callback_from_process_vote = False
+        if guest is None:
+            guest = interaction.target[0]
+            callback_from_process_vote = True
+        hotel_manager = self.floor.get_hotel_manager_of(guest)
+
+        # Saving vote-related info
+        if callback_from_process_vote and self.floor.is_in_a_room(guest):
+            room = self.floor.get_room_of(guest)
+            hotel_manager = self.floor.get_hotel_manager_of(guest)
+            fake_name = room.fake_name_of(guest)
+            fake_names_seen_so_far = room.get_fake_names_seen_by(guest)
+
+            vote_dict = {
+                "voter": room.get_unaid_of(guest),
+                "vote": None,  # This will be filled when actually receiving the vote from the processor stream
+                "ground_truth": {
+                    votee_fake_name: (room.get_ground_truth_of(votee), room.get_unaid_of(votee))
+                    for votee_fake_name in fake_names_seen_so_far
+                    if votee_fake_name != fake_name
+                    if (votee := room.guest_whose_fake_name_is(votee_fake_name)) is not None
+                },
+                "session_id": self.floor.id + ":" + room.id,
+                "floor_manager": self.get_peer_id(),
+                "hotel_manager": hotel_manager,
+                "msgs_from_votee": {
+                    votee_fake_name: room.count_messages_recv_by(fake_name=fake_name,
+                                                                 from_fake_name=votee_fake_name)
+                    for votee_fake_name in fake_names_seen_so_far if votee_fake_name != fake_name
+                },
+                "msgs_from_voter": {
+                    votee_fake_name: room.count_messages_recv_by(fake_name=votee_fake_name,
+                                                                 from_fake_name=fake_name)
+                    for votee_fake_name in fake_names_seen_so_far if votee_fake_name != fake_name
+                }
+            }
+
+            if guest in self._guest2vote_info:
+                self._guest2vote_info[guest][1] = vote_dict
+
+        # Telling hotel manager that we reset our state touch with the floor manager he suggested
+        if not await self.send(action_name="guest_back_to_hall",
+                               action_kwargs={"guest": guest},
+                               from_state="discovery_complete",
+                               target=hotel_manager):
+            await self.disconnect(hotel_manager)
+
+        # Telling guest to go back to hall (no matter from what state)
+        if not await self.send(action_name="goto_hall",
+                               target=guest):
+            await self.disconnect(guest)
+
+        # Clearing guest from floor
+        self.__eject_and_clear_guest(guest)  # Send him out and clear all his info
         return True
 
     @action
@@ -156,6 +209,12 @@ class WAgent(Agent):
         # Getting proposed check-ins and asking guests to reach the proposed floor
         at_least_one_sent = False
         for guest, proposed_check_in in self._proposed_check_ins.items():
+            hotel_manager = self._sponsored_guests[guest]
+            room = self.floor.get_room(proposed_check_in['room_id'])
+
+            # If the floor is in the middle of a naming clash, it won't accept new guests
+            if not self.floor.insert(guest, self.floor.get_profile_of(guest), hotel_manager, room):
+                continue
 
             # Sending to room
             if not await self.send(action_name="goto_room",
@@ -164,16 +223,10 @@ class WAgent(Agent):
                                    callback="guest_joined_room"):
                 await self.disconnect(guest)
             else:
-                hotel_manager = self._sponsored_guests[guest]
-                room = self.floor.get_room(proposed_check_in['room_id'])
+                # Marking the guest as somebody who was asked to go to a room (handled in the joined_room callback)
+                room.set_status(guest, GuestStatus.TOLD_TO_JOIN_ROOM)
 
-                # Remembering this decision
-                if self.floor.insert(guest, self.floor.get_profile_of(guest), hotel_manager, room):
-
-                    # Marking the guest as somebody who was asked to go to a room (handled in the joined_room callback)
-                    room.set_status(guest, GuestStatus.TOLD_TO_JOIN_ROOM)
-
-                    at_least_one_sent = True
+                at_least_one_sent = True
 
         self._proposed_check_ins.clear()
         return at_least_one_sent
@@ -198,19 +251,19 @@ class WAgent(Agent):
                     room.set_status(guest, GuestStatus.TOLD_TO_MOVE_TO_VOTING_BOOTH)
                     continue
 
-                # Too much time in voting booth: GET OUT OF HERE!
+                # Too much time in voting booth: GET OUT OF THE ROOM!
                 if (room.get_status(guest) == GuestStatus.IN_VOTING_BOOTH and
                         room.get_time_in_current_status(guest) > Config.survey_reply_time):
-                    await self.disconnect(guest)
+                    await self.guest_back_to_hall(guest)  # Send back to hall
                     continue
 
-                # Too much time to join the room we told you: GET OUT OF HERE!
+                # Too much time to join the room we told you: GET OUT OF MY FLOOR!
                 if (room.get_status(guest) == GuestStatus.TOLD_TO_JOIN_ROOM and
                         room.get_time_in_current_status(guest) > Config.moving_time):
                     await self.disconnect(guest)
                     continue
 
-                # Too much time in to move to the voting booth and get vote request message: GET OUT OF HERE!
+                # Too much time in to move to the voting booth and get vote request message: GET OUT OF MY FLOOR!
                 if (room.get_status(guest) == GuestStatus.TOLD_TO_MOVE_TO_VOTING_BOOTH and
                         room.get_time_in_current_status(guest) > Config.moving_time):
                     await self.disconnect(guest)
@@ -228,7 +281,7 @@ class WAgent(Agent):
                     start_message = (start_message.
                                      replace("<YOUR_NAME>", room.fake_name_of(guest)).
                                      replace("<OTHER_NAMES>", ", ".join(other_guests_names)))
-                    log.error(f"@@@@ SENDING INIT MESSAGE: {format_message(Config.manager_fake_name, start_message)}")
+
                     if not await self.send(action_name="get_status_msg",
                                            action_kwargs={"msg": format_message(Config.manager_fake_name,
                                                                                 start_message)},
@@ -263,12 +316,13 @@ class WAgent(Agent):
                     # sending as bare data_samples with no stream association would keep the message hidden to the GUI)
                     interaction = await self._send(action_name="process",
                                                    from_state="room_voting_booth",
+                                                   callback="guest_back_to_hall",
                                                    target=guest)
                     if interaction is None:
                         await self.disconnect(guest)
                     else:
                         something_was_sent = True
-                        self._guest2vote_request[guest] = interaction.uuid
+                        self._guest2vote_info[guest] = [interaction.uuid, None]
                         if not await self.send(action_name="get_status_msg",
                                                action_kwargs={"msg": format_message(Config.manager_fake_name,
                                                                                     survey_msg),
@@ -386,57 +440,28 @@ class WAgent(Agent):
             "msgs_from_voter": STRING_REPRESENTING_A_NUMBER
         }
         """
-        floor_manager = self.get_peer_id()
         some_votes_were_found = False
+        to_remove = []
 
-        for guest in self.floor.get_guests():
-            if guest not in self._guest2vote_request:
+        for guest, (vote_interaction_uuid, vote_dict) in self._guest2vote_info.items():
+            if vote_dict is None:
                 continue
-            vote_interaction_uuid = self._guest2vote_request[guest]
             guest_processor_stream = self.get_stream("processor", guest, data_type="text")
             vote_msg = guest_processor_stream.get(requested_by="send_votes", uuid=vote_interaction_uuid)
             if vote_msg is None:
                 continue
 
-            room = self.floor.get_room_of(guest)
-            hotel_manager = self.floor.get_hotel_manager_of(guest)
-            fake_name = room.fake_name_of(guest)
-            fake_names_seen_so_far = room.get_fake_names_seen_by()
-
-            vote_dict = {
-                "voter": room.get_unaid_of(guest),
-                "vote": vote_msg,
-                "ground_truth": {
-                    votee_fake_name: (room.get_ground_truth_of(votee), room.get_unaid_of(votee))
-                    for votee_fake_name in fake_names_seen_so_far
-                    if votee_fake_name != fake_name
-                    if (votee := room.guest_whose_fake_name_is(votee_fake_name)) is not None
-                },
-                "session_id": self.floor.id + ":" + room.id,
-                "floor_manager": floor_manager,
-                "hotel_manager": hotel_manager,
-                "msgs_from_votee": {
-                    votee_fake_name: room.count_messages_recv_by(fake_name=fake_name,
-                                                                 from_fake_name=votee_fake_name)
-                    for votee_fake_name in fake_names_seen_so_far if votee_fake_name != fake_name
-                },
-                "msgs_from_voter": {
-                    votee_fake_name: room.count_messages_recv_by(fake_name=votee_fake_name,
-                                                                 from_fake_name=fake_name)
-                    for votee_fake_name in fake_names_seen_so_far if votee_fake_name != fake_name
-                }
-            }
+            vote_dict["vote"] = vote_msg
+            hotel_manager = vote_dict["hotel_manager"]
 
             await self.send(data_samples={"votes": json.dumps(vote_dict)},
                             target=hotel_manager)
 
-            # Sending vote completes the path of an agent in the floor, hence we reset all its information
-            # (so he can be checked in again, if he stays in this floor and sends again its sponsorship)
-            del self._guest2vote_request[guest]
-            del self._guest2reminder_time[guest]
-            del self._sponsored_guests[guest]
-            self.floor.eject(guest)
             some_votes_were_found = True
+            to_remove.append(guest)
+
+        for guest in to_remove:
+            del self._guest2vote_info[guest]
         return some_votes_were_found
 
     @action
@@ -469,7 +494,7 @@ class WAgent(Agent):
 
             # Broadcasting to the other guests
             for _fake_name in room.get_fake_names():
-                _guest = room.guest_whose_fake_name_is(fake_name)
+                _guest = room.guest_whose_fake_name_is(_fake_name)
                 if _fake_name != fake_name:
 
                     # We send the message to the guest as if it was generated by our processor (even if it is not),
@@ -484,3 +509,13 @@ class WAgent(Agent):
             return True
         else:
             return False
+
+    def __eject_and_clear_guest(self, guest):
+        if guest in self._sponsored_guests:
+            del self._sponsored_guests[guest]
+        if guest in self._wants_to_exist:
+            self._wants_to_exist.remove(guest)
+        if guest in self._guest2reminder_time:
+            del self._guest2reminder_time[guest]
+        if self.floor is not None:  # Keep this
+            self.floor.eject(guest)

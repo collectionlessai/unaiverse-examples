@@ -80,10 +80,10 @@
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
-        "ready_to_leave_floor": {
+        "vote_provided": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#129692; Leaving floor",
+            "msg": "&#9989; Vote provided",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         }
@@ -155,18 +155,6 @@
                     "time_to_wait_before_running": 0.0
                 },
                 "goto": "reached_floor_manager"
-            },
-            {
-                "on": {
-                    "action": "back_to_hall",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 30
-                },
-                "goto": "hall"
             }
         ],
         "reached_floor_manager": [
@@ -298,16 +286,28 @@
                     "retry_timeout": 0.0,
                     "time_to_wait_before_running": 0.0
                 },
-                "goto": "ready_to_leave_floor"
-            }
-        ],
-        "ready_to_leave_floor": [
+                "goto": "vote_provided"
+            },
             {
                 "on": {
-                    "action": "back_to_hall",
+                    "action": "goto_hall",
                     "action_kwargs": {},
                     "msg": null,
-                    "ready": true,
+                    "ready": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "hall"
+            }
+        ],
+        "vote_provided": [
+            {
+                "on": {
+                    "action": "goto_hall",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
                     "time_to_wait_before_running": 0.0
@@ -318,20 +318,6 @@
     },
     "teleports": {
         "reached_hotel_manager": [
-            {
-                "on": {
-                    "action": "lost_hotel_manager",
-                    "action_kwargs": {
-                        "just_reached": true
-                    },
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "ready"
-            },
             {
                 "on": {
                     "action": "disconnect_hotel_manager",
@@ -345,47 +331,7 @@
                 "goto": "ready"
             }
         ],
-        "hall": [
-            {
-                "on": {
-                    "action": "lost_hotel_manager",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "ready"
-            },
-            {
-                "on": {
-                    "action": "floor_manager_ack",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "floor"
-            }
-        ],
         "reached_floor_manager": [
-            {
-                "on": {
-                    "action": "lost_floor_manager",
-                    "action_kwargs": {
-                        "just_reached": true
-                    },
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "hall"
-            },
             {
                 "on": {
                     "action": "disconnect_floor_manager",
@@ -395,76 +341,6 @@
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
                     "time_to_wait_before_running": 30
-                },
-                "goto": "hall"
-            }
-        ],
-        "floor": [
-            {
-                "on": {
-                    "action": "lost_floor_manager",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "hall"
-            }
-        ],
-        "ready_for_room": [
-            {
-                "on": {
-                    "action": "lost_floor_manager",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "hall"
-            }
-        ],
-        "room_round_table": [
-            {
-                "on": {
-                    "action": "lost_floor_manager",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "hall"
-            }
-        ],
-        "msg_prepared": [
-            {
-                "on": {
-                    "action": "lost_floor_manager",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "hall"
-            }
-        ],
-        "room_voting_booth": [
-            {
-                "on": {
-                    "action": "lost_floor_manager",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
                 },
                 "goto": "hall"
             }

@@ -37,7 +37,7 @@ class Floor:
         self.live = None
 
     def get_guests(self):
-        return self.guest2room.values()
+        return self.guest2room.keys()
 
     def get_hotel_manager_of(self, guest: str):
         if guest in self.guest2hotel_manager:

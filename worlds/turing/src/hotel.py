@@ -158,11 +158,13 @@ class Hotel:
                 del self.floor_manager2floor[floor.floor_manager]
 
             # Checking-out all the guests of the removed floor (from the hotel perspective)
-            for guest in floor.get_guests():
+            guests = list(floor.get_guests())  # Shallow
+            for guest in guests:
                 self.eject(guest)
 
             # Removing all rooms (from the hotel perspective)
-            for room in floor.get_rooms():
+            rooms = list(floor.get_rooms())  # Shallow
+            for room in rooms:
                 if room.id in self.rooms:
                     del self.rooms[room.id]
                 if room.id in self.room2floor:
