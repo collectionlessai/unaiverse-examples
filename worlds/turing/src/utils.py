@@ -244,7 +244,7 @@ def print_live(structure, status_msg: str):
 
     # Create a table
     table = Table(
-        title=f"🏨 [bold]Turing Hotel: {'Whole Hotel' if is_hotel else 'Single Floor'} Status[/bold]",
+        title=f"\n🏨 [bold]Turing Hotel: {'Whole Hotel' if is_hotel else 'Single Floor'} Status[/bold]",
         box=box.HEAVY_EDGE,
         show_lines=False  # We will draw our own floor separators
     )

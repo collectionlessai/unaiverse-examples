@@ -1,3 +1,17 @@
+"""
+       █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
+      ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█
+       ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
+       ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░
+                 A Collectionless AI Project (https://collectionless.ai)
+                 Registration/Login: https://unaiverse.io
+                 Code Repositories:  https://github.com/collectionlessai/
+                 Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
+"""
 import re
 import random
 from .config import Config
@@ -15,12 +29,17 @@ class WAgent(Agent):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+        # Setting system level options
+        Custom.MAX_INTERACTIONS = 100
+        Custom.MAX_STREAM_DATA_WITHOUT_INTERACTIONS = 10
+
         self._fake_name = None  # Your fake name
         self._history_senders = set()
         self._history_guests = set()
         self._history_as_list: list[str] = []  # The list of messages of the whole conversation happened so far
         self._history: str | None = None  # A long-string version of the whole conversation
         self._ignore_messages: bool = True
+        self._init_message_printed: bool = False
 
         # These variables start with "__" to protect them from the auto-clearing procedure
         self.__hotel_manager: str | None = None  # The peer ID of the selected hotel manager
@@ -73,8 +92,10 @@ class WAgent(Agent):
 
     @action
     async def init(self):
-        init_message = Config.init_message.replace("<YOUR_EMAIL>", self.get_profile().get_static_profile()['email'])
-        log.user(init_message)
+        if not self._init_message_printed:
+            init_message = Config.init_message.replace("<YOUR_EMAIL>", self.get_profile().get_static_profile()['email'])
+            log.user(init_message)
+            self._init_message_printed = True
         return True
 
     @action

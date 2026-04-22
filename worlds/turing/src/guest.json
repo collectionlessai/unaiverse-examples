@@ -27,14 +27,14 @@
         "reached_hotel_manager": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#127970; Hotel manager contacted",
+            "msg": "&#127970; Entered the hotel (hotel manager contacted)",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
         "hall": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#127970; In the hall, waiting to be sent to floor",
+            "msg": "&#127970; In the hall (waiting to be sent to a floor)",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
@@ -48,21 +48,21 @@
         "floor": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#129692; In the floor, ready to declare sponsorship",
+            "msg": "&#129692; In the floor, ready to go to room",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
         "ready_for_room": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#128993; Sponsorship declared, waiting to be sent to room",
+            "msg": null,
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
         "room_round_table": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#128172; Sitting at the chat table",
+            "msg": null,
             "blocking": true,
             "time_to_wait_for_interactions": 0.0
         },
@@ -190,7 +190,7 @@
                 "on": {
                     "action": "goto_room",
                     "action_kwargs": {},
-                    "msg": null,
+                    "msg": "&#128172; Sitting at the chat table",
                     "ready": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
