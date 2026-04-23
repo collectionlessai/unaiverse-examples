@@ -299,7 +299,7 @@ class WAgent(Agent):
     @action
     async def send_msg(self):
         if self._ignore_messages:
-            return False
+            return True  # Don't stop the transition
 
         # Getting my last self-generated message. We can find this message in the self.stdout of this action.
         # This is because such self.stdout is the output of the processor, bind to system UUID since
@@ -307,7 +307,7 @@ class WAgent(Agent):
         # This is exactly where our message is already stored due a previous call to a solid "process".
         msgs = self.stdout.get(requested_by="send_msgs", data_type="text")
         if msgs is None:
-            return False
+            return True  # Don't stop the transition
 
         # The call above returns a list with data about all the text streams (they might be more than one)
         msg = msgs[0]  # We assume the first one is the right one
@@ -319,7 +319,7 @@ class WAgent(Agent):
                                        target=self.__floor_manager)
         if interaction is None:
             await self.disconnect(self.__floor_manager)
-            return False
+            return True  # Don't stop the transition
 
         # Saving my message to the history log (it must be appropriately formatted before storing it)
         msg = format_message(f"{self._fake_name}", msg)
