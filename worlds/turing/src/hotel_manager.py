@@ -119,7 +119,8 @@ class WAgent(Agent):
                                    },
                                    from_state="hall",
                                    id="FLOOR",  # There can be only one interaction about connecting to floor manager
-                                   target=guest):
+                                   target=guest,
+                                   volatile=True):
                 await self.disconnect(guest)
             else:
                 # Remembering this decision
@@ -412,7 +413,8 @@ class WAgent(Agent):
             await self.send(action_name="apply_violations",
                             from_state="votes_sent",
                             action_kwargs={"guests": guests},
-                            target=self.hotel.get_floor(floor_id).floor_manager)
+                            target=self.hotel.get_floor(floor_id).floor_manager,
+                            volatile=True)
 
     @action
     async def get_votes(self):

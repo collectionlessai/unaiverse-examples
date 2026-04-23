@@ -176,7 +176,8 @@ class WAgent(Agent):
                                action_kwargs={
                                    "hotel_manager": self.__hotel_manager},
                                from_state="getting_sponsorships",
-                               target=self.__floor_manager):
+                               target=self.__floor_manager,
+                               volatile=True):
             await self.disconnect_floor_manager()
             return False
         return True
@@ -270,16 +271,18 @@ class WAgent(Agent):
                 msg = re.sub(r'^\[.*?]\s*', '', msg)
 
             else:
-                return False  # Unknown message type
+                return True  # Consume the interaction
 
             # Print every known status message
             log.user(msg)
-        return True
+        return True  # Consume the interaction
 
     @action
     async def get_msgs(self, interaction: Interaction | None = None):
-        if interaction is None or interaction.requester != self.__floor_manager or self._ignore_messages:
+        if interaction is None:
             return False
+        if interaction.requester != self.__floor_manager or self._ignore_messages:
+            return True  # Consume the interaction
 
         # Getting messages (one or more) received from the floor managers in the "chat" stream
         # We can use self.stdin since this action is stimulated by an interaction from the floor manager
@@ -288,7 +291,7 @@ class WAgent(Agent):
         # The self.stdin.get, with all_uuids set to true, will return a list of tuples (msg, tag, timestamp).
         # It could be empty
         if len(msgs_tags_times) == 0:
-            return False
+            return True  # Consume the interaction
 
         # Adding the received message to the message history, to create the context we will pass to our processor
         for msg, tag, timestamp in sorted(msgs_tags_times, key=lambda x: x[2]):
@@ -316,7 +319,8 @@ class WAgent(Agent):
         interaction = await self._send(action_name="get_msg_and_broadcast",
                                        action_kwargs={"msg": msg},
                                        from_state="collect_msgs",
-                                       target=self.__floor_manager)
+                                       target=self.__floor_manager,
+                                       volatile=True)
         if interaction is None:
             await self.disconnect(self.__floor_manager)
             return True  # Don't stop the transition
