@@ -59,7 +59,7 @@ class WAgent(Agent):
 
         # Checking if we lost connection to the hotel manager
         if self.__hotel_manager is not None and await self.disconnected(agent=self.__hotel_manager):
-            log.user("Ops! Lost connection to hotel manager!")
+            log.user("❌ Ops! Lost connection to the hotel manager!")
             self.__hotel_manager = None  # Clearing
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 
@@ -68,7 +68,7 @@ class WAgent(Agent):
 
         # Checking if we lost connection to the floor manager
         elif self.__floor_manager is not None and await self.disconnected(agent=self.__floor_manager):
-            log.user("Arg! Lost connection to floor manager!")
+            log.user("❌ Arg! Lost connection to the floor manager!")
             self.__floor_manager = None
 
             self.reset_status()
@@ -77,6 +77,7 @@ class WAgent(Agent):
         # Checking time spent in current state
         if (self.behav.get_state() != "init" and
                 self.behav.get_time_spent_in_current_state() > Config.max_time_in_every_state):
+            log.user("❌ Uhm! Too much time passed without interactions, resetting status")
             await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 
@@ -195,6 +196,7 @@ class WAgent(Agent):
 
     @action
     async def goto_voting_booth(self):
+        self.stdin.clear_all_data()
         return True
 
     @action

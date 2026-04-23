@@ -58,15 +58,15 @@ class Config:
                         f"'{exit_trigger_message}' "
                         f"at any time "
                         f"to immediately leave the room and provide your vote!")
-    survey_message = ("[VOTE_REQ_MSG] Dear <YOUR_NAME>, you have interacted with <OTHER_NAMES>. "
-                      "Each was either a human or an AI. It could also be they were all humans or all AIs. "
-                      "<br/><br/><strong>PLEASE LIST THE ONES YOU THINK WERE HUMANS</strong> "
-                      "(just list the names separated by commas or spaces, "
-                      "don't write anything else before the list). "
-                      "<br/><br/>After having written down the list, you can keep filling the SAME MESSAGE to"
-                      " explain your choice.")
-    survey_message_nobody = ("[VOTE_REQ_MSG] Dear <YOUR_NAME>, unfortunately, you have not interacted with anybody. "
-                             "Write any message to continue.")
+    survey_message = (f"[VOTE_REQ_MSG] Dear <YOUR_NAME>, you have interacted with <OTHER_NAMES>. "
+                      f"Each was either a human or an AI. It could also be they were all humans or all AIs. "
+                      f"<br/><br/><strong>PLEASE LIST THE ONES YOU THINK WERE HUMANS</strong> "
+                      f"(just list the names separated by commas or spaces, "
+                      f"don't write anything else before the list). "
+                      f"<br/><br/>After having written down the list, you can keep filling the SAME MESSAGE to"
+                      f" explain your choice (you have {survey_reply_time} seconds overall).")
+    survey_message_nobody = (f"[VOTE_REQ_MSG] Dear <YOUR_NAME>, unfortunately, you have not interacted with anybody. "
+                             f"Write any message to continue (you have {survey_reply_time} seconds).")
     violation_message = ("[GEN_MSG] Your join operation was flagged by the hotel manager, sorry but I have to "
                          "disconnect you")
     history_incipit = textwrap.dedent(f"""
