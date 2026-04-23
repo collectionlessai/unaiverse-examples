@@ -75,7 +75,8 @@ class WAgent(Agent):
             await self.behav.act_ghost_transition(to_state="hall")
 
         # Checking time spent in current state
-        if self.behav.get_time_spent_in_current_state() > Config.max_time_in_every_state:
+        if (self.behav.get_state() != "init" and
+                self.behav.get_time_spent_in_current_state() > Config.max_time_in_every_state):
             await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 

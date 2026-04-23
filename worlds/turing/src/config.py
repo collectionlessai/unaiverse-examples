@@ -31,7 +31,7 @@ class Config:
     disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
     exit_trigger_message = "exit"  # The message that an agent can write to early stop the conversation and vote
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
-                    "viewform?usp=pp_url&entry.1591917462=<email>")
+                    "viewform?usp=pp_url&entry.1591917462=<YOUR_EMAIL>")
     manager_fake_name = "MANAGER"
     unknown_guest_name = "unk"
     sender_prefix = "**"
