@@ -93,7 +93,8 @@ class WAgent(Agent):
                     if not await self.send(action_name="get_status_msg",
                                            action_kwargs={"msg": format_message(Config.manager_fake_name,
                                                                                 disconnected_message)},
-                                           target=_guest):
+                                           target=_guest,
+                                           volatile=True):
                         await self.disconnect(_guest)
 
         self.__eject_and_clear_guest(peer_id)  # Send him out and clear all his info
@@ -178,13 +179,15 @@ class WAgent(Agent):
         if not await self.send(action_name="guest_back_to_hall",
                                action_kwargs={"guest": guest},
                                from_state="discovery_complete",
-                               target=hotel_manager):
+                               target=hotel_manager,
+                               volatile=True):
             await self.disconnect(hotel_manager)
 
         # Telling guest to go back to hall (no matter from what state)
         if not await self.send(action_name="goto_hall",
                                from_state="room_voting_booth" if not callback_from_process_vote else "vote_provided",
-                               target=guest):
+                               target=guest,
+                               volatile=True):
             await self.disconnect(guest)
 
         # Clearing guest from floor
@@ -316,17 +319,19 @@ class WAgent(Agent):
                                    action_kwargs={"msg": format_message(Config.manager_fake_name,
                                                                         start_message)},
                                    from_state="room_round_table",
-                                   target=guest):
+                                   target=guest,
+                                   volatile=True):
                 await self.disconnect(guest)
             else:
                 sent = True
                 joined_message = Config.joined_message.replace("<SOME_NAME>", room.fake_name_of(guest))
                 await asyncio.gather(*[
                     self.__send_or_disconnect(_guest,
-                                             action_name="get_status_msg",
-                                             action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                                  joined_message)},
-                                             from_state="room_round_table")
+                                              action_name="get_status_msg",
+                                              action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                                   joined_message)},
+                                              from_state="room_round_table",
+                                              volatile=True)
                     for _guest in room.get_guests() if _guest != guest
                 ])
             room.set_status(guest, GuestStatus.AT_ROUND_TABLE)
@@ -353,15 +358,17 @@ class WAgent(Agent):
             left_message = Config.left_message.replace("<SOME_NAME>", fake_name)
             await asyncio.gather(
                 self.__send_or_disconnect(guest,
-                                         action_name="get_status_msg",
-                                         action_kwargs={"msg": format_message(Config.manager_fake_name, survey_msg),
-                                                        "process_uuid": interaction.uuid},
-                                         from_state="room_voting_booth"),
+                                          action_name="get_status_msg",
+                                          action_kwargs={"msg": format_message(Config.manager_fake_name, survey_msg),
+                                                         "process_uuid": interaction.uuid},
+                                          from_state="room_voting_booth",
+                                          volatile=True),
                 *[self.__send_or_disconnect(_guest,
                                             action_name="get_status_msg",
                                             action_kwargs={"msg": format_message(Config.manager_fake_name,
                                                                                  left_message)},
-                                            from_state="room_round_table")
+                                            from_state="room_round_table",
+                                            volatile=True)
                   for _guest in room.get_guests() if _guest != guest]
             )
             room.set_status(guest, GuestStatus.IN_VOTING_BOOTH)
@@ -378,7 +385,8 @@ class WAgent(Agent):
                                                                             Config.reminder_message.replace(
                                                                                 "<TIME_LEFT>", str(time_left)))},
                                        from_state="room_round_table",
-                                       target=guest):
+                                       target=guest,
+                                       volatile=True):
                     await self.disconnect(guest)
                 else:
                     sent = True
@@ -526,7 +534,8 @@ class WAgent(Agent):
                 if _fake_name != fake_name and room.get_status(_guest) == GuestStatus.AT_ROUND_TABLE:
                     if not await self.send(action_name="get_msgs",
                                            data_samples={"chat": altered_msg},
-                                           target=_guest):
+                                           target=_guest,
+                                           volatile=True):
                         await self.disconnect(_guest)
                     else:
                         room.inc_message_exchanges(fake_name_from=fake_name, fake_name_to=_fake_name)

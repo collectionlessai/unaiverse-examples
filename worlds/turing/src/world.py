@@ -164,7 +164,7 @@ class WWorld(World):
         behav.set_welcome_message("Welcome to the Turing Hotel 🏨, it's amazing to have a new guest!")
 
         behav.add_state("init", action="init", blocking=False)
-        behav.add_state("ready", blocking=True)
+        behav.add_state("ready", blocking=True, msg="🔗 Connecting to a randomly selected hotel manager")
         behav.add_state("reached_hotel_manager", blocking=False,
                         msg="🏢 Entered the hotel (hotel manager contacted)")
         behav.add_state("hall", blocking=False, msg="🏢 Walking though the hall (waiting to be sent to a floor)")
@@ -181,8 +181,7 @@ class WWorld(World):
         behav.add_transit("init", "ready", action="process", args={},
                           avoid_changing_ready=True)
         behav.add_transit("init", "ready", action="skip_confirmation")
-        behav.add_transit("ready", "reached_hotel_manager", action="connect_to_hotel_manager",
-                          msg="🔗 Connecting to a randomly selected hotel manager")
+        behav.add_transit("ready", "reached_hotel_manager", action="connect_to_hotel_manager")
         behav.add_transit("reached_hotel_manager", "hall", action="hotel_manager_ack", args={})
         behav.add_transit("reached_hotel_manager", "ready", action="disconnect_hotel_manager",
                           args={}, delay=Config.disconnect_non_responsive_managers_after, teleport=True)
