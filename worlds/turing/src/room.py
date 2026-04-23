@@ -88,8 +88,8 @@ class Room:
         self.msgs_recv_by_fake_from_fake[fake_name_to][fake_name_from] += 1
 
     def get_fake_names_seen_by(self, fake_name: str):
-        sent_to = self.msgs_recv_by_fake_from_fake.get(fake_name, {}).keys()
-        recv_from = self.msgs_sent_by_fake_to_fake.get(fake_name, {}).keys()
+        recv_from = self.msgs_recv_by_fake_from_fake.get(fake_name, {}).keys()
+        sent_to = self.msgs_sent_by_fake_to_fake.get(fake_name, {}).keys()
         return sent_to | recv_from
 
     def count_human_guests(self):

@@ -59,8 +59,8 @@ class WAgent(Agent):
             if floor.id in self._floor_update_tags:
                 del self._floor_update_tags[floor.id]
 
-        # Removing manager and floor
-        self.hotel.remove_floor(floor.id)  # This will also remove the floor manager
+            # Removing manager and floor
+            self.hotel.remove_floor(floor.id)  # This will also remove the floor manager
 
     async def add_agent(self, peer_id: str, profile: NodeProfile,
                         add_proc_streams: bool = True, add_env_streams: bool = True,
@@ -208,7 +208,7 @@ class WAgent(Agent):
                         _guest = unk_guests.pop(0)
                     else:
                         incoherence_detected = True
-                elif not _floor.is_in_a_room(_guest) or not _floor.get_room_of(_guest).id != _room_id:
+                elif not _floor.is_in_a_room(_guest) or _floor.get_room_of(_guest).id != _room_id:
                     incoherence_detected = True
                 self.hotel.eject(_guest)
 
@@ -357,7 +357,7 @@ class WAgent(Agent):
         # The first hotel manager is the head of the whole hotel managers, responsible for sending stats to the world.
         # First in alphabetical order.
         all_hotel_managers = self.get_agents_by_role(role="hotel_manager", handshake_completed=False)
-        is_head_of_hotel_masters = min(all_hotel_managers) if len(all_hotel_managers) > 0 else False
+        is_head_of_hotel_masters = len(all_hotel_managers) > 0 and min(all_hotel_managers) == self.get_peer_id()
 
         if is_head_of_hotel_masters:
             int_timestamp = self.clock.get_time_ms(monotonic=True)
@@ -407,10 +407,10 @@ class WAgent(Agent):
                     self.hotel.remove_expected_guest(guest)
 
         # Sending violations
-        for floor_id, guests in violations.keys():
+        for floor_id, guests in violations.items():
             # Sending violation to a floor
             await self.send(action_name="apply_violations",
-                            from_state="init",
+                            from_state="votes_sent",
                             action_kwargs={"guests": guests},
                             target=self.hotel.get_floor(floor_id).floor_manager)
 
@@ -448,8 +448,8 @@ class WAgent(Agent):
         def _build_vote_dict_and_check_format(_vote: str) -> dict | None:
 
             # Packet format
-            expected_dict_keys = {"voter", "vote", "ground_truth", "session_id",
-                                  "floor_manager", "hotel_manager", "msgs_from_votee", "msgs_from_voter"}
+            expected_dict_keys = ["voter", "vote", "ground_truth", "session_id",
+                                  "floor_manager", "hotel_manager", "msgs_from_votee", "msgs_from_voter"]
 
             # Converting JSON encoded dict (str) to a real dict and checking format
             if not isinstance(_vote, str):
@@ -554,7 +554,7 @@ class WAgent(Agent):
                 fake_names_to_ignore = set()
                 for k, v in vote_dict["msgs_from_votee"].items():
                     if v < Config.min_msgs_from_votee:
-                        fake_names_to_ignore.add(v)
+                        fake_names_to_ignore.add(k)
 
                 # Parsing vote
                 parsed_vote = parse_vote_msg(vote_dict["vote"])  # Dict fake-name (votee) to "human" | "ai"
@@ -574,8 +574,8 @@ class WAgent(Agent):
                     _vote_dict_ = copy.deepcopy(vote_dict)
                     _vote_dict_["vote"] = classification
                     _vote_dict_["ground_truth"] = vote_dict["ground_truth"][fake_name][0]
-                    _vote_dict_["msg_from_votee"] = vote_dict["msg_from_votee"][fake_name]
-                    _vote_dict_["msg_from_voter"] = vote_dict["msg_from_voter"][fake_name]
+                    _vote_dict_["msgs_from_votee"] = vote_dict["msgs_from_votee"][fake_name]
+                    _vote_dict_["msgs_from_voter"] = vote_dict["msgs_from_voter"][fake_name]
                     _votee_unaid_ = vote_dict["ground_truth"][fake_name][1]
 
                     # Storing vote as stat
