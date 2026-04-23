@@ -174,9 +174,9 @@ class WWorld(World):
         behav.add_state("ready_for_room", blocking=False)
         behav.add_state("room_round_table", blocking=True)
         behav.add_state("msg_prepared", blocking=False)
-        behav.add_state("room_voting_booth", blocking=False,
+        behav.add_state("room_voting_booth", blocking=True,
                         msg="🗳 Entered the voting booth (waiting for vote request)")
-        behav.add_state("vote_provided", blocking=False, msg="✅ Vote provided")
+        behav.add_state("vote_provided", blocking=True, msg="✅ Vote provided")
 
         behav.add_transit("init", "ready", action="process", args={},
                           avoid_changing_ready=True)
