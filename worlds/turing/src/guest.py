@@ -77,7 +77,7 @@ class WAgent(Agent):
         # Checking time spent in current state
         if (self.behav.get_state().name != "init" and
                 self.behav.get_time_spent_in_current_state() > Config.max_time_in_every_state):
-            log.user("❌ Uhm! Too much time passed without interactions, resetting status")
+            log.user("❌ Uhm! Too much time passed without interactions, better start it over again")
             await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 
