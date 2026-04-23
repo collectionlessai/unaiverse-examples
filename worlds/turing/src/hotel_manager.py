@@ -99,7 +99,6 @@ class WAgent(Agent):
         # Proposing check-ins accordingly to the current status of the hotel
         proposed_check_ins, _ = compute_check_in_proposals(self.hotel, guests_to_check_in)
         self._proposed_check_ins.update(proposed_check_ins)
-        log.error(f"self._proposed_check_ins={self._proposed_check_ins}")
         return True
 
     @action
@@ -114,7 +113,6 @@ class WAgent(Agent):
             floor = self.hotel.get_floor(proposed_check_in["floor_id"])
 
             # Sending to floor
-            log.error(f"Telling {guest} to go to floor")
             if not await self.send(action_name="connect_to_floor_manager",
                                    action_kwargs={
                                        "floor_manager": floor.floor_manager
@@ -587,6 +585,5 @@ class WAgent(Agent):
 
     @action
     async def guest_back_to_hall(self, guest: str | None = None):
-        log.error(f"Ejecting guest={guest} since I was told 'guest_back_to_hall'")
         self.hotel.eject(guest)
         return True
