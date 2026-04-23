@@ -59,7 +59,7 @@ class WAgent(Agent):
 
         # Checking if we lost connection to the hotel manager
         if self.__hotel_manager is not None and await self.disconnected(agent=self.__hotel_manager):
-            log.user("Lost connection to hotel manager")
+            log.user("Ops! Lost connection to hotel manager!")
             self.__hotel_manager = None  # Clearing
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 
@@ -68,7 +68,7 @@ class WAgent(Agent):
 
         # Checking if we lost connection to the floor manager
         elif self.__floor_manager is not None and await self.disconnected(agent=self.__floor_manager):
-            log.user("Lost connection to floor manager")
+            log.user("Arg! Lost connection to floor manager!")
             self.__floor_manager = None
 
             self.reset_status()
