@@ -195,7 +195,7 @@ class WWorld(World):
                           msg="💬 Entered the room, sitting at the chat table (waiting for the start message)",
                           ready=False)
         behav.add_transit("room_round_table", "msg_prepared", action="process", args={},
-                          avoid_changing_ready=True)
+                          avoid_changing_ready=True, high_priority=True)
         behav.add_transit("room_round_table", "room_round_table", action="get_msgs", args={})
         behav.add_transit("room_round_table", "room_round_table", action="get_status_msg", args={},
                           ready=False)
