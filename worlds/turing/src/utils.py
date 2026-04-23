@@ -276,7 +276,7 @@ def print_live(structure, status_msg: str):
                     name = build_unaid(profile)
                     label = "H" if g in room.human_guests else "A"
                     color = "green" if g in room.human_guests else "yellow"
-                time_in_room = room.get_time_spent_in_room_by(g)
+                time_in_room = room.get_time_in_current_status(g)
                 status = (room.guest2status[g].value + "~") if g in room.guest2status else ""
                 guest_info.append(f"• {name} | [bold]{status}{time_in_room}[/bold] | [{color}]{label}[/]")
 
