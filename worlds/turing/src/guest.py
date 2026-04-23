@@ -64,7 +64,7 @@ class WAgent(Agent):
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 
             self.reset_status()
-            await self.behav.act_ghost_transition(to_state="ready")
+            await self.behav.act_ghost_transition(to_state="wait_for_ready")
 
         # Checking if we lost connection to the floor manager
         elif self.__floor_manager is not None and await self.disconnected(agent=self.__floor_manager):
@@ -72,7 +72,8 @@ class WAgent(Agent):
             self.__floor_manager = None
 
             self.reset_status()
-            await self.behav.act_ghost_transition(to_state="hall")
+            self.behav.states["hall"].waiting_time = 15.
+            await self.behav.act_ghost_transition(to_state="wait_for_hall")
 
         # Checking time spent in current state
         if (self.behav.get_state().name != "init" and
@@ -82,7 +83,7 @@ class WAgent(Agent):
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 
             self.reset_status()
-            await self.behav.act_ghost_transition(to_state="ready")
+            await self.behav.act_ghost_transition(to_state="wait_for_ready")
 
     def reset_status(self) -> None:
         self._fake_name = None

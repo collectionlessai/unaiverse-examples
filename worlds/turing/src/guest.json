@@ -24,6 +24,13 @@
             "blocking": true,
             "time_to_wait_for_interactions": 0.0
         },
+        "wait_for_ready": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#9203; Waiting outside (decompression)",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
         "reached_hotel_manager": {
             "action": null,
             "action_kwargs": {},
@@ -35,6 +42,13 @@
             "action": null,
             "action_kwargs": {},
             "msg": "&#127970; Walking though the hall (waiting to be sent to a floor)",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "wait_for_hall": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#9203; Waiting in the hall (decompression)",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
@@ -162,6 +176,7 @@
                 "goto": "reached_floor_manager"
             }
         ],
+        "wait_for_ready": [],
         "reached_floor_manager": [
             {
                 "on": {
@@ -192,6 +207,7 @@
                 "goto": "ready_for_room"
             }
         ],
+        "wait_for_hall": [],
         "ready_for_room": [
             {
                 "on": {
@@ -346,6 +362,21 @@
                     "retry_timeout": 0.0,
                     "time_to_wait_before_running": 30
                 },
+                "goto": "wait_for_ready"
+            }
+        ],
+        "wait_for_ready": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 15
+                },
                 "goto": "ready"
             }
         ],
@@ -360,6 +391,21 @@
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
                     "time_to_wait_before_running": 30
+                },
+                "goto": "wait_for_hall"
+            }
+        ],
+        "wait_for_hall": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 15
                 },
                 "goto": "hall"
             }
