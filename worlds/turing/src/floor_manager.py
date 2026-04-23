@@ -12,6 +12,7 @@
                  Code Repositories:  https://github.com/collectionlessai/
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
+import asyncio
 import copy
 import json
 import time
@@ -253,139 +254,142 @@ class WAgent(Agent):
 
     @action
     async def handle_guests_by_status(self):
-        something_was_sent = False
-        for guest in list(self.floor.get_guests()):
-            if self.floor.is_in_a_room(guest):
-                room = self.floor.get_room_of(guest)
+        results = await asyncio.gather(
+            *[self.__handle_single_guest(guest) for guest in list(self.floor.get_guests())],
+            return_exceptions=True
+        )
+        return any(r is True for r in results)
 
-                # A guest wants to exit or it is timeout! Test ended, GET OUT OF HERE!
-                if (room.get_status(guest) == GuestStatus.AT_ROUND_TABLE and
-                        (room.get_time_in_current_status(guest) >= Config.test_duration or
-                         guest in self._wants_to_exist)):
-                    if not await self.send(action_name="goto_voting_booth",
-                                           from_state="room_round_table",
-                                           callback="guest_joined_voting_booth",
-                                           target=guest):
-                        await self.disconnect(guest)
-                    something_was_sent = True
-                    room.set_status(guest, GuestStatus.TOLD_TO_MOVE_TO_VOTING_BOOTH)
-                    continue
+    async def __handle_single_guest(self, guest: str) -> bool:
+        if not self.floor.is_in_a_room(guest):
+            return False
+        room = self.floor.get_room_of(guest)
 
-                # Too much time in voting booth: GET OUT OF THE ROOM!
-                if (room.get_status(guest) == GuestStatus.IN_VOTING_BOOTH and
-                        room.get_time_in_current_status(guest) > Config.survey_reply_time):
-                    await self.guest_back_to_hall(guest)  # Send back to hall
-                    something_was_sent = True
-                    continue
+        # A guest wants to exit or it is timeout! Test ended, GET OUT OF HERE!
+        if (room.get_status(guest) == GuestStatus.AT_ROUND_TABLE and
+                (room.get_time_in_current_status(guest) >= Config.test_duration or
+                 guest in self._wants_to_exist)):
+            if not await self.send(action_name="goto_voting_booth",
+                                   from_state="room_round_table",
+                                   callback="guest_joined_voting_booth",
+                                   target=guest):
+                await self.disconnect(guest)
+            room.set_status(guest, GuestStatus.TOLD_TO_MOVE_TO_VOTING_BOOTH)
+            return True
 
-                # Too much time to join the room we told you: GET OUT OF MY FLOOR!
-                if (room.get_status(guest) == GuestStatus.TOLD_TO_JOIN_ROOM and
-                        room.get_time_in_current_status(guest) > Config.moving_time):
+        # Too much time in voting booth: GET OUT OF THE ROOM!
+        if (room.get_status(guest) == GuestStatus.IN_VOTING_BOOTH and
+                room.get_time_in_current_status(guest) > Config.survey_reply_time):
+            await self.guest_back_to_hall(guest)
+            return True
+
+        # Too much time to join the room we told you: GET OUT OF MY FLOOR!
+        if (room.get_status(guest) == GuestStatus.TOLD_TO_JOIN_ROOM and
+                room.get_time_in_current_status(guest) > Config.moving_time):
+            await self.disconnect(guest)
+            return False
+
+        # Too much time to move to the voting booth: GET OUT OF MY FLOOR!
+        if (room.get_status(guest) == GuestStatus.TOLD_TO_MOVE_TO_VOTING_BOOTH and
+                room.get_time_in_current_status(guest) > Config.moving_time):
+            await self.disconnect(guest)
+            return False
+
+        # This guest just confirmed that he entered the room, let's send him the 'start conversation' message,
+        # and let's tell the others that he joined
+        if room.get_status(guest) == GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE:
+            other_guests_names = sorted([room.fake_name_of(_guest)
+                                         for _guest in room.get_guests()
+                                         if _guest != guest and
+                                         room.get_status(_guest) in {GuestStatus.AT_ROUND_TABLE,
+                                                                     GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE}])
+            if len(other_guests_names) == 0:
+                start_message = Config.start_message_nobody
+            else:
+                start_message = Config.start_message
+            start_message = (start_message.
+                             replace("<YOUR_NAME>", room.fake_name_of(guest)).
+                             replace("<OTHER_NAMES>", ", ".join(other_guests_names)))
+
+            sent = False
+            if not await self.send(action_name="get_status_msg",
+                                   action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                        start_message)},
+                                   from_state="room_round_table",
+                                   target=guest):
+                await self.disconnect(guest)
+            else:
+                sent = True
+                joined_message = Config.joined_message.replace("<SOME_NAME>", room.fake_name_of(guest))
+                await asyncio.gather(*[
+                    self.__send_or_disconnect(_guest,
+                                             action_name="get_status_msg",
+                                             action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                                  joined_message)},
+                                             from_state="room_round_table")
+                    for _guest in room.get_guests() if _guest != guest
+                ])
+            room.set_status(guest, GuestStatus.AT_ROUND_TABLE)
+            return sent
+
+        # This guest just confirmed that he left the room, let's send him the process 'survey' request
+        # and let's tell the others that he left
+        if room.get_status(guest) == GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH:
+            fake_name = room.fake_name_of(guest)
+            other_guests_names = sorted(list(room.get_fake_names_met_by(fake_name)))
+            survey_msg = (
+                Config.survey_message if len(other_guests_names) > 0 else Config.survey_message_nobody).replace(
+                "<YOUR_NAME>", room.fake_name_of(guest)).replace("<OTHER_NAMES>", ", ".join(other_guests_names))
+
+            interaction = await self._send(action_name="process",
+                                           from_state="room_voting_booth",
+                                           callback="guest_back_to_hall",
+                                           target=guest)
+            if interaction is None:
+                await self.disconnect(guest)
+                return False
+
+            self._guest2vote_info[guest] = [interaction.uuid, None]
+            left_message = Config.left_message.replace("<SOME_NAME>", fake_name)
+            await asyncio.gather(
+                self.__send_or_disconnect(guest,
+                                         action_name="get_status_msg",
+                                         action_kwargs={"msg": format_message(Config.manager_fake_name, survey_msg),
+                                                        "process_uuid": interaction.uuid},
+                                         from_state="room_voting_booth"),
+                *[self.__send_or_disconnect(_guest,
+                                            action_name="get_status_msg",
+                                            action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                                 left_message)},
+                                            from_state="room_round_table")
+                  for _guest in room.get_guests() if _guest != guest]
+            )
+            room.set_status(guest, GuestStatus.IN_VOTING_BOOTH)
+            return True
+
+        # From time to time send a reminder
+        if (room.get_status(guest) == GuestStatus.AT_ROUND_TABLE and
+                ((time.perf_counter() - self._guest2reminder_time[guest]) > Config.send_reminder_every)):
+            time_left = Config.test_duration - room.get_time_in_current_status(guest)
+            sent = False
+            if time_left > 0:
+                if not await self.send(action_name="get_status_msg",
+                                       action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                            Config.reminder_message.replace(
+                                                                                "<TIME_LEFT>", str(time_left)))},
+                                       from_state="room_round_table",
+                                       target=guest):
                     await self.disconnect(guest)
-                    continue
+                else:
+                    sent = True
+            self._guest2reminder_time[guest] = time.perf_counter()
+            return sent
 
-                # Too much time in to move to the voting booth and get vote request message: GET OUT OF MY FLOOR!
-                if (room.get_status(guest) == GuestStatus.TOLD_TO_MOVE_TO_VOTING_BOOTH and
-                        room.get_time_in_current_status(guest) > Config.moving_time):
-                    await self.disconnect(guest)
-                    continue
+        return False
 
-                # This guest just confirmed that he entered the room, let's send him the 'start conversation' message,
-                # and let's tell the others that he joined
-                if room.get_status(guest) == GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE:
-                    other_guests_names = sorted([room.fake_name_of(_guest)
-                                                 for _guest in room.get_guests()
-                                                 if _guest != guest and
-                                                 room.get_status(_guest) in {GuestStatus.AT_ROUND_TABLE,
-                                                                             GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE}])
-                    if len(other_guests_names) == 0:
-                        start_message = Config.start_message_nobody
-                    else:
-                        start_message = Config.start_message
-                    start_message = (start_message.
-                                     replace("<YOUR_NAME>", room.fake_name_of(guest)).
-                                     replace("<OTHER_NAMES>", ", ".join(other_guests_names)))
-
-                    if not await self.send(action_name="get_status_msg",
-                                           action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                                start_message)},
-                                           from_state="room_round_table",
-                                           target=guest):
-                        await self.disconnect(guest)
-                    else:
-                        something_was_sent = True
-                        joined_message = Config.joined_message.replace("<SOME_NAME>", room.fake_name_of(guest))
-                        for _guest in room.get_guests():
-                            if _guest != guest:
-                                if not await self.send(action_name="get_status_msg",
-                                                       action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                                            joined_message)},
-                                                       from_state="room_round_table",
-                                                       target=_guest):
-                                    await self.disconnect(_guest)
-                    room.set_status(guest, GuestStatus.AT_ROUND_TABLE)
-                    continue
-
-                # This guest just confirmed that he left the room, let's send him the process 'survey' request
-                # and let's tell the others that he left
-                if room.get_status(guest) == GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH:
-                    fake_name = room.fake_name_of(guest)
-                    other_guests_names = sorted(list(room.get_fake_names_met_by(fake_name)))
-                    survey_msg = (
-                        Config.survey_message if len(other_guests_names) > 0 else Config.survey_message_nobody).replace(
-                        "<YOUR_NAME>", room.fake_name_of(guest)).replace("<OTHER_NAMES>", ", ".join(other_guests_names))
-
-                    # We send the message to the guest as if it was generated by our processor (even if it is not),
-                    # so that the guest will display it on screen (the guest only displays stream-related data, so
-                    # sending as bare data_samples with no stream association would keep the message hidden to the GUI)
-                    interaction = await self._send(action_name="process",
-                                                   from_state="room_voting_booth",
-                                                   callback="guest_back_to_hall",
-                                                   target=guest)
-                    if interaction is None:
-                        await self.disconnect(guest)
-                    else:
-                        something_was_sent = True
-                        self._guest2vote_info[guest] = [interaction.uuid, None]
-                        if not await self.send(action_name="get_status_msg",
-                                               action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                                    survey_msg),
-                                                              "process_uuid": interaction.uuid},
-                                               from_state="room_voting_booth",
-                                               target=guest):
-                            await self.disconnect(guest)
-
-                        # Telling others that this guest left
-                        left_message = Config.left_message.replace("<SOME_NAME>", fake_name)
-                        for _guest in room.get_guests():
-                            if _guest != guest:
-                                if not await self.send(action_name="get_status_msg",
-                                                       action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                                            left_message)},
-                                                       from_state="room_round_table",
-                                                       target=_guest):
-                                    await self.disconnect(_guest)
-                        room.set_status(guest, GuestStatus.IN_VOTING_BOOTH)
-                    continue
-
-                # From time to time send a reminder
-                if (room.get_status(guest) == GuestStatus.AT_ROUND_TABLE and
-                        ((time.perf_counter() - self._guest2reminder_time[guest]) > Config.send_reminder_every)):
-                    time_left = Config.test_duration - room.get_time_in_current_status(guest)
-                    reminder_msg = (Config.reminder_message.
-                                    replace("<TIME_LEFT>", str(time_left)))
-                    if time_left > 0:
-                        if not await self.send(action_name="get_status_msg",
-                                               action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                                    reminder_msg)},
-                                               from_state="room_round_table",
-                                               target=guest):
-                            await self.disconnect(guest)
-                        else:
-                            something_was_sent = True
-                    self._guest2reminder_time[guest] = time.perf_counter()
-
-        return something_was_sent
+    async def __send_or_disconnect(self, target: str, **send_kwargs) -> None:
+        if not await self.send(target=target, **send_kwargs):
+            await self.disconnect(target)
 
     @action
     async def pub_floor_updates(self):
@@ -509,8 +513,6 @@ class WAgent(Agent):
         guest = interaction.requester
 
         if self.floor.is_in_a_room(guest) and (msg is not None and len(msg) > 0):
-            # Room messages are altered by adding the fake name of the sender
-            # (Here we know that the processor of the floor manager has a single input, and it is text)
             fake_name = self.floor.get_room_of(guest).fake_name_of(guest)
             altered_msg = format_message(fake_name, msg)
             room = self.floor.get_room_of(guest)
@@ -519,14 +521,9 @@ class WAgent(Agent):
                 self._wants_to_exist.add(guest)
                 return True
 
-            # Broadcasting to the other guests
-            for _guest in room.get_guests():
+            async def _broadcast_to(_guest):
                 _fake_name = room.fake_name_of(_guest)
                 if _fake_name != fake_name and room.get_status(_guest) == GuestStatus.AT_ROUND_TABLE:
-
-                    # We send the message to the guest as if it was generated by our processor (even if it is not),
-                    # so that the guest will display it on screen (the guest only displays stream-related data, so
-                    # sending as bare data_samples with no stream association would keep the message hidden to the GUI)
                     if not await self.send(action_name="get_msgs",
                                            data_samples={"chat": altered_msg},
                                            target=_guest):
@@ -534,8 +531,8 @@ class WAgent(Agent):
                     else:
                         room.inc_message_exchanges(fake_name_from=fake_name, fake_name_to=_fake_name)
 
-        # We always return True here: if a guest is not in room, we still want this action to succeed,
-        # so the interaction will be cleared
+            await asyncio.gather(*[_broadcast_to(g) for g in room.get_guests()])
+
         return True
 
     def __eject_and_clear_guest(self, guest):
