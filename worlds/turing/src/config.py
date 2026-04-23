@@ -18,7 +18,7 @@ import textwrap
 # Generic options to configure the Turing Test Hotel
 # All time measures are in SECONDS.
 class Config:
-    test_duration = 30  # Seconds (int)
+    test_duration = 180  # Seconds (int)
     survey_reply_time = 30  # Seconds
     moving_time = 5  # Time to move from the floor entrance to the chat table or from the chat table to the voting both
     max_time_in_every_state = max([test_duration, survey_reply_time, moving_time]) + moving_time + 5  # Add a gap

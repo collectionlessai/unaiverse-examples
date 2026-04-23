@@ -253,10 +253,7 @@ def print_live(structure, status_msg: str):
     table.add_column("Room", style="magenta")
     table.add_column("Occupancy", justify="center")
     table.add_column("Overbooked", justify="center")
-    if not is_hotel:
-        table.add_column("Guests (Name | Status~Timer | Type)")
-    else:
-        table.add_column("Guests (Name | Timer | Type)")
+    table.add_column("Guests (Name | Status~Timer | Type)")
 
     floors = structure.get_floors() if is_hotel else [structure]
     for i, floor in enumerate(floors):
@@ -276,9 +273,13 @@ def print_live(structure, status_msg: str):
                     name = build_unaid(profile)
                     label = "H" if g in room.human_guests else "A"
                     color = "green" if g in room.human_guests else "yellow"
-                time_in_room = room.get_time_in_current_status(g)
-                status = (room.guest2status[g].value + "~") if g in room.guest2status else ""
-                guest_info.append(f"• {name} | [bold]{status}{time_in_room}[/bold] | [{color}]{label}[/]")
+                if is_hotel:
+                    status = (room.guest2status[g].value + "~") if g in room.guest2status else ""
+                    time_in_status = room.get_time_in_current_status(g)
+                else:
+                    status = ""
+                    time_in_status = room.get_time_spent_in_room_by(g)
+                guest_info.append(f"• {name} | [bold]{status}{time_in_status}[/bold] | [{color}]{label}[/]")
 
             # Use only first room of the floor to show floor name for clarity
             floor_display = (floor.id[0:5] + "...") if j == 0 else ""
