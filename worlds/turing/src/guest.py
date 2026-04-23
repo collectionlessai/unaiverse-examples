@@ -91,7 +91,12 @@ class WAgent(Agent):
         self._history_senders = set()
         self._history = None
         self._ignore_messages = True
+
+        # Clearing stdin from pending data
         self.stdin.clear_all_data()
+
+        # De-register all current interactions
+        self.im.unregister_all()
 
     @action
     async def init(self):
