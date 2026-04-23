@@ -63,6 +63,10 @@ class WWorld(World):
         with open(os.path.join(self.world_folder, "managers.txt"), "r") as f:
             managers = {line.strip() for line in f}
             for manager in managers:
+                manager = manager.strip()
+                if not manager or "," not in manager:  # Skip blanks/malformed
+                    log.user("Skipping line from managers.txt file: empty or malformed")
+                    continue
                 _type, _unaid = manager.split(",")
                 if _type.lower().strip() == "floor":
                     log.user(f"Adding floor manager: {_unaid}")

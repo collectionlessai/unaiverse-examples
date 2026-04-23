@@ -48,8 +48,8 @@ class Config:
     start_message = (f"[START_MSG] You were named <YOUR_NAME> and the other "
                      f"guests are <OTHER_NAMES>. Start chatting and keep it going for "
                      f"{test_duration} seconds.")
-    start_message_nobody = (f"[START_MSG] You were named <YOUR_NAME> and you are waiting for other guests to join "
-                            f"this room. You can stay here for "
+    start_message_nobody = (f"[START_MSG_NOBODY] You were named <YOUR_NAME> and you are waiting for other guests to "
+                            f"join this room. You can stay here for "
                             f"{test_duration} seconds.")
     joined_message = f"[JOINED_MSG] A new agent joined the room: <SOME_NAME>"
     left_message = f"[LEFT_MSG] An agent left the room: <SOME_NAME>"

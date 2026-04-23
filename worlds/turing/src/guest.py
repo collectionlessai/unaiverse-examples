@@ -199,11 +199,13 @@ class WAgent(Agent):
     @action
     async def get_status_msg(self, msg: str, process_uuid: str = None):
 
-        if msg.startswith("[START_MSG]"):
+        if msg.startswith("[START_MSG]") or msg.startswith("[START_MSG_NOBODY]"):
 
             # Removing the initial [...] tag
             msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
-            msg_no_tag_with_wildcards = re.sub(r'^\[.*?]\s*', '', Config.start_message)
+            msg_no_tag_with_wildcards = re.sub(r'^\[.*?]\s*', '',
+                                               Config.start_message if msg.startswith("[START_MSG]") else
+                                               Config.start_message_nobody)
 
             # Getting our fake name from the start message
             pos = msg_no_tag_with_wildcards.find("<YOUR_NAME>")
@@ -211,11 +213,11 @@ class WAgent(Agent):
             self._fake_name = msg_no_tag[msg_no_tag.find(sub) + len(sub):].split(" ")[0]
 
             # Getting other guests' names
-            pos_o = Config.start_message.find("<OTHER_NAMES>")
+            pos_o = msg_no_tag_with_wildcards.find("<OTHER_NAMES>")
             if pos_o < 0:
                 other_fake_names = ""
             else:
-                sub = Config.start_message[pos + len("<YOUR_NAME>"):pos_o]
+                sub = msg_no_tag_with_wildcards[pos + len("<YOUR_NAME>"):pos_o]
                 other_fake_names = msg_no_tag[msg_no_tag.find(sub) + len(sub):].split(".")[0]
 
             # Preparing the incipit part of the history
@@ -252,6 +254,7 @@ class WAgent(Agent):
                 self._history_guests.add(msg.split(":")[1].strip())
 
             elif (msg.startswith("[START_MSG]") or
+                  msg.startswith("[START_MSG_NOBODY]") or
                   msg.startswith("[LEFT_MSG]") or
                   msg.startswith("[DISCO_MSG]") or
                   msg.startswith("[GEN_MSG]")):

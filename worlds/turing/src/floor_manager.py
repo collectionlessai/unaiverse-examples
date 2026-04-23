@@ -268,6 +268,7 @@ class WAgent(Agent):
                 if (room.get_status(guest) == GuestStatus.IN_VOTING_BOOTH and
                         room.get_time_in_current_status(guest) > Config.survey_reply_time):
                     await self.guest_back_to_hall(guest)  # Send back to hall
+                    something_was_sent = True
                     continue
 
                 # Too much time to join the room we told you: GET OUT OF MY FLOOR!
@@ -418,11 +419,13 @@ class WAgent(Agent):
             inserted_guests = [[room.id, guest, self.floor.get_hotel_manager_of(guest)]
                                for room in self.floor.get_rooms()
                                for guest in room.get_guests()
-                               if guest not in self._floor_at_last_update.get_room(room.id).get_guests()]
+                               if (prev := self._floor_at_last_update.get_room(room.id)) is None
+                               or guest not in prev.get_guests()]
             ejected_guests = [[room.id, guest]
                               for room in self._floor_at_last_update.get_rooms()
                               for guest in room.get_guests()
-                              if guest not in self.floor.get_room(room.id).get_guests()]
+                              if (curr := self.floor.get_room(room.id)) is None
+                              or guest not in curr.get_guests()]
 
         update = {
             "floor_id": self.floor.id,
