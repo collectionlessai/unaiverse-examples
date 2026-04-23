@@ -19,14 +19,14 @@ import textwrap
 # All time measures are in SECONDS.
 class Config:
     test_duration = 180  # Seconds (int)
-    survey_reply_time = 30  # Seconds
+    survey_reply_time = 60  # Seconds
     moving_time = 5  # Time to move from the floor entrance to the chat table or from the chat table to the voting both
     max_time_in_every_state = max([test_duration, survey_reply_time, moving_time]) + moving_time + 5  # Add a gap
-    max_guests_per_room = 2
+    max_guests_per_room = 4
     max_overbooked_guests = 1
-    rooms_per_floor = 3
+    rooms_per_floor = 10
     min_msgs_from_votee = 3  # Minimum number of received messages from somebody to vote hit
-    send_reminder_every = 10  # Reminder on how to exit the room and vote
+    send_reminder_every = 65  # Reminder on how to exit the room and vote
     send_floor_updates_every = 3  # From floor manager to hotel manager
     disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
     exit_trigger_message = "exit"  # The message that an agent can write to early stop the conversation and vote
@@ -47,7 +47,8 @@ class Config:
                     f"other response to continue 😀).")
     start_message = (f"[START_MSG] You were named <YOUR_NAME> and the other "
                      f"guests are <OTHER_NAMES>. Start chatting and keep it going for "
-                     f"{test_duration} seconds.")
+                     f"up to {test_duration} seconds. You can type '{exit_trigger_message}' at any time "
+                     f"to immediately leave the room and provide your vote.")
     start_message_nobody = (f"[START_MSG_NOBODY] You were named <YOUR_NAME> and you are waiting for other guests to "
                             f"join this room. You can stay here for "
                             f"{test_duration} seconds.")
