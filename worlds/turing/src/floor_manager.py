@@ -133,11 +133,18 @@ class WAgent(Agent):
         if guest is None:
             guest = interaction.target[0]
             callback_from_process_vote = True
+            log.error(f"Callback guest_back_to_hall guest={guest}, "
+                      f"callback_from_process_vote={callback_from_process_vote}")
+
+        if not self.floor.is_in_a_room(guest):
+            log.error(f"Not in a room, returning False")
+            return False
+
         hotel_manager = self.floor.get_hotel_manager_of(guest)
+        room = self.floor.get_room_of(guest)
 
         # Saving vote-related info
-        if callback_from_process_vote and self.floor.is_in_a_room(guest):
-            room = self.floor.get_room_of(guest)
+        if callback_from_process_vote:
             hotel_manager = self.floor.get_hotel_manager_of(guest)
             fake_name = room.fake_name_of(guest)
             fake_names_seen_so_far = room.get_fake_names_seen_by(guest)
@@ -166,10 +173,14 @@ class WAgent(Agent):
                 }
             }
 
+            log.error(f"Built vote dict")
+
             if guest in self._guest2vote_info:
+                log.error(f"Saved vote dict")
                 self._guest2vote_info[guest][1] = vote_dict
 
         # Telling hotel manager that we reset our state touch with the floor manager he suggested
+        log.error(f"Telling hotel manager to run his 'guest_back_to_hall'")
         if not await self.send(action_name="guest_back_to_hall",
                                action_kwargs={"guest": guest},
                                from_state="discovery_complete",
@@ -177,11 +188,14 @@ class WAgent(Agent):
             await self.disconnect(hotel_manager)
 
         # Telling guest to go back to hall (no matter from what state)
+        log.error(f"Sending guest to hall (telling guest to run 'goto_hall')")
         if not await self.send(action_name="goto_hall",
+                               from_state="room_voting_booth" if not callback_from_process_vote else "vote_provided",
                                target=guest):
             await self.disconnect(guest)
 
         # Clearing guest from floor
+        log.error(f"Clearing guest")
         self.__eject_and_clear_guest(guest)  # Send him out and clear all his info
         return True
 
@@ -541,4 +555,5 @@ class WAgent(Agent):
         if guest in self._guest2reminder_time:
             del self._guest2reminder_time[guest]
         if self.floor is not None:  # Keep this
+            log.error("Ejecting from floor now!")
             self.floor.eject(guest)

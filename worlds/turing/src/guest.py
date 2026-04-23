@@ -178,6 +178,7 @@ class WAgent(Agent):
                                from_state="getting_sponsorships",
                                target=self.__floor_manager):
             await self.disconnect_floor_manager()
+            self.reset_status()
             return False
         return True
 
@@ -192,7 +193,6 @@ class WAgent(Agent):
         if self.__floor_manager is not None:
             await self.disconnect(self.__floor_manager)
             self.__floor_manager = None
-        self.reset_status()
         return True
 
     @action
