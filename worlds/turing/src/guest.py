@@ -32,6 +32,7 @@ class WAgent(Agent):
         # Setting system level options
         Custom.MAX_INTERACTIONS = 100
         Custom.MAX_STREAM_DATA_WITHOUT_INTERACTIONS = 10
+        self.im.max_interactions = Custom.MAX_INTERACTIONS
 
         self._fake_name = None  # Your fake name
         self._history_senders = set()
