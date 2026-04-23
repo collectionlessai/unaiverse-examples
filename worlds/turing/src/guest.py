@@ -90,6 +90,7 @@ class WAgent(Agent):
         self._history_senders = set()
         self._history = None
         self._ignore_messages = True
+        self.stdin.clear_all_data()
 
     @action
     async def init(self):

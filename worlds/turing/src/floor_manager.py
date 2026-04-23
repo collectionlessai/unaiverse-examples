@@ -17,6 +17,8 @@ import json
 import time
 import uuid
 from enum import Enum
+
+from unaiverse.utils.logger import log
 from .floor import Floor
 from .config import Config
 from unaiverse.custom import Custom
