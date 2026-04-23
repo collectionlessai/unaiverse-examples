@@ -2,8 +2,6 @@ import re
 import random
 import atexit
 from rich import box
-
-from unaiverse.utils.logger import log
 from .config import Config
 from rich.text import Text
 from rich.live import Live

@@ -91,7 +91,8 @@ class WAgent(Agent):
             for _guest in room.get_guests():
                 if _guest != peer_id:
                     if not await self.send(action_name="get_status_msg",
-                                           action_kwargs={"msg": disconnected_message},
+                                           action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                                disconnected_message)},
                                            target=_guest):
                         await self.disconnect(_guest)
 
@@ -135,7 +136,7 @@ class WAgent(Agent):
             callback_from_process_vote = True
 
         if not self.floor.is_in_a_room(guest):
-            return False
+            return True  # Return true to complete the action and hence the interaction
 
         hotel_manager = self.floor.get_hotel_manager_of(guest)
         room = self.floor.get_room_of(guest)
@@ -193,15 +194,15 @@ class WAgent(Agent):
     @action
     async def get_guest_sponsor(self, hotel_manager: str | None = None, interaction: Interaction | None = None):
         if hotel_manager is None or hotel_manager not in self.world_agents or interaction is None:
-            return False
+            return True  # Always return True to burn the interaction
 
         guest = interaction.requester
         role = self.get_role(guest)
         if role == "guest":
             self._sponsored_guests[guest] = hotel_manager  # Check-in order will follow the order in this dict, FIFO
-            return True
-        else:
-            return False
+
+        # Always return True to burn the interaction
+        return True
 
     @action
     async def check_in(self):
@@ -254,7 +255,7 @@ class WAgent(Agent):
     @action
     async def handle_guests_by_status(self):
         something_was_sent = False
-        for guest in self.floor.get_managed_guests():
+        for guest in list(self.floor.get_guests()):
             if self.floor.is_in_a_room(guest):
                 room = self.floor.get_room_of(guest)
 
@@ -495,7 +496,7 @@ class WAgent(Agent):
     @action
     async def apply_violations(self, guests: list[str] | None = None):
         if guests is None or len(guests) == 0:
-            return False
+            return True  # Always return True to burn the interaction
 
         for guest in guests:
             await self.send(action_name="get_status_msg",
@@ -536,10 +537,10 @@ class WAgent(Agent):
                         await self.disconnect(_guest)
                     else:
                         room.inc_message_exchanges(fake_name_from=fake_name, fake_name_to=_fake_name)
-            return True
-        else:
-            log.error(f"CANNOT BROADCAST: {self.floor.is_in_a_room(guest)}, {msg}")
-            return False
+
+        # We always return True here: if a guest is not in room, we still want this action to succeed,
+        # so the interaction will be cleared
+        return True
 
     def __eject_and_clear_guest(self, guest):
         if guest in self._sponsored_guests:
