@@ -9,7 +9,7 @@ agent = Agent(proc=None,
               proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=True)])
 
 # Node hosting agent
-node = Node(node_name="TuringFloorManager", hosted=agent, hidden=True, clock_delta=1. / 2.)
+node = Node(node_name="TuringFloorManager", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Running node
 node.run(join_world="_TuringHotel")

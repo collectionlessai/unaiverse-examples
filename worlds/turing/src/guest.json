@@ -76,14 +76,14 @@
         "room_voting_booth": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#128499;&#65039; Entered the voting booth (waiting for vote request)",
+            "msg": "&#128499; Entered the voting booth (waiting for vote request)",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
         "vote_provided": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9989; Vote provided (ok!)",
+            "msg": "&#9989; Vote provided",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         }

@@ -15,7 +15,7 @@ agent = Agent(proc=processor,
               policy_filter=PolicyFilterDelayAction({"process"}, wait=1., add_random_up_to=1.))
 
 # Node hosting agent
-node = Node(node_name="Tony", hosted=agent, hidden=True, clock_delta=1. / 2.)
+node = Node(node_name="Tony", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Running node
 node.run(join_world="_TuringHotel")
