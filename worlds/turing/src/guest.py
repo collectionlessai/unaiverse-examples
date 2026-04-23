@@ -108,7 +108,6 @@ class WAgent(Agent):
 
     @action
     async def goto_hall(self):
-        self.reset_status()
         return True
 
     @action
@@ -166,6 +165,7 @@ class WAgent(Agent):
     async def connect_to_floor_manager(self, floor_manager: str | None = None):
         if await self.connect_to(floor_manager):
             self.__floor_manager = floor_manager
+            self.reset_status()  # Resetting status to be ready for a new chat
             return True
         else:
             return False
@@ -178,7 +178,6 @@ class WAgent(Agent):
                                from_state="getting_sponsorships",
                                target=self.__floor_manager):
             await self.disconnect_floor_manager()
-            self.reset_status()
             return False
         return True
 
