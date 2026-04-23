@@ -585,5 +585,6 @@ class WAgent(Agent):
 
     @action
     async def guest_back_to_hall(self, guest: str | None = None):
+        log.error(f"Ejecting guest={guest} since I was told 'guest_back_to_hall'")
         self.hotel.eject(guest)
         return True
