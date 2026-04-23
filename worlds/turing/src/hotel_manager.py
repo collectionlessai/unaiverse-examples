@@ -31,6 +31,7 @@ class WAgent(Agent):
         # Setting system level options
         Custom.MAX_INTERACTIONS = 10000
         Custom.MAX_STREAM_DATA_WITHOUT_INTERACTIONS = 100
+        self.im.max_interactions = Custom.MAX_INTERACTIONS
 
         # The Turing Hotel
         self.hotel = Hotel(self.world_agents)

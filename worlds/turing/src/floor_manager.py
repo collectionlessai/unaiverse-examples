@@ -46,6 +46,7 @@ class WAgent(Agent):
         # Setting system level options
         Custom.MAX_INTERACTIONS = 10000
         Custom.MAX_STREAM_DATA_WITHOUT_INTERACTIONS = 100
+        self.im.max_interactions = Custom.MAX_INTERACTIONS
 
         # The floor managed by this agent (will be created when accepting role - peer ID needed)
         self.floor = None
@@ -88,7 +89,7 @@ class WAgent(Agent):
         if self.floor is not None and self.floor.is_in_a_room(peer_id):
             room = self.floor.get_room_of(peer_id)
             disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
-            for _guest in room.get_guests():
+            for _guest in list(room.get_guests()):
                 if _guest != peer_id:
                     if not await self.send(action_name="get_status_msg",
                                            action_kwargs={"msg": format_message(Config.manager_fake_name,
