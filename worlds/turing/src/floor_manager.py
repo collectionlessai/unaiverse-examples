@@ -100,6 +100,7 @@ class WAgent(Agent):
 
         self.__eject_and_clear_guest(peer_id)  # Send him out and clear all his info
         if peer_id in self._guest2vote_info:
+            log.error("CLEARING _guest2vote_info")
             del self._guest2vote_info[peer_id]
 
     async def on_tick(self):
@@ -494,7 +495,8 @@ class WAgent(Agent):
                 continue
             guest_processor_stream = self.get_stream("processor", guest, data_type="text")
             vote_msg = guest_processor_stream.get(requested_by="send_votes", uuid=vote_interaction_uuid)
-            log.error("vote_msg={vote_msg}")
+            log.error(f"vote_msg={vote_msg}, vote_interaction_uuid={vote_interaction_uuid}")
+            log.error("==")
             if vote_msg is None:
                 continue
 
