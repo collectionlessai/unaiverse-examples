@@ -7,7 +7,6 @@ from rich.text import Text
 from rich.live import Live
 from rich.table import Table
 from rich.console import Group
-from unaiverse.networking.node.profile import NodeProfile
 
 
 def parse_vote_msg(_msg: str) -> dict[str, str]:
@@ -215,10 +214,6 @@ def compute_check_in_proposals(structure, guests_to_check_in: list):
             g += 1
 
     return proposed_check_ins, cannot_check_in
-
-
-def build_unaid(profile: NodeProfile):
-    return profile.get_static_profile()['email'] + '/' + profile.get_static_profile()['node_name']
 
 
 def format_message(sender_name: str, msg: str):

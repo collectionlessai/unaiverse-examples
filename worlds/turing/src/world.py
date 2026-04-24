@@ -16,11 +16,10 @@ import os
 import sys
 from .stats import WStats
 from .config import Config
-from .utils import build_unaid
 from unaiverse.world import World
 from unaiverse.utils.logger import log
 from unaiverse.hsm import HybridStateMachine
-from unaiverse.utils.misc import FileTracker
+from unaiverse.utils.misc import FileTracker, build_unaid
 from unaiverse.networking.node.profile import NodeProfile
 
 

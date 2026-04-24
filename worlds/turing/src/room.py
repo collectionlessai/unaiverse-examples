@@ -1,10 +1,8 @@
 import time
 import string
-
-from unaiverse.utils.logger import log
 from .config import Config
-from .utils import build_unaid
 from unaiverse.agent import Agent
+from unaiverse.utils.misc import build_unaid
 from unaiverse.networking.node.profile import NodeProfile
 
 
