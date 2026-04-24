@@ -215,7 +215,7 @@ class WAgent(Agent):
             return False
         _t = self.clock.get_time_ms()
         for _peer_id, _eval_result in self._eval_results.items():
-            self.stats.store_stat("exam_err", _eval_result, peer_id=_peer_id, timestamp=_t)
+            self.stats.store_stat("exam_err", _eval_result, group_key=_peer_id, timestamp=_t)
 
     async def manage_best_of_class(self):
         if self.get_current_role() == "teacher":
@@ -232,7 +232,7 @@ class WAgent(Agent):
                     _t = self.clock.get_time_ms()
                     self.out(f"The best student is {best_student_peer_id} with this result: {best_student_result})")
                     # the agent store and then send the stat to the world with the peer_id of the best student
-                    self.stats.store_stat("best_exam_err_history", best_student_result, peer_id=best_student_peer_id,
+                    self.stats.store_stat("best_exam_err_history", best_student_result, group_key=best_student_peer_id,
                                           timestamp=_t)
                     return await super().suggest_badges_to_world(agent=best_student_peer_id, score=best_student_result,
                                                                  badge_type=badge_type,

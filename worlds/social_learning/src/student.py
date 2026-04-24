@@ -110,5 +110,5 @@ class WAgent(Agent):
                                                mnist_data_save_path=os.path.join(self._agent_folder_name, "mnist_data"))
         _t = self.clock.get_time_ms()
         _, _peer_id = self.get_peer_ids()
-        self.stats.store_stat("full_test_err", error_rate, peer_id=_peer_id, timestamp=_t)
+        self.stats.store_stat("full_test_err", error_rate, group_key=_peer_id, timestamp=_t)
         return True
