@@ -167,7 +167,7 @@ class WWorld(World):
         behav.add_state("wait_for_ready", blocking=False, msg="⏳ Waiting outside (decompression)")
         behav.add_state("reached_hotel_manager", blocking=False,
                         msg="🏢 Entered the hotel (hotel manager contacted)")
-        behav.add_state("hall", blocking=False, msg="🏢 Walking though the hall (waiting to be sent to a floor)")
+        behav.add_state("hall", blocking=True, msg="🏢 Walking though the hall (waiting to be sent to a floor)")
         behav.add_state("wait_for_hall", blocking=False, msg="⏳ Waiting in the hall (decompression)")
         behav.add_state("reached_floor_manager", blocking=False,
                         msg="🪜 Going upstairs (floor manager contacted)")
