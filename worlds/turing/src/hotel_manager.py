@@ -366,19 +366,19 @@ class WAgent(Agent):
 
             # Referring to stats.py: CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA
             self.stats.store_stat("hotel_n_floors_active", len(self.hotel.get_floors()),
-                                  peer_id=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("hotel_n_rooms_active", self.hotel.count_not_empty_rooms(),
-                                  peer_id=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("hotel_n_rooms_overbooked", self.hotel.count_overbooked_rooms(),
-                                  peer_id=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("hotel_n_agents_present",
                                   len(self.hotel.get_all_hotel_guests()) - self.hotel.count_guests_in_the_hall(),
-                                  peer_id=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("hotel_n_agents_waiting", self.hotel.count_guests_in_the_hall(),
-                                  peer_id=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("n_total_agents",
                                   len(self.hotel.get_all_hotel_guests()),
-                                  peer_id=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
 
     @action
     async def send_violations(self):
@@ -581,10 +581,10 @@ class WAgent(Agent):
                     _vote_dict_["msgs_from_voter"] = vote_dict["msgs_from_voter"][fake_name]
                     _votee_unaid_ = vote_dict["ground_truth"][fake_name][1]
 
-                    # Storing vote as stat
+                    # Storing vote as stat (group_key = votee UNaID so votes are bucketed per votee)
                     int_timestamp = self.clock.get_time_ms(monotonic=True)
                     self.stats.store_stat("turing_vote", _vote_dict_,
-                                          peer_id=_votee_unaid_, timestamp=int_timestamp)
+                                          group_key=_votee_unaid_, timestamp=int_timestamp)
 
     @action
     async def guest_back_to_hall(self, guest: str | None = None):
