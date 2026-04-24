@@ -1,6 +1,7 @@
 import json
 from typing import Dict
 from unaiverse.stats import Stats, UIPlot, THEME
+from unaiverse.stats_html_renderer import render_plotly_html
 
 
 class WorldSidebarDash:
@@ -217,7 +218,7 @@ class WStats(Stats):
         p3.set_layout_opt("yaxis", {"title": "#Peers per Action"})
         dash.add_panel(p3, "right_bot")
 
-        return dash.to_json()
+        return render_plotly_html(dash.to_json())
     
     def _populate_best_student_table(self, panel: UIPlot, view: Dict):
         """Table 1: Student Specifics"""
