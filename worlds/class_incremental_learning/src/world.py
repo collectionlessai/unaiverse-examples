@@ -14,6 +14,7 @@
 """
 import os
 from unaiverse.world import World
+from unaiverse.utils.logger import log
 from unaiverse.hsm import HybridStateMachine
 from unaiverse.networking.node.profile import NodeProfile
 from unaiverse.utils.misc import build_unaid
@@ -74,7 +75,7 @@ class WWorld(World):
         # the world will store this stat as an ungrouped one, substituting its own peer_id
         # store the new value (this stat will be ungrouped in the world)
         world_peer_id = self.get_peer_ids()[1]
-        self.stats.store_stat('accuracy', value, peer_id=world_peer_id, timestamp=timestamp)
+        self.stats.store_stat('accuracy', value, group_key=world_peer_id, timestamp=timestamp)
         # retrieve peer role and node_id from the profile
         
         # check if this is the new overall best and update it
@@ -82,8 +83,8 @@ class WWorld(World):
         if overall_best_accuracy == -1.0 or (value > overall_best_accuracy and peer_id in self.all_agents):
                 
             unaid = build_unaid(self.all_agents[peer_id])
-            self.stats.store_stat('overall_best_student', unaid, peer_id=world_peer_id, timestamp=timestamp)
-            (f"[WStats] New overall best exam error: {value} by {peer_id}")
+            self.stats.store_stat('overall_best_student', unaid, group_key=world_peer_id, timestamp=timestamp)
+            log.info(f"[WStats] New overall best exam error: {value} by {peer_id}")
             
             # add the badge for the bast overall
             badge = {
