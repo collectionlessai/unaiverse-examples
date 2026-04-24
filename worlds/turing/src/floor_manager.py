@@ -496,7 +496,6 @@ class WAgent(Agent):
             guest_processor_stream = self.get_stream("processor", guest, data_type="text")
             vote_msg = guest_processor_stream.get(requested_by="send_votes", uuid=vote_interaction_uuid)
             log.error(f"vote_msg={vote_msg}, vote_interaction_uuid={vote_interaction_uuid}")
-            log.error("==")
             if vote_msg is None:
                 continue
 
