@@ -282,13 +282,17 @@ class WAgent(Agent):
     @action
     async def get_msgs(self, interaction: Interaction | None = None):
         if interaction is None:
+            log.error("none interaction in get_msgs")
             return False
         if interaction.requester != self.__floor_manager or self._ignore_messages:
+            log.error(f"{interaction.requester} != {self.__floor_manager} "
+                      f"or self._ignore_messages={self._ignore_messages} in get_msgs")
             return True  # Consume the interaction
 
         # Getting messages (one or more) received from the floor managers in the "chat" stream
         # We can use self.stdin since this action is stimulated by an interaction from the floor manager
         msgs_tags_times = self.stdin.get("chat", requested_by="get_msgs", all_uuids=True)
+        log.error(f"{msgs_tags_times}")
 
         # The self.stdin.get, with all_uuids set to true, will return a list of tuples (msg, tag, timestamp).
         # It could be empty
