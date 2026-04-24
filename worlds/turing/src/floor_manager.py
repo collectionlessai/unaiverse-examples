@@ -173,7 +173,10 @@ class WAgent(Agent):
                 }
             }
 
+            log.error(f"{vote_dict}")
+
             if guest in self._guest2vote_info:
+                log.error(f"saved")
                 self._guest2vote_info[guest][1] = vote_dict
 
         # Telling hotel manager that we reset our state touch with the floor manager he suggested
