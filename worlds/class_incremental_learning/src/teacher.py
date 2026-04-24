@@ -425,7 +425,7 @@ class WAgent(Agent):
                 **result,
             })
             for stat_name, value in result.items():
-                self.stats.store_stat(stat_name, value, student)
+                self.stats.store_stat(stat_name, value, group_key=student)
                 
         return True
 
