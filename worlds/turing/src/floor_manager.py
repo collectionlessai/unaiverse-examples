@@ -148,6 +148,7 @@ class WAgent(Agent):
             hotel_manager = self.floor.get_hotel_manager_of(guest)
             fake_name = room.fake_name_of(guest)
             fake_names_seen_so_far = room.get_fake_names_seen_by(guest)
+            log.error(f"fake_names_seen_so_far={fake_names_seen_so_far}")
 
             vote_dict = {
                 "voter": room.get_unaid_of(guest),
