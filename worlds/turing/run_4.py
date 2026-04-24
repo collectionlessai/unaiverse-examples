@@ -7,7 +7,8 @@ from unaiverse.modules.utils import LoggerModule
 from unaiverse.utils.misc import PolicyFilterDelayAction
 
 # Agent
-processor = LoggerModule(os.path.join(os.path.dirname(os.path.abspath(__file__)), "log", "proc_run_4.log"))
+# processor = LoggerModule(os.path.join(os.path.dirname(os.path.abspath(__file__)), "log", "proc_run_4.log"))
+processor = LoggerModule()
 agent = Agent(proc=processor,
               proc_inputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
               proc_outputs=[Data4Proc(data_type="text", pubsub=False, private_only=False)],
