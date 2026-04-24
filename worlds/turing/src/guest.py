@@ -71,15 +71,15 @@ class WAgent(Agent):
         elif self.__floor_manager is not None and await self.disconnected(agent=self.__floor_manager):
             log.user("❌ Arg! Lost connection to the floor manager!")
             self.__floor_manager = None
+            await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
 
             self.reset_status()
-            self.behav.states["hall"].waiting_time = 15.
-            await self.behav.act_ghost_transition(to_state="wait_for_hall")
+            await self.behav.act_ghost_transition(to_state="wait_for_ready")
 
         # Checking time spent in current state
         if (self.behav.get_state().name != "init" and
                 self.behav.get_time_spent_in_current_state() > Config.max_time_in_every_state):
-            log.user("❌ Uhm! Too much time passed without interactions, better start it over again")
+            log.user("❌ Uhm! Too much time passed without interactions, better get out of the hotel")
             await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 
