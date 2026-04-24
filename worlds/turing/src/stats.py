@@ -64,7 +64,6 @@ to group_id is deferred to a separate framework PR.
 import html
 import json
 import time
-from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
@@ -188,31 +187,27 @@ class WStats(Stats):
             try:
                 record = json.loads(val_json)
                 record["_ts"] = ts
-                record["_votee_peer_id"] = votee_peer_id
+                record["_votee"] = votee_peer_id
                 votes.append(record)
             except (json.JSONDecodeError, TypeError):
                 pass
         return votes
 
     def _fetch_hotel_ops_series(self) -> dict[str, list[tuple[int, int]]]:
-        """Return hotel operational time-series from SQLite.
-        Returns {stat_name: [(ts_ms, val), ...]} sorted by ts ascending.
+        """Return hotel operational time-series from the hot cache.
+        Returns {stat_name: [(ts_ms, val), ...]} sorted by ts ascending (cache order).
+        Reads from self._stats instead of the DB to cap the series to the cache window
+        and avoid embedding months of raw points into the HTML.
         """
         if not self.is_world:
             return {}
-        placeholders = ",".join("?" * len(_HOTEL_OPS_STATS))
-        rows = self._db_conn.execute(
-            f"SELECT timestamp, stat_name, val_num "
-            f"FROM dynamic_stats "
-            f"WHERE stat_name IN ({placeholders}) "
-            f"ORDER BY timestamp",
-            _HOTEL_OPS_STATS,
-        ).fetchall()
-        series: dict[str, list[tuple[int, int]]] = defaultdict(list)
-        for ts, stat_name, val_num in rows:
-            if val_num is not None:
-                series[stat_name].append((ts, int(val_num)))
-        return dict(series)
+        from sortedcontainers import SortedDict
+        series: dict[str, list[tuple[int, int]]] = {}
+        for stat_name in _HOTEL_OPS_STATS:
+            cache = self._stats.get(stat_name)
+            if isinstance(cache, SortedDict) and cache:
+                series[stat_name] = [(ts, int(v)) for ts, v in cache.items()]
+        return series
 
     @staticmethod
     def _bucket_by_scope(
@@ -264,15 +259,29 @@ class WStats(Stats):
     def _compute_votee_leaderboard(
         votes: list[dict], min_votes: int
     ) -> list[dict]:
-        """Per-AI-votee stats. Primary metric: Turing score — fooling rate
+        """
+        Per-AI-votee stats. Primary metric: Turing score — fooling rate
         weighted by average conversation length. Fooling over more messages is
         harder (more exposure), so a longer conversation at the same fooling
         rate scores higher. Formula: fooling_rate * avg_msgs / (avg_msgs + K)
-        with K=5. Sorted by Turing score descending."""
+        with K=5. Sorted by Turing score descending.
+        
+        Atomic votes are grouped by the votee's UNaID and the dict has the following structure:
+        {
+            "voter": VOTER_UNAID,
+            "vote": "human" | "ai",
+            "ground_truth": "human" | "ai"
+            "session_id": FLOOR_ID:ROOM_ID,
+            "floor_manager": FLOOR_MANAGER_PEER_ID,
+            "hotel_manager": HOTEL_MANAGER_PEER_ID,
+            "msgs_from_votee": STRING_REPRESENTING_A_NUMBER,
+            "msgs_from_voter": STRING_REPRESENTING_A_NUMBER
+        }
+        """
         _K = 5
         by_votee: dict[str, dict] = {}
         for rec in votes:
-            vid = rec.get("_votee_peer_id") or ""
+            vid = rec.get("_votee") or ""
             gt = rec.get("ground_truth")
             if not vid or gt != "ai":   # AI-only leaderboard
                 continue
@@ -309,19 +318,33 @@ class WStats(Stats):
     def _compute_voter_leaderboard(
         votes: list[dict], min_votes: int
     ) -> list[dict]:
-        """Per-voter stats using binary classification metrics.
+        """
+        Per-voter stats using binary classification metrics.
         Positive class = "human". Sorted by detection_score descending.
         detection_score = f1 * votes / (votes + K) with K=10 — rewards
-        sustained accuracy over many votes, mirroring the Turing score."""
+        sustained accuracy over many votes, mirroring the Turing score.
+        
+        Atomic votes are grouped by the votee's UNaID and the dict has the following structure:
+        {
+            "voter": VOTER_UNAID,
+            "vote": "human" | "ai",
+            "ground_truth": "human" | "ai"
+            "session_id": FLOOR_ID:ROOM_ID,
+            "floor_manager": FLOOR_MANAGER_PEER_ID,
+            "hotel_manager": HOTEL_MANAGER_PEER_ID,
+            "msgs_from_votee": STRING_REPRESENTING_A_NUMBER,
+            "msgs_from_voter": STRING_REPRESENTING_A_NUMBER
+        }
+        """
         _K = 10
         # Build voter nature lookup: when a voter also appears as a votee,
         # their ground_truth reveals whether they are human or ai.
         nature_lookup: dict[str, str] = {}
         for rec in votes:
-            votee_id = rec.get("_votee_peer_id") or ""
+            votee_unaid = rec.get("_votee") or ""
             gt = rec.get("ground_truth")
-            if votee_id and gt in ("human", "ai"):
-                nature_lookup[votee_id] = gt
+            if votee_unaid and gt in ("human", "ai"):
+                nature_lookup[votee_unaid] = gt
 
         by_voter: dict[str, dict] = {}
         for rec in votes:
