@@ -483,7 +483,6 @@ class WAgent(Agent):
         """
         some_votes_were_found = False
         to_remove = []
-        log.error("[send_votes] start")
 
         for guest, (vote_interaction_uuid, vote_dict) in self._guest2vote_info.items():
             if vote_dict is None:
@@ -505,7 +504,6 @@ class WAgent(Agent):
 
         for guest in to_remove:
             del self._guest2vote_info[guest]
-        log.error("[send_votes] end")
         return some_votes_were_found
 
     @action
