@@ -483,6 +483,7 @@ class WAgent(Agent):
         """
         some_votes_were_found = False
         to_remove = []
+        log.error("[send_votes] start")
 
         for guest, (vote_interaction_uuid, vote_dict) in self._guest2vote_info.items():
             if vote_dict is None:
@@ -495,6 +496,7 @@ class WAgent(Agent):
             vote_dict["vote"] = vote_msg
             hotel_manager = vote_dict["hotel_manager"]
 
+            log.error(f"[send_votes] sending {vote_dict}")
             await self.send(data_samples={"votes": json.dumps(vote_dict)},
                             target=hotel_manager)
 
@@ -503,6 +505,7 @@ class WAgent(Agent):
 
         for guest in to_remove:
             del self._guest2vote_info[guest]
+        log.error("[send_votes] end")
         return some_votes_were_found
 
     @action
