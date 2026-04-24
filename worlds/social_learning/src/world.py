@@ -193,22 +193,19 @@ class WWorld(World):
             # the world will store this stat as an ungrouped one, substituting its own peer_id
             # store the new value (this stat will be ungrouped in the world)
             world_peer_id = self.get_peer_ids()[1]
-            self.stats.store_stat('best_exam_err_history', value, peer_id=world_peer_id, timestamp=timestamp)
+            self.stats.store_stat('best_exam_err_history', value, group_key=world_peer_id, timestamp=timestamp)
             # retrieve peer role and node_id from the profile
-            # _role = self.all_agents[peer_id].get_dynamic_profile()['connections']['role']
-            # _role_without_flag = self.ROLE_STR_TO_BITS[_role] & ~(self.ROLE_WORLD_MASTER | self.ROLE_WORLD_AGENT)
-            # _role_without_flag_str = self.ROLE_BITS_TO_STR[_role_without_flag]
             _role = self.all_agents[peer_id].get_dynamic_profile()['connections']['role'].split('~')[-1]
-            self.stats.store_stat('best_student_role_history', _role, peer_id=world_peer_id, timestamp=timestamp)
-            self.stats.store_stat('best_student_history', peer_id, peer_id=world_peer_id, timestamp=timestamp)
-            
+            self.stats.store_stat('best_student_role_history', _role, group_key=world_peer_id, timestamp=timestamp)
+            self.stats.store_stat('best_student_history', peer_id, group_key=world_peer_id, timestamp=timestamp)
+
             # check if this is the new overall best and update it
             overall_best_err = self.stats.get_last_value('overall_best_exam_err')
             if overall_best_err == -1.0 or value < overall_best_err:
                 # New overall best found
-                self.stats.store_stat('overall_best_exam_err', value, peer_id=world_peer_id, timestamp=timestamp)
-                self.stats.store_stat('overall_best_student', peer_id, peer_id=world_peer_id, timestamp=timestamp)
-                self.stats.store_stat('overall_best_student_role', _role, peer_id=world_peer_id, timestamp=timestamp)
+                self.stats.store_stat('overall_best_exam_err', value, group_key=world_peer_id, timestamp=timestamp)
+                self.stats.store_stat('overall_best_student', peer_id, group_key=world_peer_id, timestamp=timestamp)
+                self.stats.store_stat('overall_best_student_role', _role, group_key=world_peer_id, timestamp=timestamp)
                 self.deb(f"[WStats] New overall best exam error: {value} by {peer_id} ({_role})")
                 
                 # add the badge for the bast overall
