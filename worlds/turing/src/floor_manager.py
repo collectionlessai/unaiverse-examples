@@ -147,7 +147,7 @@ class WAgent(Agent):
         if callback_from_process_vote:
             hotel_manager = self.floor.get_hotel_manager_of(guest)
             fake_name = room.fake_name_of(guest)
-            fake_names_seen_so_far = room.get_fake_names_seen_by(guest)
+            fake_names_seen_so_far = room.get_fake_names_seen_by(fake_name)
             log.error(f"fake_names_seen_so_far={fake_names_seen_so_far}")
 
             vote_dict = {
@@ -490,9 +490,11 @@ class WAgent(Agent):
 
         for guest, (vote_interaction_uuid, vote_dict) in self._guest2vote_info.items():
             if vote_dict is None:
+                log.error("vote_dict is None")
                 continue
             guest_processor_stream = self.get_stream("processor", guest, data_type="text")
             vote_msg = guest_processor_stream.get(requested_by="send_votes", uuid=vote_interaction_uuid)
+            log.error("vote_msg={vote_msg}")
             if vote_msg is None:
                 continue
 
