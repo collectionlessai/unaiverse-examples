@@ -1,0 +1,121 @@
+{
+  "machine": {
+    "initial_state": "init",
+    "msg": null,
+    "options": {
+      "highlight_blocking_states_in_messages": false,
+      "show_action_request_after_messages": false,
+      "show_action_ticks_after_messages": false
+    },
+    "role": "student"
+  },
+  "states": {
+    "done_exame": {
+      "action": null,
+      "action_kwargs": {},
+      "blocking": true,
+      "msg": null,
+      "time_to_wait_for_interactions": 0
+    },
+    "done_learn": {
+      "action": null,
+      "action_kwargs": {},
+      "blocking": true,
+      "msg": null,
+      "time_to_wait_for_interactions": 0
+    },
+    "init": {
+      "action": null,
+      "action_kwargs": {},
+      "blocking": false,
+      "msg": null,
+      "time_to_wait_for_interactions": 0
+    },
+    "wait": {
+      "action": null,
+      "action_kwargs": {},
+      "blocking": true,
+      "msg": null,
+      "time_to_wait_for_interactions": 0
+    }
+  },
+  "teleports": {},
+  "transitions": {
+    "done_exame": [
+      {
+        "goto": "wait",
+        "on": {
+          "action": "nop",
+          "action_kwargs": {
+            "message": "None"
+          },
+          "max_duration": 0,
+          "msg": null,
+          "ready": true,
+          "retry_timeout": 0,
+          "time_to_wait_before_running": 0
+        }
+      }
+    ],
+    "done_learn": [
+      {
+        "goto": "wait",
+        "on": {
+          "action": "nop",
+          "action_kwargs": {
+            "message": "None"
+          },
+          "max_duration": 0,
+          "msg": null,
+          "ready": true,
+          "retry_timeout": 0,
+          "time_to_wait_before_running": 0
+        }
+      }
+    ],
+    "init": [
+      {
+        "goto": "wait",
+        "on": {
+          "action": "connect_to_the_teacher",
+          "action_kwargs": {},
+          "max_duration": 0,
+          "msg": null,
+          "ready": true,
+          "retry_timeout": 0,
+          "time_to_wait_before_running": 0
+        }
+      }
+    ],
+    "wait": [
+      {
+        "goto": "done_exame",
+        "on": {
+          "action": "process",
+          "action_kwargs": {
+            "interaction": "None"
+          },
+          "max_duration": 0,
+          "msg": null,
+          "ready": false,
+          "retry_timeout": 3,
+          "time_to_wait_before_running": 0
+        }
+      },
+      {
+        "goto": "done_learn",
+        "on": {
+          "action": "learn",
+          "action_kwargs": {
+            "interaction": "None"
+          },
+          "max_duration": 0,
+          "msg": null,
+          "ready": false,
+          "retry_timeout": 0,
+          "time_to_wait_before_running": 0
+        }
+      }
+    ]
+  }
+}

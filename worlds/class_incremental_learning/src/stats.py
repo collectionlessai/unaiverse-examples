@@ -1,7 +1,6 @@
 import json
 from typing import Dict
 from unaiverse.stats import Stats, UIPlot, THEME
-from unaiverse.stats_html_renderer import render_plotly_html
 
 
 class WorldSidebarDash:
@@ -111,24 +110,17 @@ class WStats(Stats):
     """
     
     # 1. Define custom stats schemas
-    # We want agents to report their own 'full_test_err' on the MNIST test set
-    CUSTOM_AGENT_STATS_DYNAMIC_SCHEMA = {'full_test_err': (float, -1.0)}
-    
+
+    adsfasfd = {f"peer_acc_per_class_{cls}": (float, -1.0) for cls in range(10)} 
     # We want the teacher to track the best student (outer)
-    CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA = {'exam_err': (float, -1.0)}
-    
-    # We also want the world to store the history of best exam errors
-    CUSTOM_WORLD_STATS_DYNAMIC_SCHEMA = {
-        'best_exam_err_history': (float, -1.0),  # sent by the teacher
-        'best_student_history': (str, None),  # set by the world
-        'best_student_role_history': (str, None),  # set by the world
+    CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA = {
+        'accuracy': (float, -1.0),
+        **adsfasfd
     }
     
     # Finally, we want the world to track the best exam error across all agents
     CUSTOM_WORLD_STATS_STATIC_SCHEMA = {
         'overall_best_student': (str, None),  # set by the world
-        'overall_best_student_role': (str, None),  # set by the world
-        'overall_best_exam_err': (float, -1.0)  # set by the world
     }
 
     # 2. The __init__ will be called automatically by the framework.
@@ -218,7 +210,7 @@ class WStats(Stats):
         p3.set_layout_opt("yaxis", {"title": "#Peers per Action"})
         dash.add_panel(p3, "right_bot")
 
-        return render_plotly_html(dash.to_json())
+        return dash.to_json()
     
     def _populate_best_student_table(self, panel: UIPlot, view: Dict):
         """Table 1: Student Specifics"""
