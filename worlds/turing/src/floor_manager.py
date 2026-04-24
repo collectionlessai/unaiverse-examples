@@ -100,7 +100,6 @@ class WAgent(Agent):
 
         self.__eject_and_clear_guest(peer_id)  # Send him out and clear all his info
         if peer_id in self._guest2vote_info:
-            log.error("CLEARING _guest2vote_info")
             del self._guest2vote_info[peer_id]
 
     async def on_tick(self):
@@ -149,7 +148,6 @@ class WAgent(Agent):
             hotel_manager = self.floor.get_hotel_manager_of(guest)
             fake_name = room.fake_name_of(guest)
             fake_names_seen_so_far = room.get_fake_names_seen_by(fake_name)
-            log.error(f"fake_names_seen_so_far={fake_names_seen_so_far}")
 
             vote_dict = {
                 "voter": room.get_unaid_of(guest),
@@ -175,10 +173,7 @@ class WAgent(Agent):
                 }
             }
 
-            log.error(f"{vote_dict}")
-
             if guest in self._guest2vote_info:
-                log.error(f"saved")
                 self._guest2vote_info[guest][1] = vote_dict
 
         # Telling hotel manager that we reset our state touch with the floor manager he suggested
@@ -491,18 +486,15 @@ class WAgent(Agent):
 
         for guest, (vote_interaction_uuid, vote_dict) in self._guest2vote_info.items():
             if vote_dict is None:
-                log.error("vote_dict is None")
                 continue
             guest_processor_stream = self.get_stream("processor", guest, data_type="text")
             vote_msg = guest_processor_stream.get(requested_by="send_votes", uuid=vote_interaction_uuid)
-            log.error(f"vote_msg={vote_msg}, vote_interaction_uuid={vote_interaction_uuid}")
             if vote_msg is None:
                 continue
 
             vote_dict["vote"] = vote_msg
             hotel_manager = vote_dict["hotel_manager"]
 
-            log.error(f"[send_votes] sending {vote_dict}")
             await self.send(data_samples={"votes": json.dumps(vote_dict)},
                             target=hotel_manager)
 
