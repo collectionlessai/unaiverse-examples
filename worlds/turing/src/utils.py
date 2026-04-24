@@ -7,6 +7,7 @@ from rich.text import Text
 from rich.live import Live
 from rich.table import Table
 from rich.console import Group
+from unaiverse.utils.misc import build_unaid
 
 
 def parse_vote_msg(_msg: str) -> dict[str, str]:
