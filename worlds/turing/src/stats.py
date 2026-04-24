@@ -629,6 +629,12 @@ class WStats(Stats):
         ops_series = cache.get("ops_series", {})
         ops_json = self._make_ops_plotly_json(ops_series)
 
+        with open("stats.html", "w", encoding="utf-8") as file:
+            file.write(self._render_page(
+                summary_html, scope_cms_html,
+                scope_podiums_html, scope_grids_html, ops_json,
+            ))
+
         return self._render_page(
             summary_html, scope_cms_html,
             scope_podiums_html, scope_grids_html, ops_json,
