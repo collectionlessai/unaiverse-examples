@@ -1,7 +1,7 @@
 {
   "machine": {
     "initial_state": "init",
-    "msg": null,
+    "msg": "🏫 Teacher agent started",
     "options": {
       "highlight_blocking_states_in_messages": false,
       "show_action_request_after_messages": false,
@@ -14,35 +14,42 @@
       "action": "should_teach_or_evaluate",
       "action_kwargs": {},
       "blocking": true,
-      "msg": null,
+      "msg": "🤔 Deciding whether to teach or evaluate...",
       "time_to_wait_for_interactions": 0
     },
     "exam": {
       "action": "send_exam",
       "action_kwargs": {},
       "blocking": true,
-      "msg": null,
+      "msg": "📋 Preparing and sending exam to students...",
       "time_to_wait_for_interactions": 0
     },
     "init": {
       "action": null,
       "action_kwargs": {},
       "blocking": false,
-      "msg": null,
+      "msg": "🚀 Initializing teacher...",
       "time_to_wait_for_interactions": 0
     },
     "lesson": {
       "action": "init_lesson",
       "action_kwargs": {},
       "blocking": true,
-      "msg": null,
+      "msg": "📖 Preparing and sending lesson...",
+      "time_to_wait_for_interactions": 0
+    },
+    "wait_lesson": {
+      "action": null,
+      "action_kwargs": {},
+      "blocking": true,
+      "msg": "⏳ Waiting for students to finish lesson...",
       "time_to_wait_for_interactions": 0
     },
     "wait": {
       "action": null,
       "action_kwargs": {},
       "blocking": true,
-      "msg": null,
+      "msg": "⏳ Waiting for connected students...",
       "time_to_wait_for_interactions": 0
     }
   },
@@ -52,10 +59,10 @@
       {
         "goto": "lesson",
         "on": {
-          "action": "init_lesson",
+          "action": "building_lesson",
           "action_kwargs": {},
           "max_duration": 0,
-          "msg": null,
+          "msg": "📚 Building a new lesson...",
           "ready": true,
           "retry_timeout": 0,
           "time_to_wait_before_running": 0
@@ -64,26 +71,26 @@
       {
         "goto": "exam",
         "on": {
-          "action": "send_exam",
+          "action": "building_evaluation",
           "action_kwargs": {},
           "max_duration": 0,
-          "msg": null,
+          "msg": "📝 Building an evaluation...",
           "ready": true,
           "retry_timeout": 0,
           "time_to_wait_before_running": 0
         }
       },
       {
+        "goto": "brainstorm",
         "on": {
           "action": "should_teach_or_evaluate",
           "action_kwargs": {},
-          "msg": null,
+          "msg": "🔄 Re-evaluating next action...",
           "ready": true,
           "max_duration": 0,
           "retry_timeout": 0,
           "time_to_wait_before_running": 0
-        },
-        "goto": "brainstorm"
+        }
       }
     ],
     "exam": [
@@ -93,7 +100,7 @@
           "action": "get_samples",
           "action_kwargs": {},
           "max_duration": 0,
-          "msg": null,
+          "msg": "📊 Collecting student answers...",
           "ready": true,
           "retry_timeout": 0,
           "time_to_wait_before_running": 0
@@ -105,7 +112,7 @@
           "action": "evaulate_exam",
           "action_kwargs": {},
           "max_duration": 0,
-          "msg": null,
+          "msg": "✅ Evaluating exam results...",
           "ready": true,
           "retry_timeout": 0,
           "time_to_wait_before_running": 0
@@ -121,7 +128,7 @@
             "message": "None"
           },
           "max_duration": 0,
-          "msg": null,
+          "msg": "➡️ Teacher ready, moving to wait...",
           "ready": true,
           "retry_timeout": 0,
           "time_to_wait_before_running": 0
@@ -130,12 +137,26 @@
     ],
     "lesson": [
       {
-        "goto": "wait",
+        "goto": "wait_lesson",
         "on": {
           "action": "nop",
           "action_kwargs": {
             "message": "None"
           },
+          "max_duration": 0,
+          "msg": "🔄 Lesson sent, waiting for students to finish...",
+          "ready": true,
+          "retry_timeout": 0,
+          "time_to_wait_before_running": 0
+        }
+      }
+    ],
+    "wait_lesson": [
+      {
+        "goto": "wait",
+        "on": {
+          "action": "check_lesson_finished",
+          "action_kwargs": {},
           "max_duration": 0,
           "msg": null,
           "ready": true,
