@@ -24,6 +24,17 @@ class WWorld(World):
         world_folder = os.path.dirname(os.path.abspath(__file__))
         super().__init__(world_folder=world_folder, **kwargs)
 
+    async def on_tick(self):
+        conn = self._node_conn
+        if conn is None:
+            return
+        role_map = getattr(conn, 'role_to_peer_ids', {})
+        masters = getattr(conn, 'world_masters_set', set())
+        agents = getattr(conn, 'world_agents_set', set())
+        log.user(f"[WORLD] role_to_peer_ids={dict(role_map)}")
+        log.user(f"[WORLD] world_masters_set={masters}, world_agents_set={agents}")
+        log.user(f"[WORLD] conn pools:\n{conn}")
+
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         if is_world_master:
             if len(self.world_masters) <= 1:
@@ -56,7 +67,7 @@ class WWorld(World):
         behav.load(os.path.join(self.world_folder, 'teacher.json'))  # Loading the state machine from file, to avoid having to re-implement it here
 
         # Saving to file
-        behav.save_pdf(os.path.join(self.world_folder, 'src/teacher.pdf'))
+        behav.save_pdf(os.path.join(self.world_folder, 'pdf/teacher.pdf'))
         
         # ROLE 2/3: student
         from .student import WAgent
@@ -65,7 +76,7 @@ class WWorld(World):
         behav.load(os.path.join(self.world_folder, 'student.json'))  # Loading the state machine from file, to avoid having to re-implement it here
 
         # Saving to file
-        behav.save_pdf(os.path.join(self.world_folder, 'src/student.pdf'))
+        behav.save_pdf(os.path.join(self.world_folder, 'pdf/student.pdf'))
         
     def _process_custom_stat(self, stat_name, value, peer_id, timestamp):
         # handle the special case of best_exam_err_history

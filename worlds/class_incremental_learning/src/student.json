@@ -1,7 +1,7 @@
 {
   "machine": {
     "initial_state": "init",
-    "msg": null,
+    "msg": "🎓 Student agent started",
     "options": {
       "highlight_blocking_states_in_messages": false,
       "show_action_request_after_messages": false,
@@ -10,38 +10,125 @@
     "role": "student"
   },
   "states": {
-    "done_exame": {
-      "action": null,
-      "action_kwargs": {},
-      "blocking": true,
-      "msg": null,
-      "time_to_wait_for_interactions": 0
-    },
-    "done_learn": {
-      "action": null,
-      "action_kwargs": {},
-      "blocking": true,
-      "msg": null,
-      "time_to_wait_for_interactions": 0
-    },
     "init": {
       "action": null,
       "action_kwargs": {},
       "blocking": false,
-      "msg": null,
+      "msg": "🚀 Initializing student...",
+      "time_to_wait_for_interactions": 0
+    },
+    "searching": {
+      "action": null,
+      "action_kwargs": {},
+      "blocking": true,
+      "msg": "🔍 Searching for a teacher on the network...",
+      "time_to_wait_for_interactions": 5.0
+    },
+    "connected": {
+      "action": null,
+      "action_kwargs": {},
+      "blocking": true,
+      "msg": "🤝 Connected to teacher! Waiting for handshake...",
       "time_to_wait_for_interactions": 0
     },
     "wait": {
       "action": null,
       "action_kwargs": {},
       "blocking": true,
-      "msg": null,
+      "msg": "⏳ Waiting for instructions from teacher...",
+      "time_to_wait_for_interactions": 0
+    },
+    "done_exam": {
+      "action": null,
+      "action_kwargs": {},
+      "blocking": true,
+      "msg": "✅ Exam completed!",
+      "time_to_wait_for_interactions": 0
+    },
+    "done_learn": {
+      "action": null,
+      "action_kwargs": {},
+      "blocking": true,
+      "msg": "📚 Learning completed!",
       "time_to_wait_for_interactions": 0
     }
   },
   "teleports": {},
   "transitions": {
-    "done_exame": [
+    "init": [
+      {
+        "goto": "searching",
+        "on": {
+          "action": "nop",
+          "action_kwargs": {},
+          "max_duration": 0,
+          "msg": "➡️ Moving to teacher search...",
+          "ready": true,
+          "retry_timeout": 0,
+          "time_to_wait_before_running": 5
+        }
+      }
+    ],
+    "searching": [
+      {
+        "goto": "connected",
+        "on": {
+          "action": "connect_by_role",
+          "action_kwargs": {
+            "role": "teacher"
+          },
+          "max_duration": 0,
+          "msg": "🔗 Attempting connection to teacher...",
+          "ready": true,
+          "retry_timeout": 5,
+          "time_to_wait_before_running": 0
+        }
+      }
+    ],
+    "connected": [
+      {
+        "goto": "wait",
+        "on": {
+          "action": "find_agents",
+          "action_kwargs": {
+            "role": "teacher",
+            "handshake_completed": true
+          },
+          "max_duration": 0,
+          "msg": "✋ Handshake with teacher completed!",
+          "ready": true,
+          "retry_timeout": 5,
+          "time_to_wait_before_running": 0
+        }
+      }
+    ],
+    "wait": [
+      {
+        "goto": "done_exam",
+        "on": {
+          "action": "process",
+          "action_kwargs": {},
+          "max_duration": 0,
+          "msg": "📝 Exam received, processing answers...",
+          "ready": false,
+          "retry_timeout": 0,
+          "time_to_wait_before_running": 0
+        }
+      },
+      {
+        "goto": "done_learn",
+        "on": {
+          "action": "learn",
+          "action_kwargs": {},
+          "max_duration": 0,
+          "msg": "🧠 Lesson received, learning...",
+          "ready": false,
+          "retry_timeout": 0,
+          "time_to_wait_before_running": 0
+        }
+      }
+    ],
+    "done_exam": [
       {
         "goto": "wait",
         "on": {
@@ -50,7 +137,7 @@
             "message": "None"
           },
           "max_duration": 0,
-          "msg": null,
+          "msg": "🔄 Back to waiting after exam",
           "ready": true,
           "retry_timeout": 0,
           "time_to_wait_before_running": 0
@@ -66,52 +153,8 @@
             "message": "None"
           },
           "max_duration": 0,
-          "msg": null,
+          "msg": "🔄 Back to waiting after lesson",
           "ready": true,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      }
-    ],
-    "init": [
-      {
-        "goto": "wait",
-        "on": {
-          "action": "connect_to_the_teacher",
-          "action_kwargs": {},
-          "max_duration": 0,
-          "msg": null,
-          "ready": true,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      }
-    ],
-    "wait": [
-      {
-        "goto": "done_exame",
-        "on": {
-          "action": "process",
-          "action_kwargs": {
-            "interaction": "None"
-          },
-          "max_duration": 0,
-          "msg": null,
-          "ready": false,
-          "retry_timeout": 3,
-          "time_to_wait_before_running": 0
-        }
-      },
-      {
-        "goto": "done_learn",
-        "on": {
-          "action": "learn",
-          "action_kwargs": {
-            "interaction": "None"
-          },
-          "max_duration": 0,
-          "msg": null,
-          "ready": false,
           "retry_timeout": 0,
           "time_to_wait_before_running": 0
         }

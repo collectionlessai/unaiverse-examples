@@ -111,11 +111,11 @@ class WStats(Stats):
     
     # 1. Define custom stats schemas
 
-    adsfasfd = {f"peer_acc_per_class_{cls}": (float, -1.0) for cls in range(10)} 
+    per_class_accuracy_schema = {f"peer_acc_per_class_{cls}": (float, -1.0) for cls in range(10)}
     # We want the teacher to track the best student (outer)
     CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA = {
         'accuracy': (float, -1.0),
-        **adsfasfd
+        **per_class_accuracy_schema
     }
     
     # Finally, we want the world to track the best exam error across all agents
@@ -214,10 +214,10 @@ class WStats(Stats):
     
     def _populate_best_student_table(self, panel: UIPlot, view: Dict):
         """Table 1: Student Specifics"""
+        best = self._get_last_val_from_view(view, "overall_best_student")
         rows = [
-            ["Best Student", self._get_last_val_from_view(view, "overall_best_student")[-6:]],
-            ["Role", self._get_last_val_from_view(view, "overall_best_student_role")],
-            ["Best Err", self._get_last_val_from_view(view, "overall_best_exam_err")],
+            ["Best Student", best[-6:] if best else "N/A"],
+            ["Best Acc", self._get_last_val_from_view(view, "accuracy") or "N/A"],
         ]
         panel.add_table(headers=None, columns=[[r[0] for r in rows], [r[1] for r in rows]])
     
