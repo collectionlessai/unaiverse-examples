@@ -42,7 +42,7 @@
             "action": null,
             "action_kwargs": {},
             "msg": "&#127970; Walking though the hall (waiting to be sent to a floor)",
-            "blocking": false,
+            "blocking": true,
             "time_to_wait_for_interactions": 0.0
         },
         "wait_for_hall": {
