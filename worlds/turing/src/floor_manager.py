@@ -12,11 +12,10 @@
                  Code Repositories:  https://github.com/collectionlessai/
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
-import asyncio
-import copy
 import json
 import time
 import uuid
+import asyncio
 from enum import Enum
 from .floor import Floor
 from .config import Config
@@ -29,6 +28,7 @@ from unaiverse.streams.dataprops import DataProps
 from .utils import compute_check_in_proposals, format_message
 
 
+# The floor manager keeps an internal estimate of the status of each guest, accordingly to the following possible states
 class GuestStatus(Enum):
     TOLD_TO_JOIN_ROOM = "MOVE>CHAT"
     JUST_ARRIVED_AT_ROUND_TABLE = ">CHAT"
@@ -43,10 +43,10 @@ class WAgent(Agent):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        # Setting system level options
+        # Setting system level options (push it up w.r.t. the default ones...this manager has some work to do!)
         Custom.MAX_INTERACTIONS = 10000
         Custom.MAX_STREAM_DATA_WITHOUT_INTERACTIONS = 100
-        self.im.max_interactions = Custom.MAX_INTERACTIONS
+        self.im.max_interactions = Custom.MAX_INTERACTIONS  # Overwrite this, since it was set at object creation
 
         # The floor managed by this agent (will be created when accepting role - peer ID needed)
         self.floor = None
@@ -64,20 +64,21 @@ class WAgent(Agent):
         # in which they communicate who is their hotel manager)
         self._sponsored_guests = {}
 
+        # Attributes that handle some guest-status related info
         self._guest2vote_info = {}  # Guest who got the survey message -> [UUID of the request message, vote dict]
         self._guest2reminder_time = {}  # Guest who got the survey message -> last reminder message time
         self._wants_to_exist = set()  # Guest who wants to leave
 
         # Creating the pubsub stream where this manager will broadcast floor-related updates
         # and the direct message stream that is used to send votes to the hotel manager
-        self.add_stream(Stream(props=DataProps(name="floor_updates", data_type="text", pubsub=True)))
-        self.add_stream(Stream(props=DataProps(name="chat", data_type="text")))
-        self.add_stream(Stream(props=DataProps(name="votes", data_type="text")))
+        self.add_stream(Stream(props=DataProps(name="floor_updates", data_type="text", pubsub=True)))  # Pubsub
+        self.add_stream(Stream(props=DataProps(name="chat", data_type="text")))  # Ordinary conversation
+        self.add_stream(Stream(props=DataProps(name="votes", data_type="text")))  # Votes only
 
     def accept_new_role(self, role: int):
         super().accept_new_role(role)
 
-        # Creating the floor to manage (now we have the peer ID of the floor manager)
+        # Creating the floor to manage (now we have the peer ID of the floor manager, we couldn't create it earlier)
         self.floor = Floor(floor_manager=self.get_peer_id(),
                            id=str(uuid.uuid4()),
                            managed_guest_profiles=self.world_agents)
@@ -98,11 +99,16 @@ class WAgent(Agent):
                                            volatile=True):
                         await self.disconnect(_guest)
 
-        self.__eject_and_clear_guest(peer_id)  # Send him out and clear all his info
+        # Send the guest out of the floor/room and clear all his vote-related info
+        # (the other status-related sets and dicts are cleared by the following method, but NOT the vote info, since
+        # the floor manager will pick up a vote from this guest at a later stage, maybe even after he disconnected)
+        self.__eject_and_clear_guest(peer_id)
         if peer_id in self._guest2vote_info:
             del self._guest2vote_info[peer_id]
 
     async def on_tick(self):
+
+        # Print info on screen
         connected_hotel_managers = self.get_agents_by_role("hotel_manager")
         connected_guests = self.get_agents_by_role("guest")
         self.floor.print(f"Hotel managers: {len(connected_hotel_managers)} "
@@ -110,36 +116,50 @@ class WAgent(Agent):
 
     @action
     async def guest_joined_room(self, interaction: Interaction | None = None):
-        if interaction is None:
+        """Callback triggered when a guest confirmed to have joined a room."""
+        if interaction is None:  # Safety check
             return False
 
+        # The guest is the target of the original interaction we sent (recall this is a callback)
         guest = interaction.target[0]
+
+        # Update guest status
         self.floor.get_room_of(guest).set_status(guest, GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE)
-        self._guest2reminder_time[guest] = time.perf_counter()
+        self._guest2reminder_time[guest] = time.perf_counter()  # Started counting time for remind-messages purpose
         return True
 
     @action
     async def guest_joined_voting_booth(self, interaction: Interaction | None = None):
-        if interaction is None:
+        """Callback triggered when a guest confirmed to have joined the voting booth."""
+        if interaction is None:  # Safety
             return False
 
+        # The guest is the target of the original interaction we sent (recall this is a callback)
         guest = interaction.target[0]
-        if self.floor.is_in_a_room(guest):
+
+        # Update guest status
+        if self.floor.is_in_a_room(guest):  # Safety: this is supposed to be True
             room = self.floor.get_room_of(guest)
-            if room is not None:
+            if room is not None:  # Safety: this is supposed to be not None
                 room.set_status(guest, GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH)
         return True
 
     @action
     async def guest_back_to_hall(self, guest: str | None = None, interaction: Interaction | None = None):
+        """This method is booth used as a callback and also explicitly called."""
+
+        # Let's distinguish if we are in the context of a callback from a vote-process-operation-completed,
+        # or if we are just calling the method somewhere else
         callback_from_process_vote = False
         if guest is None:
             guest = interaction.target[0]
             callback_from_process_vote = True
 
+        # Safety
         if not self.floor.is_in_a_room(guest):
-            return True  # Return true to complete the action and hence the interaction
+            return True  # Return true to complete the action and hence burn the interaction
 
+        # Getting info
         hotel_manager = self.floor.get_hotel_manager_of(guest)
         room = self.floor.get_room_of(guest)
 
@@ -149,6 +169,7 @@ class WAgent(Agent):
             fake_name = room.fake_name_of(guest)
             fake_names_seen_so_far = room.get_fake_names_seen_by(fake_name)
 
+            # This dictionary is almost filled, it misses the actual vote (it will be sent in its own stream)
             vote_dict = {
                 "voter": room.get_unaid_of(guest),
                 "vote": None,  # This will be filled when actually receiving the vote from the processor stream
@@ -173,6 +194,8 @@ class WAgent(Agent):
                 }
             }
 
+            # We save the vote dictionary as second element of the tuple below
+            # Recall that the first one is the UUID of the voting interaction
             if guest in self._guest2vote_info:
                 self._guest2vote_info[guest][1] = vote_dict
 
@@ -192,7 +215,7 @@ class WAgent(Agent):
             await self.disconnect(guest)
 
         # Clearing guest from floor
-        self.__eject_and_clear_guest(guest)  # Send him out and clear all his info
+        self.__eject_and_clear_guest(guest)  # Send him out and clear all his info (but not the vote-info)
         return True
 
     @action
@@ -204,8 +227,6 @@ class WAgent(Agent):
         role = self.get_role(guest)
         if role == "guest":
             self._sponsored_guests[guest] = hotel_manager  # Check-in order will follow the order in this dict, FIFO
-
-        # Always return True to burn the interaction
         return True
 
     @action
@@ -258,14 +279,19 @@ class WAgent(Agent):
 
     @action
     async def handle_guests_by_status(self):
+        """Handle each single guest in a different way, in function of his current status."""
+
+        # We run it in "parallel" over all guests
         results = await asyncio.gather(
-            *[self.__handle_single_guest(guest) for guest in list(self.floor.get_guests())],
+            *[self.__handle_single_guest_by_status(guest) for guest in list(self.floor.get_guests())],
             return_exceptions=True
         )
         return any(r is True for r in results)
 
-    async def __handle_single_guest(self, guest: str) -> bool:
-        if not self.floor.is_in_a_room(guest):
+    async def __handle_single_guest_by_status(self, guest: str) -> bool:
+        """Handle a specific guest in function of his current status."""
+
+        if not self.floor.is_in_a_room(guest):  # Safety
             return False
         room = self.floor.get_room_of(guest)
 
@@ -338,11 +364,13 @@ class WAgent(Agent):
             room.set_status(guest, GuestStatus.AT_ROUND_TABLE)
             return sent
 
-        # This guest just confirmed that he left the room, let's send him the process 'survey' request
+        # This guest just confirmed that he left the room, let's send him the 'process-survey' request
         # and let's tell the others that he left
         if room.get_status(guest) == GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH:
             fake_name = room.fake_name_of(guest)
             other_guests_names = sorted(list(room.get_fake_names_met_by(fake_name)))
+
+            # Interacting with the guest's processor
             survey_msg = (
                 Config.survey_message if len(other_guests_names) > 0 else Config.survey_message_nobody).replace(
                 "<YOUR_NAME>", room.fake_name_of(guest)).replace("<OTHER_NAMES>", ", ".join(other_guests_names))
@@ -355,6 +383,9 @@ class WAgent(Agent):
                 await self.disconnect(guest)
                 return False
 
+            # Interacting with the guests for two reasons:
+            # (1) Send the "vote-request" message to the handled guest
+            # (2) Tell other guest that the handled guest left
             self._guest2vote_info[guest] = [interaction.uuid, None]
             left_message = Config.left_message.replace("<SOME_NAME>", fake_name)
             await asyncio.gather(
@@ -391,18 +422,20 @@ class WAgent(Agent):
                     await self.disconnect(guest)
                 else:
                     sent = True
-            self._guest2reminder_time[guest] = time.perf_counter()
+            self._guest2reminder_time[guest] = time.perf_counter()  # Remember the last time a reminder was sent
             return sent
 
         return False
 
     async def __send_or_disconnect(self, target: str, **send_kwargs) -> None:
+        """Sends an interaction and disconnect the target if sending failed."""
         if not await self.send(target=target, **send_kwargs):
             await self.disconnect(target)
 
     @action
     async def pub_floor_updates(self):
-        """
+        """Publish packets telling the status of this floor (who joined, who was ejected, how many guests are there).
+
         An update packet is a string that encodes a JSON with the following format, where ALL elements are -strings-:
 
         {
@@ -421,6 +454,8 @@ class WAgent(Agent):
             ]
         }
         """
+
+        # Check if it is time to send the update
         time_now = self.clock.get_time()
         if self._floor_update_published_at is None:
             self._floor_update_published_at = time_now
@@ -429,6 +464,7 @@ class WAgent(Agent):
         else:
             self._floor_update_published_at = time_now
 
+        # Determining who was inserted or rejected by comparing with the previously saved floor status
         if self._floor_at_last_update is None:
 
             # First time: all guests are new
@@ -450,6 +486,7 @@ class WAgent(Agent):
                               if (curr := self.floor.get_room(room.id)) is None
                               or guest not in curr.get_guests()]
 
+        # Update packet
         update = {
             "floor_id": self.floor.id,
             "floor_status": [[room.id, room.count_guests()] for room in self.floor.get_rooms()],
@@ -457,17 +494,21 @@ class WAgent(Agent):
             "ejected_guests": ejected_guests
         }
 
+        # Setting data on the pubsub stream
         self.get_stream("floor_updates").set(data=json.dumps(update), data_tag=self._floor_update_tag)
         self._floor_update_tag += 1
+
+        # Saving the floor status for future comparisons
         live_backup = self.floor.live
         self.floor.live = None
-        self._floor_at_last_update = copy.deepcopy(self.floor)
+        self._floor_at_last_update = self.floor.copy_floor_status()
         self.floor.live = live_backup
         return True
 
     @action
     async def send_votes(self):
-        """
+        """Send votes to the hotel manager.
+
         A vote packet is a string that encodes a JSON with the following format:
 
         {
@@ -481,9 +522,10 @@ class WAgent(Agent):
             "msgs_from_voter": STRING_REPRESENTING_A_NUMBER
         }
         """
-        some_votes_were_found = False
+        list_of_vote_dicts_by_hotel_manager = {}
         to_remove = []
 
+        # Votes are expected to be found on the guest's processor, with a UUID that we saved in advance
         for guest, (vote_interaction_uuid, vote_dict) in self._guest2vote_info.items():
             if vote_dict is None:
                 continue
@@ -495,21 +537,32 @@ class WAgent(Agent):
             vote_dict["vote"] = vote_msg
             hotel_manager = vote_dict["hotel_manager"]
 
-            await self.send(data_samples={"votes": json.dumps(vote_dict)},
-                            target=hotel_manager)
-
-            some_votes_were_found = True
+            if hotel_manager not in list_of_vote_dicts_by_hotel_manager:
+                list_of_vote_dicts_by_hotel_manager[hotel_manager] = []
+            list_of_vote_dicts_by_hotel_manager[hotel_manager].append(vote_dict)
             to_remove.append(guest)
 
         for guest in to_remove:
             del self._guest2vote_info[guest]
-        return some_votes_were_found
+
+        # We send all the collected votes to each hotel manager (recall that a hotel manager only gets votes from
+        # the guests that he sponsored), by loading in on our "votes" stream, paired with an "empty" interaction
+        # targeted to the hotel manager
+        for hotel_manager, list_of_vote_dicts in list_of_vote_dicts_by_hotel_manager.items():
+            await self.send(data_samples={"votes": json.dumps(list_of_vote_dicts)},
+                            target=hotel_manager)
+
+        return len(list_of_vote_dicts_by_hotel_manager) > 0
 
     @action
     async def apply_violations(self, guests: list[str] | None = None):
+        """Kill those guests that were reported as illegally connected to this floor. """
+
         if guests is None or len(guests) == 0:
             return True  # Always return True to burn the interaction
 
+        # We tell each violating guest that he indeed did a violation, and we disconnect him, that will in turn
+        # trigger "remove_agent", fully pushing the guest out of the floor
         for guest in guests:
             await self.send(action_name="get_status_msg",
                             action_kwargs={"msg": Config.violation_message},
@@ -519,6 +572,7 @@ class WAgent(Agent):
 
     @action
     async def get_msg_and_broadcast(self, msg: str | None = None, interaction: Interaction | None = None):
+        """Get a message from a guest and broadcast it to all the other ones in the same room."""
         guest = interaction.requester
 
         if self.floor.is_in_a_room(guest) and (msg is not None and len(msg) > 0):
@@ -541,11 +595,15 @@ class WAgent(Agent):
                     else:
                         room.inc_message_exchanges(fake_name_from=fake_name, fake_name_to=_fake_name)
 
+            # Try to broadcast in "parallel"
             await asyncio.gather(*[_broadcast_to(g) for g in room.get_guests()])
 
         return True
 
     def __eject_and_clear_guest(self, guest):
+        """Send a guest of the floor/room, without clearing his vote-related info (they might be needed to get his vote
+        after he disconnected."""
+
         if guest in self._sponsored_guests:
             del self._sponsored_guests[guest]
         if guest in self._wants_to_exist:

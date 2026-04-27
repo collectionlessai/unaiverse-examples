@@ -419,8 +419,9 @@ class WAgent(Agent):
 
     @action
     async def get_votes(self):
-        """
-        A vote packet is a string that encodes a JSON with the following format:
+        """Get votes from the floor manager's "votes" stream.
+
+        A vote sample is a string that encodes a list of JSONs, each with the following format:
 
         {
             "voter": VOTER_UNAID,
@@ -448,7 +449,7 @@ class WAgent(Agent):
         }
         """
 
-        def _build_vote_dict_and_check_format(_vote: str) -> dict | None:
+        def _build_vote_dicts_and_check_format(_vote: str) -> list[dict] | None:
 
             # Packet format
             expected_dict_keys = ["voter", "vote", "ground_truth", "session_id",
@@ -458,65 +459,69 @@ class WAgent(Agent):
             if not isinstance(_vote, str):
                 return None
             try:
-                _vote_dict = json.loads(_vote)
+                _list_of_vote_dicts = json.loads(_vote)
             except Exception:
                 return None
 
-            invalid = False
-            fake_names = set()
-            for expected_key in expected_dict_keys:
-                if expected_key not in _vote_dict:
-                    invalid = True
-                    break
-                _val = _vote_dict[expected_key]
-                if expected_key == "ground_truth":
-                    if not isinstance(_val, dict):
+            _list_of_valid_vote_dicts = []
+            for _vote_dict in _list_of_vote_dicts:
+                invalid = False
+                fake_names = set()
+                for expected_key in expected_dict_keys:
+                    if expected_key not in _vote_dict:
                         invalid = True
                         break
-                    for _k in _val.keys():
-                        fake_names.add(_k)
-                    for _k, _v in _val.items():
-                        if len(_v) != 2:
+                    _val = _vote_dict[expected_key]
+                    if expected_key == "ground_truth":
+                        if not isinstance(_val, dict):
                             invalid = True
                             break
-                        else:
-                            if _v[0] != "human" and _v[0] != "ai":
-                                invalid = True
-                                break
-                            if "@" not in _v[1] or "/" not in _v[1]:
-                                invalid = True
-                                break
-                    if invalid:
-                        break
-                elif expected_key == "msgs_from_votee" or expected_key == "msgs_from_voter":
-                    if not isinstance(_val, dict):
-                        invalid = True
-                        break
-                    if len(_val) != len(fake_names):
-                        invalid = True
-                    if not invalid:
                         for _k in _val.keys():
-                            if _k not in fake_names:
+                            fake_names.add(_k)
+                        for _k, _v in _val.items():
+                            if len(_v) != 2:
                                 invalid = True
                                 break
-                    if invalid:
+                            else:
+                                if _v[0] != "human" and _v[0] != "ai":
+                                    invalid = True
+                                    break
+                                if "@" not in _v[1] or "/" not in _v[1]:
+                                    invalid = True
+                                    break
+                        if invalid:
+                            break
+                    elif expected_key == "msgs_from_votee" or expected_key == "msgs_from_voter":
+                        if not isinstance(_val, dict):
+                            invalid = True
+                            break
+                        if len(_val) != len(fake_names):
+                            invalid = True
+                        if not invalid:
+                            for _k in _val.keys():
+                                if _k not in fake_names:
+                                    invalid = True
+                                    break
+                        if invalid:
+                            break
+                    elif not isinstance(_val, str):
+                        invalid = True
                         break
-                elif not isinstance(_val, str):
-                    invalid = True
-                    break
 
-                # Converting votes to integer
-                try:
-                    for _k, _v in _vote_dict["msgs_from_votee"].items():
-                        _vote_dict["msgs_from_votee"][_k] = int(_v)
-                    for _k, _v in _vote_dict["msgs_from_voter"].items():
-                        _vote_dict["msgs_from_voter"][_k] = int(_v)
-                except Exception:
-                    invalid = True
-                    break
-            if invalid:
-                return None
-            return _vote_dict
+                    # Converting votes to integer
+                    try:
+                        for _k, _v in _vote_dict["msgs_from_votee"].items():
+                            _vote_dict["msgs_from_votee"][_k] = int(_v)
+                        for _k, _v in _vote_dict["msgs_from_voter"].items():
+                            _vote_dict["msgs_from_voter"][_k] = int(_v)
+                    except Exception:
+                        invalid = True
+                        break
+                if invalid:
+                    continue
+                else:
+                    _list_of_valid_vote_dicts.append(_vote_dict)
+            return _list_of_valid_vote_dicts
 
         hotel_manager_peer_id = self.get_peer_id()
 
@@ -539,52 +544,56 @@ class WAgent(Agent):
                     continue
 
                 # Building dict (and checking format)
-                vote_dict = _build_vote_dict_and_check_format(vote_str)
-                if vote_dict is None:
+                list_of_vote_dicts = _build_vote_dicts_and_check_format(vote_str)
+                if list_of_vote_dicts is None or len(list_of_vote_dicts) == 0:
                     log.error(f"Received an invalid format vote packet "
                               f"from floor manager {floor_manager}. Vote packet (str) is: {vote_str}")
                     continue
 
-                # Augmenting vote dict with hotel manager-related information or specific actions
-                # Checking the actual manager (to be extra sure... actually, it should be already there), and
-                # the floor manager. Checking also the number of exchanged messages
-                if hotel_manager_peer_id != vote_dict["hotel_manager"] or vote_dict["floor_manager"] != floor_manager:
-                    log.error(f"Invalid vote received: the actual hotel manager ({hotel_manager_peer_id} or "
-                              f"the actual floor manager ({floor_manager}) is not the one in the vote: {vote_dict})")
-                    continue
+                for vote_dict in list_of_vote_dicts:
 
-                # Counting messages from votee
-                fake_names_to_ignore = set()
-                for k, v in vote_dict["msgs_from_votee"].items():
-                    if v < Config.min_msgs_from_votee:
-                        fake_names_to_ignore.add(k)
-
-                # Parsing vote
-                parsed_vote = parse_vote_msg(vote_dict["vote"])  # Dict fake-name (votee) to "human" | "ai"
-
-                # Reversing the logic: the index is the votee, hence the vote dictionary must be replicated for each
-                # votee of in the parsed vote structure
-                for fake_name, classification in parsed_vote.items():
-
-                    # Ignoring votes associated to too few exchanges with the votee
-                    if fake_name in fake_names_to_ignore:
+                    # Augmenting vote dict with hotel manager-related information or specific actions
+                    # Checking the actual manager (to be extra sure... actually, it should be already there), and
+                    # the floor manager. Checking also the number of exchanged messages
+                    if (hotel_manager_peer_id != vote_dict["hotel_manager"] or
+                            vote_dict["floor_manager"] != floor_manager):
+                        log.error(f"Invalid vote received: the actual hotel manager ({hotel_manager_peer_id} or "
+                                  f"the actual floor manager ({floor_manager}) is not the one "
+                                  f"in the vote: {vote_dict})")
                         continue
 
-                    # Ignoring votes associated to agents that were not there at all (or wrong parsing results)
-                    if fake_name not in vote_dict["ground_truth"]:
-                        continue
+                    # Counting messages from votee
+                    fake_names_to_ignore = set()
+                    for k, v in vote_dict["msgs_from_votee"].items():
+                        if v < Config.min_msgs_from_votee:
+                            fake_names_to_ignore.add(k)
 
-                    _vote_dict_ = copy.deepcopy(vote_dict)
-                    _vote_dict_["vote"] = classification
-                    _vote_dict_["ground_truth"] = vote_dict["ground_truth"][fake_name][0]
-                    _vote_dict_["msgs_from_votee"] = vote_dict["msgs_from_votee"][fake_name]
-                    _vote_dict_["msgs_from_voter"] = vote_dict["msgs_from_voter"][fake_name]
-                    _votee_unaid_ = vote_dict["ground_truth"][fake_name][1]
+                    # Parsing vote
+                    parsed_vote = parse_vote_msg(vote_dict["vote"])  # Dict fake-name (votee) to "human" | "ai"
 
-                    # Storing vote as stat (group_key = votee UNaID so votes are bucketed per votee)
-                    int_timestamp = self.clock.get_time_ms(monotonic=True)
-                    self.stats.store_stat("turing_vote", _vote_dict_,
-                                          group_key=_votee_unaid_, timestamp=int_timestamp)
+                    # Reversing the logic: the index is the votee, hence the vote dictionary must be replicated for each
+                    # votee of in the parsed vote structure
+                    for fake_name, classification in parsed_vote.items():
+
+                        # Ignoring votes associated to too few exchanges with the votee
+                        if fake_name in fake_names_to_ignore:
+                            continue
+
+                        # Ignoring votes associated to agents that were not there at all (or wrong parsing results)
+                        if fake_name not in vote_dict["ground_truth"]:
+                            continue
+
+                        _vote_dict_ = copy.deepcopy(vote_dict)
+                        _vote_dict_["vote"] = classification
+                        _vote_dict_["ground_truth"] = vote_dict["ground_truth"][fake_name][0]
+                        _vote_dict_["msgs_from_votee"] = vote_dict["msgs_from_votee"][fake_name]
+                        _vote_dict_["msgs_from_voter"] = vote_dict["msgs_from_voter"][fake_name]
+                        _votee_unaid_ = vote_dict["ground_truth"][fake_name][1]
+
+                        # Storing vote as stat (group_key = votee UNaID so votes are bucketed per votee)
+                        int_timestamp = self.clock.get_time_ms(monotonic=True)
+                        self.stats.store_stat("turing_vote", _vote_dict_,
+                                              group_key=_votee_unaid_, timestamp=int_timestamp)
 
     @action
     async def guest_back_to_hall(self, guest: str | None = None):
