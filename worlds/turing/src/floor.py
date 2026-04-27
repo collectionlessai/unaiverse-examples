@@ -1,3 +1,4 @@
+import copy
 import uuid
 from .room import Room
 from .config import Config
@@ -24,17 +25,25 @@ class Floor:
         # Floor guests
         self.guest2room = {}  # A map from guest ID to the room in which the guest is (only for guests in a room)
 
-        # Hotel managers who handled guests
+        # Hotel managers who handled guests (sponsors)
         self.guest2hotel_manager: dict[str, str] = {}
 
         # Guests managed by the floor manager
         self.managed_guest_profiles = managed_guest_profiles  # Map from guest to its profile
 
-        # Guests that are expected to be here by the hotel manager (in its persona view)
+        # Guests that are expected to be here by the hotel manager (in its personal view).
+        # Basically, when this object is used to recreate the hotel structure in the hotel manager's view,
+        # this the set of guests sponsored by such an hotel manager.
         self.hotel_manager_expected_guests = set()  # This is only operated by a hotel manager
 
         # Printing facilities
         self.live = None
+
+    def copy_floor_status(self):
+        copied_floor = Floor(floor_manager=self.floor_manager, id=self.id,
+                             room_ids=["fake"], managed_guest_profiles=None)
+        copied_floor.rooms = copy.deepcopy(self.rooms)
+        copied_floor.guest2room = copy.deepcopy(self.guest2room)
 
     def get_guests(self):
         return self.guest2room.keys()
