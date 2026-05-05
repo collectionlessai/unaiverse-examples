@@ -1,6 +1,13 @@
 from unaiverse.agent import Agent
+from unaiverse.custom import Custom
 from unaiverse.streams import StreamType
 from unaiverse.networking.node.node import Node
+
+# Options (key options for relay nodes)
+Custom.ENV_IS_ISOLATED = True
+Custom.ENV_IS_PUBLIC = True
+Custom.ENV_IS_PUBLIC_RELAY = True
+Custom.ENV_USE_TLS = True
 
 # Agent
 agent = Agent(proc=None,
@@ -11,10 +18,4 @@ agent = Agent(proc=None,
 node = Node(node_name="BaseRelay", hosted=agent, clock_delta=1. / 10., save_checkpoint_every=-1.)
 
 # Running node
-# ALWAYS RUN THIS WITH THE FOLLOWING CONFIGURATION:
-#   NODE_IS_ISOLATED=1
-#   NODE_IS_PUBLIC=1
-#   NODE_IS_PUBLIC_RELAY=1
-#   NODE_USE_TLS=1
-#   NODE_STARTING_PORT=30500
 node.run()

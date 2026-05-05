@@ -1,16 +1,12 @@
 from unaiverse.agent import Agent
-from unaiverse.streams import StreamType
 from unaiverse.modules.networks import Phi
 from unaiverse.networking.node.node import Node
 
 # Agent
-agent = Agent(proc=Phi(),
-              proc_inputs=[StreamType(data_type="text", pubsub=False, private_only=False)],
-              proc_outputs=[StreamType(data_type="text", pubsub=False, private_only=False)],
-              proc_opts={})
+agent = Agent(proc=Phi(), proc_inputs=["text"], proc_outputs=["text"])
 
 # Node hosting agent
-node_agent = Node(node_name="Phi", hosted=agent, hidden=True, clock_delta=1. / 10.)
+node_agent = Node(agent, node_name="Phi", hidden=True, clock_delta=1. / 10.)
 
 # Running node
 node_agent.run()

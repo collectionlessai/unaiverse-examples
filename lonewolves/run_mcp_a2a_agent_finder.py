@@ -3,10 +3,7 @@ import json
 import torch
 import asyncio
 import threading
-
-# Unaiverse imports for building a node in our network.
 from unaiverse.agent import Agent
-from unaiverse.streams import StreamType
 from unaiverse.networking.node.node import Node
 
 # --------- Code from the src/a2a_mcp/a2a_mcp/mcp/client.py file ---------
@@ -25,6 +22,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 from mcp.types import CallToolResult
+
 
 @asynccontextmanager
 async def init_session(host, port, transport):
@@ -107,7 +105,7 @@ class A2AMCPFinder(torch.nn.Module):
         To ensure stability, we isolate the async I/O of the MCP request 
         in its own thread using `asyncio.run()`.
         """
-        result = {"output": None, "error": None}
+        result: dict[str, None | str] = {"output": None, "error": None}
 
         def run_in_thread():
             try:
@@ -125,7 +123,8 @@ class A2AMCPFinder(torch.nn.Module):
             return f"Error querying 'MCP': {result['error']}"
         return result["output"]
 
-    def _format_markdown_card(self, json_str: str) -> str:
+    @staticmethod
+    def _format_markdown_card(json_str: str) -> str:
         """
         The raw response from the A2A agent is a JSON string. 
         We parse it here to make it readable for the end user in our UI.
@@ -188,13 +187,14 @@ class A2AMCPFinder(torch.nn.Module):
                 # Extract the content from the result
                 if result.content and len(result.content) > 0:
                     text_response = result.content[0].text
-                    return self._format_markdown_card(text_response)
+                    return A2AMCPFinder._format_markdown_card(text_response)
                 else:
                     return "No agent found."
 
         except Exception as e:
             print(f"Error during the MCP request: {e}")
             raise e
+
 
 if __name__ == "__main__":
 
@@ -243,16 +243,15 @@ if __name__ == "__main__":
     # We wrap our custom Torch module (A2AMCPFinder) into a Unaiverse Agent
     agent = Agent(
         proc=A2AMCPFinder(config=mcp_config),
-        proc_inputs=[StreamType(data_type="text", pubsub=False, private_only=False)],
-        proc_outputs=[StreamType(data_type="text", pubsub=False, private_only=False)],
-        proc_opts={}
+        proc_inputs=["text"],
+        proc_outputs=["text"]
     )
 
     # Finally, we host the Agent in a Node, making it a participant in the network.
     node_agent = Node(
-        node_name="A2AMCPFinder", 
-        hosted=agent, 
-        hidden=True, 
+        agent,
+        node_name="A2AMCPFinder",
+        hidden=True,
         clock_delta=1. / 10.,
         save_checkpoint_every=-1.
     )
