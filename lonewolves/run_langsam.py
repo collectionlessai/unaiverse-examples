@@ -51,7 +51,7 @@ results[0]['mask_scores']: mono-dim numpy array with some float32 (4 in the runn
 agent = Agent(proc=LangSegmentAnything(), proc_inputs=["img", "text"], proc_outputs=["img"])
 
 # Node hosting agent
-node_agent = Node(agent, node_name="LangSAM", hidden=True, clock_delta=1. / 10.)
+node_agent = Node(agent, node_name="LangSAM", hidden=True, clock_delta=1. / 30.)
 
 # Running node
 node_agent.run()
