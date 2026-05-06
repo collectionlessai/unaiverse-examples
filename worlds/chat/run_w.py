@@ -6,8 +6,7 @@ world = WWorld()
 # world.debug_stats_dashboard()
 
 # Node hosting world
-node = Node(node_name="ChatRoom", hosted=world, hidden=True, clock_delta=1. / 10.,
-            world_masters_node_names=["Broadcaster"])
+node = Node(world, node_name="ChatRoom", hidden=True, clock_delta=1. / 20., world_masters_node_names=["Broadcaster"])
 
 # Running node
 node.run()

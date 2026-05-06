@@ -95,7 +95,7 @@ class WAgent(Agent):
                     self.behav.request_action(action_name="ask_gen",
                                               args={},
                                               signature=self._broadcaster_peer_id,
-                                              timestamp=self._node_clock.get_time(),
+                                              timestamp=self.clock.get_time(),
                                               uuid=None)
 
                 self._last_msg_time = tm.time()
@@ -123,7 +123,7 @@ class WAgent(Agent):
                         self.behav.request_action(action_name="ask_gen",
                                                   args={},
                                                   signature=self._broadcaster_peer_id,
-                                                  timestamp=self._node_clock.get_time(),
+                                                  timestamp=self.clock.get_time(),
                                                   uuid=None)
 
                         self._last_msg_time = tm.time()
