@@ -15,9 +15,9 @@
 import random
 import time as tm
 from unaiverse.agent import Agent
-from unaiverse.interaction import CompletionReason
-from unaiverse.modules.utils import HumanModule, MultiIdentity
 from unaiverse.utils.logger import log
+from unaiverse.interaction import CompletionReason
+from unaiverse.modules.utils import MultiIdentity
 
 
 class WAgent(Agent):
@@ -80,6 +80,8 @@ class WAgent(Agent):
                          (self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT |
                                                         self.ROLE_STR_TO_BITS["user"]) == 2) or
                          (my_rand < talk_probability))):
+
+                    # TODO WIP - still to be refactored with the interaction-based model
                     augmented_msg = (f"Generate a meaningful reply to the following conversation going on in chatroom "
                                      f"(just to let you know, your name is {self.get_name()}). "
                                      f"Please generate only the message to be sent in the chatroom,"
@@ -110,6 +112,8 @@ class WAgent(Agent):
                                                not isinstance(self.proc.module, MultiIdentity)) and
                         ((tm.time() - self._last_msg_time) > max_silence_seconds) and
                         self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) > 1):
+
+                    # TODO WIP - still to be refactored with the interaction-based model
                     promote_prompt = (f"The conversation in a chatroom is simply silent, nobody is talking. "
                                       f"Generate a nice message to trigger the conversation of a topic that is "
                                       f"expected to be pretty popular and known (select among: sport, weather, "
@@ -167,21 +171,22 @@ class WAgent(Agent):
                     log.err("Broadcaster is skipping the generation procedure, since no recipients would be there")
                     return False
 
-                # TODO WIP - still to be refactored with the interaction-based model
-                await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
-                                     _requester=_requester, _request_time=_request_time, _request_uuid=_request_uuid,
-                                     _completed=False)
+                generated_msg = await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
+                                                     _requester=_requester, _request_time=_request_time,
+                                                     _request_uuid=_request_uuid,
+                                                     _completed=False)
 
-                ret = await self.send(target=_requester,
-                                      data_samples={
-                                          "proc_output_0": self.get_stream('processor').get(requested_by="do_gen_up",
-                                                                                            uuid=_request_uuid)},
-                                      num_steps=1)
+                if generated_msg:
+                    await self.send(target=_requester,
+                                    data_samples={
+                                        "proc_output_0": self.get_stream('processor').get(
+                                            requested_by="do_gen_up", uuid=_request_uuid)},
+                                    num_steps=1)
 
-                interaction = self.im.get_current()
-                await self.im.complete(interaction, reason=CompletionReason.DISCARDED)
-                self.im.clear_from_all_streams(interaction)
-                return ret
+                    interaction = self.im.get_current()
+                    await self.im.complete(interaction, reason=CompletionReason.DISCARDED)
+                    self.im.clear_from_all_streams(interaction, clear_data=True)
+                return generated_msg
 
         return await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
                                     _requester=_requester, _request_time=_request_time, _request_uuid=_request_uuid,
