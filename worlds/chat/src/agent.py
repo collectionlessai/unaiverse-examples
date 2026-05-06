@@ -77,7 +77,7 @@ class WAgent(Agent):
             log.error(msgs)
             if msgs is not None and len(msgs) > 0:
                 replied = False
-                for msg in msgs:
+                for msg, _, _ in msgs:
                     my_rand = random.random()
 
                     if not replied and (((not self.is_human()) and (self.proc is not None and
