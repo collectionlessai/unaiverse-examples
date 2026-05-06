@@ -1,30 +1,133 @@
 {
-    "initial_state": "init",
-    "state": "init",
-    "role": "student",
-    "prev_state": null,
-    "limbo_state": null,
-    "state_actions": {
-        "teacher_engaged": [null, null, 0, true, 0.0],
-        "done_learn": [null, null, 1, true, 0.0],
-        "done_gen": [null, null, 2, true, 0.0],
-        "init": [null, null, 3, true, 0.0]
-    },
-    "transitions": {
-        "teacher_engaged": {
-            "done_learn": [["do_learn", {}, false, 0]],
-            "done_gen": [["do_gen", {}, false, 1]],
-            "init": [["get_disengagement", {}, false, 5]]
-        },
-        "done_learn": {
-            "teacher_engaged": [["nop", {}, true, 2]]
-        },
-        "done_gen": {
-            "teacher_engaged": [["nop", {}, true, 3]]
-        },
-        "init": {
-            "teacher_engaged": [["get_engagement", {"acceptable_role": "teacher"}, false, 4]]
+    "machine": {
+        "role": "student",
+        "initial_state": "init",
+        "msg": null,
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
         }
     },
-    "cur_action": null
+    "states": {
+        "teacher_engaged": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "done_learn": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "done_gen": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "init": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        }
+    },
+    "transitions": {
+        "teacher_engaged": [
+            {
+                "on": {
+                    "action": "do_learn",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "done_learn"
+            },
+            {
+                "on": {
+                    "action": "do_gen",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "done_gen"
+            },
+            {
+                "on": {
+                    "action": "get_disengagement",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "init"
+            }
+        ],
+        "done_learn": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "teacher_engaged"
+            }
+        ],
+        "done_gen": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "teacher_engaged"
+            }
+        ],
+        "init": [
+            {
+                "on": {
+                    "action": "get_engagement",
+                    "action_kwargs": {
+                        "acceptable_role": "teacher"
+                    },
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "teacher_engaged"
+            }
+        ]
+    },
+    "teleports": {}
 }

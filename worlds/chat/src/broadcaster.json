@@ -1,16 +1,39 @@
 {
-    "initial_state": "ready",
-    "state": "ready",
-    "role": "broadcaster",
-    "prev_state": null,
-    "limbo_state": null,
-    "state_actions": {
-        "ready": [null, null, 0, true, 0.0]
-    },
-    "transitions": {
-        "ready": {
-            "ready": [["do_gen", {"timeout": 5.0}, false, 0]]
+    "machine": {
+        "role": "broadcaster",
+        "initial_state": "ready",
+        "msg": null,
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
         }
     },
-    "cur_action": null
+    "states": {
+        "ready": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        }
+    },
+    "transitions": {
+        "ready": [
+            {
+                "on": {
+                    "action": "do_gen",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 5.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            }
+        ]
+    },
+    "teleports": {}
 }

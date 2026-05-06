@@ -1,77 +1,467 @@
 {
-    "initial_state": "init",
-    "state": "init",
-    "role": "teacher",
-    "prev_state": null,
-    "limbo_state": null,
-    "state_actions": {
-        "init": [null, null, 0, true, 0.0],
-        "book_prepared": [null, null, 1, true, 0.0],
-        "looking_for_peers": [null, null, 2, true, 0.0],
-        "looking_for_students": ["find_agents", {"role": "student"}, 3, true, 0.0],
-        "student_found": [null, null, 4, 5.0, 0.0],
-        "student_engaged": [null, null, 5, 5.0, 0.0],
-        "teaching_time": [null, null, 6, true, 0.0],
-        "lecture_in_progress": [null, null, 7, true, 0.0],
-        "student_finished_following": [null, null, 8, 5.0, 0.0],
-        "change_lecture": ["next_pref_stream", {}, 9, true, 0.0],
-        "exam_time": [null, null, 10, true, 0.0],
-        "exam_in_progress": [null, null, 11, true, 0.0],
-        "student_finished_exam": [null, null, 12, 5.0, 0.0],
-        "eval_time": ["evaluate", {"stream_hash": "<agent>:recorded1", "how": "max", "steps": 998, "re_offset": true}, 13, true, 0.0],
-        "bad": [null, null, 14, true, 0.0],
-        "good": [null, null, 15, true, 0.0]
-    },
-    "transitions": {
-        "init": {
-            "book_prepared": [["record", {"net_hash": "<world>:cats", "samples": 998, "timeout": 10.0}, true, 0]]
-        },
-        "book_prepared": {
-            "looking_for_peers": [["set_pref_streams", {"net_hashes": ["<agent>:recorded1"], "repeat": 50}, true, 23]]
-        },
-        "looking_for_peers": {
-            "looking_for_students": [["connect_by_role", {"role": "student"}, true, 4]]
-        },
-        "looking_for_students": {
-            "student_found": [["send_engagement", {}, true, 5]],
-            "looking_for_peers": [["nop", {}, true, 6]]
-        },
-        "student_found": {
-            "looking_for_students": [["nop", {}, true, 7]],
-            "student_engaged": [["got_engagement", {}, false, 8]]
-        },
-        "student_engaged": {
-            "student_engaged": [["got_engagement", {}, false, 9]],
-            "teaching_time": [["nop", {}, true, 10]]
-        },
-        "teaching_time": {
-            "lecture_in_progress": [["ask_learn", {"u_hashes": ["<playlist>"], "yhat_hashes": ["<playlist>"], "samples": 998, "timeout": 5.0}, true, 11]]
-        },
-        "lecture_in_progress": {
-            "student_finished_following": [["done_learn", {}, false, 12]]
-        },
-        "student_finished_following": {
-            "student_finished_following": [["done_learn", {}, false, 13]],
-            "change_lecture": [["nop", {}, true, 14]]
-        },
-        "change_lecture": {
-            "teaching_time": [["check_pref_stream", {"what": "not_first"}, true, 15]],
-            "exam_time": [["check_pref_stream", {"what": "first"}, true, 16]]
-        },
-        "exam_time": {
-            "exam_in_progress": [["ask_gen", {"u_hashes": ["<agent>:recorded1"], "samples": 998, "timeout": 5.0}, true, 17]]
-        },
-        "exam_in_progress": {
-            "student_finished_exam": [["done_gen", {}, false, 18]]
-        },
-        "student_finished_exam": {
-            "student_finished_exam": [["done_gen", {}, false, 19]],
-            "eval_time": [["nop", {}, true, 20]]
-        },
-        "eval_time": {
-            "good": [["compare_eval", {"cmp": "<=", "thres": 0.2}, true, 21]],
-            "bad": [["nop", {}, true, 22]]
+    "machine": {
+        "role": "teacher",
+        "initial_state": "init",
+        "msg": null,
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
         }
     },
-    "cur_action": null
+    "states": {
+        "init": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "book_prepared": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "looking_for_peers": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "looking_for_students": {
+            "action": "find_agents",
+            "action_kwargs": {
+                "role": "student"
+            },
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "student_found": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": 5.0,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "student_engaged": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": 5.0,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "teaching_time": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "lecture_in_progress": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "student_finished_following": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": 5.0,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "change_lecture": {
+            "action": "next_pref_stream",
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "exam_time": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "exam_in_progress": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "student_finished_exam": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": 5.0,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "eval_time": {
+            "action": "evaluate",
+            "action_kwargs": {
+                "stream_hash": "<agent>:recorded1",
+                "how": "max",
+                "steps": 998,
+                "re_offset": true
+            },
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "bad": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "good": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        }
+    },
+    "transitions": {
+        "init": [
+            {
+                "on": {
+                    "action": "record",
+                    "action_kwargs": {
+                        "net_hash": "<world>:cats",
+                        "samples": 998
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 10.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "book_prepared"
+            }
+        ],
+        "book_prepared": [
+            {
+                "on": {
+                    "action": "set_pref_streams",
+                    "action_kwargs": {
+                        "net_hashes": [
+                            "<agent>:recorded1"
+                        ],
+                        "repeat": 50
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "looking_for_peers"
+            }
+        ],
+        "looking_for_peers": [
+            {
+                "on": {
+                    "action": "connect_by_role",
+                    "action_kwargs": {
+                        "role": "student"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "looking_for_students"
+            }
+        ],
+        "looking_for_students": [
+            {
+                "on": {
+                    "action": "send_engagement",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "student_found"
+            },
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "looking_for_peers"
+            }
+        ],
+        "student_found": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "looking_for_students"
+            },
+            {
+                "on": {
+                    "action": "got_engagement",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "student_engaged"
+            }
+        ],
+        "student_engaged": [
+            {
+                "on": {
+                    "action": "got_engagement",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "student_engaged"
+            },
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "teaching_time"
+            }
+        ],
+        "teaching_time": [
+            {
+                "on": {
+                    "action": "ask_learn",
+                    "action_kwargs": {
+                        "u_hashes": [
+                            "<playlist>"
+                        ],
+                        "yhat_hashes": [
+                            "<playlist>"
+                        ],
+                        "samples": 998
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 5.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "lecture_in_progress"
+            }
+        ],
+        "lecture_in_progress": [
+            {
+                "on": {
+                    "action": "done_learn",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "student_finished_following"
+            }
+        ],
+        "student_finished_following": [
+            {
+                "on": {
+                    "action": "done_learn",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "student_finished_following"
+            },
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "change_lecture"
+            }
+        ],
+        "change_lecture": [
+            {
+                "on": {
+                    "action": "check_pref_stream",
+                    "action_kwargs": {
+                        "what": "not_first"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "teaching_time"
+            },
+            {
+                "on": {
+                    "action": "check_pref_stream",
+                    "action_kwargs": {
+                        "what": "first"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "exam_time"
+            }
+        ],
+        "exam_time": [
+            {
+                "on": {
+                    "action": "ask_gen",
+                    "action_kwargs": {
+                        "u_hashes": [
+                            "<agent>:recorded1"
+                        ],
+                        "samples": 998
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 5.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "exam_in_progress"
+            }
+        ],
+        "exam_in_progress": [
+            {
+                "on": {
+                    "action": "done_gen",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "student_finished_exam"
+            }
+        ],
+        "student_finished_exam": [
+            {
+                "on": {
+                    "action": "done_gen",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "student_finished_exam"
+            },
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "eval_time"
+            }
+        ],
+        "eval_time": [
+            {
+                "on": {
+                    "action": "compare_eval",
+                    "action_kwargs": {
+                        "cmp": "<=",
+                        "thres": 0.2
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "good"
+            },
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "bad"
+            }
+        ]
+    },
+    "teleports": {}
 }

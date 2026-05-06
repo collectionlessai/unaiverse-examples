@@ -14,8 +14,8 @@
 """
 from unaiverse.agent import Agent
 from unaiverse.streams import DataStream
-from unaiverse.streamlib.streamlib import (AllHotLabelStream, SmoothHFHA, SmoothHFLA, SmoothLFHA, SmoothLFLA,
-                                           SquareHFHA, SquareHFLA, SquareLFHA, SquareLFLA)
+from unaiverse.streams.streamlib import (AllHotLabelStream, SmoothHFHA, SmoothHFLA, SmoothLFHA, SmoothLFLA,
+                                         SquareHFHA, SquareHFLA, SquareLFHA, SquareLFLA)
 
 
 class WAgent(Agent):
