@@ -146,6 +146,7 @@ class WAgent(Agent):
                                         streams=["processor"],
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
+                        msg = self.get_stream("proc_output_0").get()
                         log.error(f"{self._last_msg_time}, {(tm.time() - self._last_msg_time)}, {max_silence_seconds}")
 
                         # Assuming the processor is such that it takes only 1 input (str) and generates 1 output (str)
