@@ -168,7 +168,7 @@ class WAgent(Agent):
                          f"agent {self._broadcaster_sender} is then {_requester}")
 
                 if len(_requester) == 0:
-                    log.err("Broadcaster is skipping the generation procedure, since no recipients would be there")
+                    log.error("Broadcaster is skipping the generation procedure, since no recipients would be there")
                     return False
 
                 generated_msg = await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
