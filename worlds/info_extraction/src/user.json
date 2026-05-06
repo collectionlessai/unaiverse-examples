@@ -1,55 +1,346 @@
 {
-    "initial_state": "init",
-    "state": "init",
-    "role": "user",
-    "prev_state": null,
-    "limbo_state": null,
-    "welcome_msg": "Welcome to the world of Information Extraction. There are two types of citizens: 'users' &#128100; who stream images (through an environmental stream) and 'extractors' &#9997;&#65039; who provide a textual feedback about the streamed images. You joined as: '<role>'.",
-    "highlight_blocking_states_in_messages": false,
-    "show_action_ticks_after_messages": false,
-    "show_action_request_after_messages": false,
-    "state_actions": {
-        "ready": ["check_status", {}, 0, false, 0.0, "&#128269; Looking for new agents for information exaction"],
-        "connected_to_providers": [null, null, 1, true, 0.0, "&#128279; Connected to new agents"],
-        "providers_asked_for_service": [null, null, 2, false, 0.0],
-        "a_provider_confirmed_availability": [null, null, 3, false, 0.0],
-        "request_sent_to_available_providers": [null, null, 4, false, 0.0],
-        "request_handled_by_a_provider": [null, null, 5, false, 0.0, "&#9989; An agent finished its job (good or bad), waiting others (if any)"],
-        "time_to_ask": [null, null, 6, true, 0.0, "&#128587; Asking new agents to handle my stream of data"],
-        "init": [null, null, 7, true, 0.0]
-    },
-    "transitions": {
-        "ready": {
-            "connected_to_providers": [["connect_by_role", {"role": "extractor", "filter_fcn": "filter_addresses"}, true, 1]]
-        },
-        "connected_to_providers": {
-            "ready": [["nop", {"delay": 60.0}, true, 2]],
-            "connected_to_providers": [["agents_are_waiting", {}, true, 3]],
-            "providers_asked_for_service": [["send_engagement", {}, true, 4]]
-        },
-        "providers_asked_for_service": {
-            "a_provider_confirmed_availability": [["got_engagement", {}, false, 5]],
-            "ready": [["nop", {"delay": 60.0}, true, 6]]
-        },
-        "a_provider_confirmed_availability": {
-            "a_provider_confirmed_availability": [["got_engagement", {}, false, 7]],
-            "time_to_ask": [["all_engagements_completed", {}, true, 8], ["nop", {"delay": 60.0}, true, 9]]
-        },
-        "time_to_ask": {
-            "request_sent_to_available_providers": [["ask_gen", {"u_hashes": ["<agent>:<stream_name>"], "samples": "<stream_len>", "timeout": 90.0}, true, 10]]
-        },
-        "request_sent_to_available_providers": {
-            "request_handled_by_a_provider": [["done_gen", {}, false, 11]],
-            "request_sent_to_available_providers": [["received_some_asked_data", {"processing_fcn": "handle_received_data"}, true, 12]],
-            "ready": [["nop", {"delay": 90.0}, true, 13]]
-        },
-        "request_handled_by_a_provider": {
-            "request_handled_by_a_provider": [["received_some_asked_data", {"processing_fcn": "handle_received_data"}, true, 14], ["done_gen", {}, false, 15]],
-            "ready": [["nop", {"delay": 90.0}, true, 16], ["all_asked_finished", {}, true, 17]]
-        },
-        "init": {
-            "ready": [["nop", {}, true, 18]]
+    "machine": {
+        "role": "user",
+        "initial_state": "init",
+        "msg": "Welcome to the world of Information Extraction. There are two types of citizens: 'users' &#128100; who stream images (through an environmental stream) and 'extractors' &#9997;&#65039; who provide a textual feedback about the streamed images. You joined as: '<role>'.",
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
         }
     },
-    "cur_action": null
+    "states": {
+        "ready": {
+            "action": "check_status",
+            "action_kwargs": {},
+            "msg": "&#128269; Looking for new agents for information exaction",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "connected_to_providers": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128279; Connected to new agents",
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "providers_asked_for_service": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "a_provider_confirmed_availability": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "request_sent_to_available_providers": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "request_handled_by_a_provider": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#9989; An agent finished its job (good or bad), waiting others (if any)",
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "time_to_ask": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128587; Asking new agents to handle my stream of data",
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "init": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        }
+    },
+    "transitions": {
+        "ready": [
+            {
+                "on": {
+                    "action": "connect_by_role",
+                    "action_kwargs": {
+                        "role": "extractor",
+                        "filter_fcn": "filter_addresses"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "connected_to_providers"
+            }
+        ],
+        "connected_to_providers": [
+            {
+                "on": {
+                    "action": "agents_are_waiting",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "connected_to_providers"
+            },
+            {
+                "on": {
+                    "action": "send_engagement",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "providers_asked_for_service"
+            }
+        ],
+        "providers_asked_for_service": [
+            {
+                "on": {
+                    "action": "got_engagement",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "a_provider_confirmed_availability"
+            }
+        ],
+        "a_provider_confirmed_availability": [
+            {
+                "on": {
+                    "action": "got_engagement",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "a_provider_confirmed_availability"
+            },
+            {
+                "on": {
+                    "action": "all_engagements_completed",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "time_to_ask"
+            }
+        ],
+        "time_to_ask": [
+            {
+                "on": {
+                    "action": "ask_gen",
+                    "action_kwargs": {
+                        "u_hashes": [
+                            "<agent>:<stream_name>"
+                        ],
+                        "samples": "<stream_len>"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 90.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "request_sent_to_available_providers"
+            }
+        ],
+        "request_sent_to_available_providers": [
+            {
+                "on": {
+                    "action": "done_gen",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "request_handled_by_a_provider"
+            },
+            {
+                "on": {
+                    "action": "received_some_asked_data",
+                    "action_kwargs": {
+                        "processing_fcn": "handle_received_data"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "request_sent_to_available_providers"
+            }
+        ],
+        "request_handled_by_a_provider": [
+            {
+                "on": {
+                    "action": "received_some_asked_data",
+                    "action_kwargs": {
+                        "processing_fcn": "handle_received_data"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "request_handled_by_a_provider"
+            },
+            {
+                "on": {
+                    "action": "done_gen",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "request_handled_by_a_provider"
+            },
+            {
+                "on": {
+                    "action": "all_asked_finished",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            }
+        ],
+        "init": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            }
+        ]
+    },
+    "teleports": {
+        "connected_to_providers": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 60.0
+                },
+                "goto": "ready"
+            }
+        ],
+        "providers_asked_for_service": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 60.0
+                },
+                "goto": "ready"
+            }
+        ],
+        "request_sent_to_available_providers": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 90.0
+                },
+                "goto": "ready"
+            }
+        ],
+        "request_handled_by_a_provider": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 90.0
+                },
+                "goto": "ready"
+            }
+        ],
+        "a_provider_confirmed_availability": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 60.0
+                },
+                "goto": "time_to_ask"
+            }
+        ]
+    }
 }

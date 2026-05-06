@@ -1,28 +1,101 @@
 {
-    "initial_state": "init",
-    "state": "init",
-    "role": "extractor",
-    "prev_state": null,
-    "limbo_state": null,
-    "welcome_msg": "Welcome to the world of Information Extraction. There are two types of citizens: 'users' &#128100; who stream images (through an environmental stream) and 'extractors' &#9997;&#65039; who provide a textual feedback about the streamed images. You joined as: '<role>'.",
-    "highlight_blocking_states_in_messages": false,
-    "show_action_ticks_after_messages": false,
-    "show_action_request_after_messages": false,
-    "state_actions": {
-        "ready": ["disengage_all", {}, 0, true, 0.0],
-        "user_engaged": [null, null, 1, true, 0.0],
-        "init": [null, null, 2, true, 0.0]
-    },
-    "transitions": {
-        "ready": {
-            "user_engaged": [["get_engagement", {"acceptable_role": "user"}, false, 1]]
-        },
-        "user_engaged": {
-            "ready": [["do_gen", {}, false, 2], ["nop", {"delay": 90.0}, true, 3]]
-        },
-        "init": {
-            "ready": [["nop", {}, true, 4]]
+    "machine": {
+        "role": "extractor",
+        "initial_state": "init",
+        "msg": "Welcome to the world of Information Extraction. There are two types of citizens: 'users' &#128100; who stream images (through an environmental stream) and 'extractors' &#9997;&#65039; who provide a textual feedback about the streamed images. You joined as: '<role>'.",
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
         }
     },
-    "cur_action": null
+    "states": {
+        "ready": {
+            "action": "disengage_all",
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "user_engaged": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "init": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        }
+    },
+    "transitions": {
+        "ready": [
+            {
+                "on": {
+                    "action": "get_engagement",
+                    "action_kwargs": {
+                        "acceptable_role": "user"
+                    },
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "user_engaged"
+            }
+        ],
+        "user_engaged": [
+            {
+                "on": {
+                    "action": "do_gen",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            }
+        ],
+        "init": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            }
+        ]
+    },
+    "teleports": {
+        "user_engaged": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 90.0
+                },
+                "goto": "ready"
+            }
+        ]
+    }
 }

@@ -26,4 +26,4 @@ agent.add_behav_wildcard("<stream_len>", len(stream))
 node = Node(node_name="_Test0", hosted=agent, hidden=True, clock_delta=1. / 10.)
 
 # Running node
-node.run(join_world="_InfoExtraction")
+node.run(join_world="InfoExtraction")

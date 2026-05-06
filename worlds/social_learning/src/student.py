@@ -51,7 +51,7 @@ class WAgent(Agent):
             if preserve is None or action.name != preserve:
                 interactions = action.get_list_of_interactions()
                 for interaction in interactions:
-                    self.im.complete(interaction, CompletionReason.DISCARDED)
+                    await self.im.complete(interaction, CompletionReason.DISCARDED)
         await self.set_engaged_partner(None, clear_found=False)
 
     async def do_gen(self, u_hashes: list[str] | None = None, extra_hashes: list[str] | None = None,

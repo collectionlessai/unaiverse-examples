@@ -20,6 +20,8 @@ import numpy as np
 from unaiverse.agent import Agent
 from torch.utils.data import Subset
 from torchvision import datasets, transforms
+
+from unaiverse.utils.logger import log
 from unaiverse.utils.misc import prepare_app_dir
 from unaiverse.streams import DataStream, Dataset
 from unaiverse.interaction import CompletionReason
@@ -130,10 +132,13 @@ class WAgent(Agent):
         _, teacher = self.get_peer_ids()
         best_student = next(iter(self._valid_cmp_agents))  # This set has only 1 element
         other_not_isolated_students = not_isolated_students - {best_student}
-        print("======= Best student and Other Not Isolated Students =======")
-        print(best_student)
-        print(other_not_isolated_students)
-        print("=================")
+        log.user("======= Best student and Other Not Isolated Students =======")
+        log.user(best_student)
+        log.user(other_not_isolated_students)
+        log.user("=================")
+
+        if other_not_isolated_students is None or len(other_not_isolated_students) == 0:
+            return False
 
         # Considering not-isolated students (different from the best one)
         await self.set_engaged_partner(other_not_isolated_students)
@@ -193,7 +198,7 @@ class WAgent(Agent):
             if preserve is None or action.name != preserve:
                 interactions = action.get_list_of_interactions()
                 for interaction in interactions:
-                    self.im.complete(interaction, CompletionReason.DISCARDED)
+                    await self.im.complete(interaction, CompletionReason.DISCARDED)
         await self.set_engaged_partner(None, clear_found=False)
 
     async def shuffle_and_stop_streaming(self):
@@ -219,7 +224,7 @@ class WAgent(Agent):
 
     async def manage_best_of_class(self):
         if self.get_current_role() == "teacher":
-            self.out(f"Managing the best of this class...")
+            log.user(f"Managing the best of this class...")
             if len(self._valid_cmp_agents) > 0:
                 # self.evaluate() populates self._eval_results[peer_id] = eval_result
                 # self._valid_cmp_agents is a set of peer_ids
@@ -230,7 +235,7 @@ class WAgent(Agent):
 
                 if best_student_result >= 0:
                     _t = self.clock.get_time_ms()
-                    self.out(f"The best student is {best_student_peer_id} with this result: {best_student_result})")
+                    log.user(f"The best student is {best_student_peer_id} with this result: {best_student_result})")
                     # the agent store and then send the stat to the world with the peer_id of the best student
                     self.stats.store_stat("best_exam_err_history", best_student_result, group_key=best_student_peer_id,
                                           timestamp=_t)

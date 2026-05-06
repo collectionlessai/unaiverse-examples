@@ -21,7 +21,7 @@ agent = Agent(proc=HumanModule(),
               proc_outputs=["text"] if cmd_args.no_img else ["text", "img"])
 
 # Node hosting agent
-node_agent = Node(node_name=cmd_args.node, hosted=agent, hidden=False, clock_delta=1.)
+node_agent = Node(node_name=cmd_args.node, hosted=agent, hidden=False, clock_delta=1./20.)
 
 # Running node
 try:

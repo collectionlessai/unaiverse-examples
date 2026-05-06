@@ -18,6 +18,7 @@ import torch
 from PIL.Image import Image
 from unaiverse.agent import Agent
 from unaiverse.streams.dataprops import DataProps
+from unaiverse.utils.logger import log
 
 
 class WAgent(Agent):
@@ -80,7 +81,7 @@ class WAgent(Agent):
         return filtered_addrs, filtered_peer_ids
 
     def handle_received_data(self, agent: str, props: DataProps, data: torch.Tensor | str | Image, data_tag: int):
-        info = props.to_text(data)
+        info = props.to_text(data, ignore_raw_tensors=True)
         profile = self.all_agents[agent]
         static_profile = profile.get_static_profile()
         node_id = static_profile['node_id']
