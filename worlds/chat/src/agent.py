@@ -95,8 +95,9 @@ class WAgent(Agent):
                     augmented_msg += "The current message of the conversation is:\n"
                     augmented_msg += msg
 
+                    log.error("\nTIME TO REPLY!")
                     self.stdin.set("proc_input_0", augmented_msg)
-                    await self.process()
+                    await self.process(self.im.get_current())
                     await self.send(action_name="ask_gen",
                                     streams=["processor"],
                                     copy_sys=True,
@@ -116,7 +117,7 @@ class WAgent(Agent):
 
                 self._last_msg_time = tm.time()
                 self._last_turns.append(msg)
-                self._last_turns = self._last_turns[-history_len]
+                self._last_turns = self._last_turns[-history_len:]
             else:
                 if ((not self.is_human()) and (self.proc is not None and
                                                not isinstance(self.proc.module, MultiIdentity)) and
@@ -131,6 +132,7 @@ class WAgent(Agent):
                                       f"Please generate only the message to be sent in the chatroom,"
                                       f"no other texts or preambles.\n")
 
+                    log.error("\nSILENCE!")
                     log.error(str(self.stdin))
                     self.stdin.set("proc_input_0", promote_prompt)
                     if await self.process():
@@ -138,6 +140,7 @@ class WAgent(Agent):
                                         streams=["processor"],
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
+                        log.error(f"{self._last_msg_time}, {(tm.time() - self._last_msg_time)}, {max_silence_seconds}")
 
                         # Assuming the processor is such that it takes only 1 input (str) and generates 1 output (str)
                         #proc_outputs, data_tag = self.generate(input_net_hashes=None, inputs=[promote_prompt])
@@ -154,7 +157,7 @@ class WAgent(Agent):
 
                         self._last_msg_time = tm.time()
                         self._last_turns.append(msg)
-                        self._last_turns = self._last_turns[-history_len]
+                        self._last_turns = self._last_turns[-history_len:]
             return True
         else:
             self.err("Cannot find the processor stream of the broadcaster")
