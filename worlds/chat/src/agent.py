@@ -131,6 +131,7 @@ class WAgent(Agent):
                                       f"Please generate only the message to be sent in the chatroom,"
                                       f"no other texts or preambles.\n")
 
+                    log.error(str(self.stdin))
                     self.stdin.set("proc_input_0", promote_prompt)
                     if await self.process():
                         await self.send(action_name="ask_gen",
