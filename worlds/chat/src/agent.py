@@ -73,51 +73,57 @@ class WAgent(Agent):
                         break
 
         if self._broadcaster_stream is not None:
-            msg = self._broadcaster_stream.get("check_messages")
-            if msg is not None:
-                my_rand = random.random()
+            msgs = self._broadcaster_stream.get("check_messages", all_uuids=True)
+            log.error(msgs)
+            if msgs is not None and len(msgs) > 0:
+                replied = False
+                for msg in msgs:
+                    my_rand = random.random()
 
-                if (((not self.is_human()) and (self.proc is not None and
-                                                not isinstance(self.proc.module, MultiIdentity))) and
-                        ((self.get_name().lower() in msg.lower().strip()) or
-                         (self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT |
-                                                        self.ROLE_STR_TO_BITS["user"]) == 2) or
-                         (my_rand < talk_probability))):
+                    if not replied and (((not self.is_human()) and (self.proc is not None and
+                                                                    not isinstance(self.proc.module,
+                                                                                   MultiIdentity))) and
+                                        ((self.get_name().lower() in msg.lower().strip()) or
+                                         (self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT |
+                                                                        self.ROLE_STR_TO_BITS["user"]) == 2) or
+                                         (my_rand < talk_probability))):
 
-                    # TODO WIP - still to be refactored with the interaction-based model
-                    augmented_msg = (f"Generate a meaningful reply to the following conversation going on in chatroom "
-                                     f"(just to let you know, your name is {self.get_name()}). "
-                                     f"Please generate only the message to be sent in the chatroom,"
-                                     f"no other texts or preambles."
-                                     f"The last turns of the conversation are:\n")
-                    for i, prev_msg in enumerate(self._last_turns):
-                        augmented_msg += f"({i}) {prev_msg}\n"
-                    augmented_msg += "The current message of the conversation is:\n"
-                    augmented_msg += msg
+                        # TODO WIP - still to be refactored with the interaction-based model
+                        augmented_msg = (
+                            f"Generate a meaningful reply to the following conversation going on in chatroom "
+                            f"(just to let you know, your name is {self.get_name()}). "
+                            f"Please generate only the message to be sent in the chatroom,"
+                            f"no other texts or preambles."
+                            f"The last turns of the conversation are:\n")
+                        for i, prev_msg in enumerate(self._last_turns):
+                            augmented_msg += f"({i}) {prev_msg}\n"
+                        augmented_msg += "The current message of the conversation is:\n"
+                        augmented_msg += msg
 
-                    log.error("\nTIME TO REPLY!")
-                    self.stdin.set("proc_input_0", augmented_msg)
-                    await self.process(self.im.get_current())
-                    await self.send(action_name="ask_gen",
-                                    streams=["processor"],
-                                    copy_sys=True,
-                                    target=self._broadcaster_peer_id)
+                        log.error("\nTIME TO REPLY!")
+                        self.stdin.set("proc_input_0", augmented_msg)
+                        await self.process(self.im.get_current())
+                        await self.send(action_name="ask_gen",
+                                        streams=["processor"],
+                                        copy_sys=True,
+                                        target=self._broadcaster_peer_id)
+                        replied = True
 
-                    #self.behav.enable(True)
-                    #[msg_to_send], _ = self.generate(input_net_hashes=None, inputs=[augmented_msg])
-                    #self._user_stream.set(msg_to_send)
-                    #self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
-                    #self.behav.enable(False)
+                        # self.behav.enable(True)
+                        # [msg_to_send], _ = self.generate(input_net_hashes=None, inputs=[augmented_msg])
+                        # self._user_stream.set(msg_to_send)
+                        # self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
+                        # self.behav.enable(False)
 
-                    #self.behav.request_action(action_name="ask_gen",
-                    #                          args={},
-                    #                          signature=self._broadcaster_peer_id,
-                    #                          timestamp=self.clock.get_time(),
-                    #                          uuid=None)
+                        # self.behav.request_action(action_name="ask_gen",
+                        #                          args={},
+                        #                          signature=self._broadcaster_peer_id,
+                        #                          timestamp=self.clock.get_time(),
+                        #                          uuid=None)
 
-                self._last_msg_time = tm.time()
-                self._last_turns.append(msg)
-                self._last_turns = self._last_turns[-history_len:]
+                    self._last_msg_time = tm.time()
+                    self._last_turns.append(msg)
+                    self._last_turns = self._last_turns[-history_len:]
             else:
                 if ((not self.is_human()) and (self.proc is not None and
                                                not isinstance(self.proc.module, MultiIdentity)) and
