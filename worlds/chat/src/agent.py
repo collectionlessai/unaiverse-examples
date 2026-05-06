@@ -74,7 +74,6 @@ class WAgent(Agent):
 
         if self._broadcaster_stream is not None:
             msgs = self._broadcaster_stream.get("check_messages", all_uuids=True)
-            log.error(msgs)
             if msgs is not None and len(msgs) > 0:
                 replied = False
                 for msg, _, _ in msgs:
@@ -88,7 +87,6 @@ class WAgent(Agent):
                                                                         self.ROLE_STR_TO_BITS["user"]) == 2) or
                                          (my_rand < talk_probability))):
 
-                        # TODO WIP - still to be refactored with the interaction-based model
                         augmented_msg = (
                             f"Generate a meaningful reply to the following conversation going on in chatroom "
                             f"(just to let you know, your name is {self.get_name()}). "
@@ -100,7 +98,6 @@ class WAgent(Agent):
                         augmented_msg += "The current message of the conversation is:\n"
                         augmented_msg += msg
 
-                        log.error("\nTIME TO REPLY!")
                         self.stdin.set("proc_input_0", augmented_msg)
                         await self.process(self.im.get_current())
                         await self.send(action_name="ask_gen",
@@ -108,18 +105,6 @@ class WAgent(Agent):
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
                         replied = True
-
-                        # self.behav.enable(True)
-                        # [msg_to_send], _ = self.generate(input_net_hashes=None, inputs=[augmented_msg])
-                        # self._user_stream.set(msg_to_send)
-                        # self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
-                        # self.behav.enable(False)
-
-                        # self.behav.request_action(action_name="ask_gen",
-                        #                          args={},
-                        #                          signature=self._broadcaster_peer_id,
-                        #                          timestamp=self.clock.get_time(),
-                        #                          uuid=None)
 
                     self._last_msg_time = tm.time()
                     self._last_turns.append(msg)
@@ -130,7 +115,6 @@ class WAgent(Agent):
                         ((tm.time() - self._last_msg_time) > max_silence_seconds) and
                         self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) > 1):
 
-                    # TODO WIP - still to be refactored with the interaction-based model
                     promote_prompt = (f"The conversation in a chatroom is simply silent, nobody is talking. "
                                       f"Generate a nice message to trigger the conversation of a topic that is "
                                       f"expected to be pretty popular and known (select among: sport, weather, "
@@ -138,8 +122,6 @@ class WAgent(Agent):
                                       f"Please generate only the message to be sent in the chatroom,"
                                       f"no other texts or preambles.\n")
 
-                    log.error("\nSILENCE!")
-                    log.error(str(self.stdin))
                     self.stdin.set("proc_input_0", promote_prompt)
                     if await self.process():
                         await self.send(action_name="ask_gen",
@@ -147,20 +129,6 @@ class WAgent(Agent):
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
                         msg = self.get_stream("proc_output_0").get()
-                        log.error(f"{self._last_msg_time}, {(tm.time() - self._last_msg_time)}, {max_silence_seconds}")
-
-                        # Assuming the processor is such that it takes only 1 input (str) and generates 1 output (str)
-                        #proc_outputs, data_tag = self.generate(input_net_hashes=None, inputs=[promote_prompt])
-                        #if proc_outputs is not None and len(proc_outputs) == 1:
-                        #    msg_to_send = proc_outputs[0]
-                        #    self._user_stream.set(msg_to_send)
-                        #    self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
-
-                        #    self.behav.request_action(action_name="ask_gen",
-                        #                              args={},
-                        #                              signature=self._broadcaster_peer_id,
-                        #                              timestamp=self.clock.get_time(),
-                        #                              uuid=None)
 
                         self._last_msg_time = tm.time()
                         self._last_turns.append(msg)
