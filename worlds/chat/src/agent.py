@@ -15,6 +15,7 @@
 import random
 import time as tm
 from unaiverse.agent import Agent
+from unaiverse.interaction import CompletionReason
 from unaiverse.modules.utils import HumanModule, MultiIdentity
 from unaiverse.utils.logger import log
 
@@ -166,7 +167,21 @@ class WAgent(Agent):
                     log.err("Broadcaster is skipping the generation procedure, since no recipients would be there")
                     return False
 
-                self.add_recipient(self.get_proc_output_net_hash(public=False), _requester)
+                # TODO WIP - still to be refactored with the interaction-based model
+                await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
+                                     _requester=_requester, _request_time=_request_time, _request_uuid=_request_uuid,
+                                     _completed=False)
+
+                ret = await self.send(target=_requester,
+                                      data_samples={
+                                          "proc_output_0": self.get_stream('processor').get(requested_by="do_gen_up",
+                                                                                            uuid=_request_uuid)},
+                                      num_steps=1)
+
+                interaction = self.im.get_current()
+                await self.im.complete(interaction, reason=CompletionReason.DISCARDED)
+                self.im.clear_from_all_streams(interaction)
+                return ret
 
         return await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
                                     _requester=_requester, _request_time=_request_time, _request_uuid=_request_uuid,
