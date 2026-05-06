@@ -95,21 +95,28 @@ class WAgent(Agent):
                     augmented_msg += "The current message of the conversation is:\n"
                     augmented_msg += msg
 
-                    self.behav.enable(True)
-                    [msg_to_send], _ = self.generate(input_net_hashes=None, inputs=[augmented_msg])
-                    self._user_stream.set(msg_to_send)
-                    self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
-                    self.behav.enable(False)
+                    self.stdin.set("proc_input_0", augmented_msg)
+                    await self.process()
+                    await self.send(action_name="ask_gen",
+                                    streams=["processor"],
+                                    copy_sys=True,
+                                    target=self._broadcaster_peer_id)
 
-                    self.behav.request_action(action_name="ask_gen",
-                                              args={},
-                                              signature=self._broadcaster_peer_id,
-                                              timestamp=self.clock.get_time(),
-                                              uuid=None)
+                    #self.behav.enable(True)
+                    #[msg_to_send], _ = self.generate(input_net_hashes=None, inputs=[augmented_msg])
+                    #self._user_stream.set(msg_to_send)
+                    #self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
+                    #self.behav.enable(False)
+
+                    #self.behav.request_action(action_name="ask_gen",
+                    #                          args={},
+                    #                          signature=self._broadcaster_peer_id,
+                    #                          timestamp=self.clock.get_time(),
+                    #                          uuid=None)
 
                 self._last_msg_time = tm.time()
                 self._last_turns.append(msg)
-                self._last_turns = self._last_turns[1:history_len]
+                self._last_turns = self._last_turns[-history_len]
             else:
                 if ((not self.is_human()) and (self.proc is not None and
                                                not isinstance(self.proc.module, MultiIdentity)) and
@@ -124,22 +131,29 @@ class WAgent(Agent):
                                       f"Please generate only the message to be sent in the chatroom,"
                                       f"no other texts or preambles.\n")
 
-                    # Assuming the processor is such that it takes only 1 input (str) and generates 1 output (str)
-                    proc_outputs, data_tag = self.generate(input_net_hashes=None, inputs=[promote_prompt])
-                    if proc_outputs is not None and len(proc_outputs) == 1:
-                        msg_to_send = proc_outputs[0]
-                        self._user_stream.set(msg_to_send)
-                        self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
+                    self.stdin.set("proc_input_0", promote_prompt)
+                    if await self.process():
+                        await self.send(action_name="ask_gen",
+                                        streams=["processor"],
+                                        copy_sys=True,
+                                        target=self._broadcaster_peer_id)
 
-                        self.behav.request_action(action_name="ask_gen",
-                                                  args={},
-                                                  signature=self._broadcaster_peer_id,
-                                                  timestamp=self.clock.get_time(),
-                                                  uuid=None)
+                        # Assuming the processor is such that it takes only 1 input (str) and generates 1 output (str)
+                        #proc_outputs, data_tag = self.generate(input_net_hashes=None, inputs=[promote_prompt])
+                        #if proc_outputs is not None and len(proc_outputs) == 1:
+                        #    msg_to_send = proc_outputs[0]
+                        #    self._user_stream.set(msg_to_send)
+                        #    self.add_recipient(self._user_stream_net_hash, self._broadcaster_peer_id)
+
+                        #    self.behav.request_action(action_name="ask_gen",
+                        #                              args={},
+                        #                              signature=self._broadcaster_peer_id,
+                        #                              timestamp=self.clock.get_time(),
+                        #                              uuid=None)
 
                         self._last_msg_time = tm.time()
                         self._last_turns.append(msg)
-                        self._last_turns = self._last_turns[1:history_len]
+                        self._last_turns = self._last_turns[-history_len]
             return True
         else:
             self.err("Cannot find the processor stream of the broadcaster")

@@ -15,7 +15,7 @@ agent = Agent(proc=None,
               proc_outputs=[StreamType(data_type="text", pubsub=False, private_only=True)])
 
 # Node hosting agent
-node = Node(node_name="BaseRelay", hosted=agent, clock_delta=1. / 20., save_checkpoint_every=-1.)
+node = Node(node_name="BaseRelayAlt", hosted=agent, clock_delta=1. / 20., save_checkpoint_every=-1.)
 
 # Running node
 node.run()
