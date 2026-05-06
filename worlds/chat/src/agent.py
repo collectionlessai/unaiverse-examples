@@ -60,6 +60,9 @@ class WAgent(Agent):
         if self.get_current_role() != "user":
             return False
 
+        # Avoid printing this message multiple times
+        self.behav.get_state().msg = None
+
         if self._broadcaster_stream is None:
             net_hash_to_stream_dict = self.find_streams(self._broadcaster_peer_id, "processor")
             for net_hash, stream_dict in net_hash_to_stream_dict.items():
