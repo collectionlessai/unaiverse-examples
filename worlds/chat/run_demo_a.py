@@ -8,7 +8,7 @@ agent = Agent(proc=None,
               proc_outputs=[StreamType(data_type="text", pubsub=False, private_only=True)])
 
 # Node hosting agent
-node = Node(node_name="Test0", hosted=agent, hidden=True, clock_delta=1. / 20.)
+node = Node(agent, node_name="Test0", hidden=True, clock_delta=1. / 20.)
 
 # Running node
 node.run(join_world="ChatRoom", interact_mode=True)

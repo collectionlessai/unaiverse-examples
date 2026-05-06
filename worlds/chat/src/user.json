@@ -1,35 +1,191 @@
 {
-    "initial_state": "init",
-    "state": "init",
-    "role": "user",
-    "prev_state": null,
-    "limbo_state": null,
-    "welcome_msg": "&#128495;&#65039; This world implements a simple chatroom where you can talk to humans and AIs. AI-based agents, when joining this world, inherit the skill of promoting the conversation if there is too much 'silence' in the chat.",
-    "state_actions": {
-        "init": [null, null, 0, true, 0.0],
-        "waiting_handshake": [null, null, 1, false, 0.0],
-        "self_generated": [null, null, 2, false, 0.0],
-        "message_sent": [null, null, 3, false, 0.0],
-        "ready": ["check_messages", {"max_silence_seconds": 25.0, "talk_probability": 0.01, "history_len": 3}, 4, true, 0.0, "&#128077; Ready!"]
-    },
-    "transitions": {
-        "init": {
-            "waiting_handshake": [["connect_to_broadcaster", {"role": "broadcaster"}, true, 0, "&#128279; Connecting to the room..."]]
-        },
-        "waiting_handshake": {
-            "ready": [["connected", {"handshake_completed": true}, true, 1]]
-        },
-        "ready": {
-            "message_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": true}, false, 3]],
-            "init": [["disconnected", {"delay": 5.0}, true, 5]],
-            "self_generated": [["do_gen", {"u_hashes": ["<agent>:processor_in"], "samples": 1}, true, 6]]
-        },
-        "message_sent": {
-            "ready": [["nop", {}, true, 4]]
-        },
-        "self_generated": {
-            "message_sent": [["ask_gen", {"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": true}, true, 7]]
+    "machine": {
+        "role": "user",
+        "initial_state": "init",
+        "msg": "&#128495;&#65039; This world implements a simple chatroom where you can talk to humans and AIs. AI-based agents, when joining this world, inherit the skill of promoting the conversation if there is too much 'silence' in the chat.",
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
         }
     },
-    "cur_action": null
+    "states": {
+        "init": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "waiting_handshake": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "self_generated": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "message_sent": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_for_interactions": 0.0
+        },
+        "ready": {
+            "action": "check_messages",
+            "action_kwargs": {
+                "max_silence_seconds": 25.0,
+                "talk_probability": 0.01,
+                "history_len": 3
+            },
+            "msg": "&#128077; Ready!",
+            "blocking": true,
+            "time_to_wait_for_interactions": 0.0
+        }
+    },
+    "transitions": {
+        "init": [
+            {
+                "on": {
+                    "action": "connect_to_broadcaster",
+                    "action_kwargs": {
+                        "role": "broadcaster"
+                    },
+                    "msg": "&#128279; Connecting to the room...",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "waiting_handshake"
+            }
+        ],
+        "waiting_handshake": [
+            {
+                "on": {
+                    "action": "connected",
+                    "action_kwargs": {
+                        "handshake_completed": true
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            },
+            {
+                "on": {
+                    "action": "disconnected",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 5.0
+                },
+                "goto": "init"
+            }
+        ],
+        "ready": [
+            {
+                "on": {
+                    "action": "ask_gen",
+                    "action_kwargs": {
+                        "u_hashes": [
+                            "<agent>:processor"
+                        ],
+                        "samples": 1,
+                        "ignore_uuid": true
+                    },
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "message_sent"
+            },
+            {
+                "on": {
+                    "action": "disconnected",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 5.0
+                },
+                "goto": "init"
+            },
+            {
+                "on": {
+                    "action": "do_gen",
+                    "action_kwargs": {
+                        "u_hashes": [
+                            "<agent>:processor_in"
+                        ],
+                        "samples": 1
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "self_generated"
+            }
+        ],
+        "message_sent": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "ready"
+            }
+        ],
+        "self_generated": [
+            {
+                "on": {
+                    "action": "ask_gen",
+                    "action_kwargs": {
+                        "u_hashes": [
+                            "<agent>:processor"
+                        ],
+                        "samples": 1,
+                        "ignore_uuid": true
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "message_sent"
+            }
+        ]
+    },
+    "teleports": {}
 }

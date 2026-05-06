@@ -15,7 +15,8 @@
 import random
 import time as tm
 from unaiverse.agent import Agent
-from unaiverse.modules.utils import HumanModule
+from unaiverse.modules.utils import HumanModule, MultiIdentity
+from unaiverse.utils.logger import log
 
 
 class WAgent(Agent):
@@ -24,6 +25,7 @@ class WAgent(Agent):
         super().__init__(*args, **kwargs)
         self._broadcaster_peer_id = None
         self._broadcaster_stream = None
+        self._broadcaster_net_hash = None
         self._broadcaster_sender = None
         self._user_stream = None
         self._user_stream_net_hash = None
@@ -59,10 +61,11 @@ class WAgent(Agent):
 
         if self._broadcaster_stream is None:
             net_hash_to_stream_dict = self.find_streams(self._broadcaster_peer_id, "processor")
-            for _, stream_dict in net_hash_to_stream_dict.items():
+            for net_hash, stream_dict in net_hash_to_stream_dict.items():
                 for _, stream_obj in stream_dict.items():
                     if stream_obj.props.is_text():
                         self._broadcaster_stream = stream_obj
+                        self._broadcaster_net_hash = net_hash
                         break
 
         if self._broadcaster_stream is not None:
@@ -70,8 +73,8 @@ class WAgent(Agent):
             if msg is not None:
                 my_rand = random.random()
 
-                if (self.proc is not None and (not (hasattr(self.proc, 'module') and
-                                                    isinstance(self.proc.module, HumanModule))) and
+                if (((not self.is_human()) and (self.proc is not None and
+                                                not isinstance(self.proc.module, MultiIdentity))) and
                         ((self.get_name().lower() in msg.lower().strip()) or
                          (self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT |
                                                         self.ROLE_STR_TO_BITS["user"]) == 2) or
@@ -102,8 +105,8 @@ class WAgent(Agent):
                 self._last_turns.append(msg)
                 self._last_turns = self._last_turns[1:history_len]
             else:
-                if (self.proc is not None and
-                        (not (hasattr(self.proc, 'module') and isinstance(self.proc.module, HumanModule))) and
+                if ((not self.is_human()) and (self.proc is not None and
+                                               not isinstance(self.proc.module, MultiIdentity)) and
                         ((tm.time() - self._last_msg_time) > max_silence_seconds) and
                         self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) > 1):
                     promote_prompt = (f"The conversation in a chatroom is simply silent, nobody is talking. "
@@ -150,18 +153,20 @@ class WAgent(Agent):
                 _, _my_peer_id = self.get_peer_ids()
                 self._broadcaster_sender = self.all_agents[_requester].get_static_profile()['node_name']
 
-                self.out(f"Broadcaster received a request from {_requester}, agent named {self._broadcaster_sender}, "
+                log.misc(f"Broadcaster received a request from {_requester}, agent named {self._broadcaster_sender}, "
                          f"where the current agent list is:\n{list(self.world_agents.keys())}\n"
                          f"and the broadcaster peer ID is {_my_peer_id}")
 
                 _requester = list(set(self.world_agents.keys()) - {_requester, _my_peer_id})
 
-                self.out(f"Broadcaster decided the list of peers to send the message from "
+                log.misc(f"Broadcaster decided the list of peers to send the message from "
                          f"agent {self._broadcaster_sender} is then {_requester}")
 
                 if len(_requester) == 0:
-                    self.err("Broadcaster is skipping the generation procedure, since no recipients would be there")
+                    log.err("Broadcaster is skipping the generation procedure, since no recipients would be there")
                     return False
+
+                self.add_recipient(self.get_proc_output_net_hash(public=False), _requester)
 
         return await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
                                     _requester=_requester, _request_time=_request_time, _request_uuid=_request_uuid,
