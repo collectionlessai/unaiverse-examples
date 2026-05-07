@@ -218,35 +218,9 @@
                     "time_to_wait_before_running": 0.0
                 },
                 "goto": "student_found"
-            },
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": "&#128640; Nop",
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "looking_for_peers"
             }
         ],
         "student_found": [
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": "&#128640; Nop",
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "looking_for_students"
-            },
             {
                 "on": {
                     "action": "got_engagement",
@@ -515,5 +489,36 @@
             }
         ]
     },
-    "teleports": {}
+    "teleports": {
+        "looking_for_students": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": "&#128640; Nop",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 0.0
+                },
+                "goto": "looking_for_peers"
+            }
+        ],
+        "student_found": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": "&#128640; Nop",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "time_to_wait_before_running": 5.0
+                },
+                "goto": "looking_for_students"
+            }
+        ]
+    }
 }
