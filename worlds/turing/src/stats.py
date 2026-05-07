@@ -83,7 +83,7 @@ _SCOPE_LABELS: dict[str, str] = {
     "7d": "7 days",
     "24h": "24 hours",
 }
-_MIN_VOTES = 3  # suppress leaderboard rows with fewer votes
+_MIN_VOTES = 1  # suppress leaderboard rows with fewer votes # TODO adjust this
 _PALETTE = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f"]
 _HOTEL_OPS_STATS = (
     "hotel_n_floors_active",
@@ -123,6 +123,8 @@ class WStats(Stats):
         "turing_vote":              (dict, None),
         "conversation_chunk":       (dict, None),
         }
+
+    STORE_DYNAMIC_IF_CHANGED = True
 
     # ------------------------------------------------------------------- init
 
@@ -653,11 +655,12 @@ class WStats(Stats):
         ops_json = self._make_ops_plotly_json(ops_series)
 
         # DEBUG: save to stats.html
-        # with open("stats.html", "w", encoding="utf-8") as file:
-        #    file.write(self._render_page(
-        #        summary_html, scope_cms_html,
-        #        scope_podiums_html, scope_grids_html, ops_json,
-        #    ))
+        # TODO comment this
+        with open("stats.html", "w", encoding="utf-8") as file:
+            file.write(self._render_page(
+                summary_html, scope_cms_html,
+                scope_podiums_html, scope_grids_html, ops_json,
+            ))
 
         return self._render_page(
             summary_html, scope_cms_html,

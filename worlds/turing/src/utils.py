@@ -34,24 +34,25 @@ def parse_vote_msg(_msg: str) -> dict[str, str]:
 
     # Keyword banks
     human_kw = (
-        r'(?:human|real\s*(?:person|human)?|person|actual\s*(?:person|human)'
-        r'|not\s*(?:an?\s*)?(?:ai|bot|robot|artificial|machine)'
+        r'(?:humans?|real\s*(?:persons?|humans?)?|persons?|people|actual\s*(?:persons?|humans?)'
+        r'|not\s*(?:an?\s*)?(?:ai|bots?|robots?|artificial|machines?)'
         r'|flesh\s*and\s*blood|natural)'
     )
     ai_kw = (
-        r'(?:ai|a\.i\.?|artificial(?:\s*intelligence)?|bot|robot|machine'
-        r'|not\s*(?:a\s*)?(?:human|real|person|natural)'
-        r'|computer|automated|virtual\s*(?:agent|assistant)?|chatbot|llm)'
+        r'(?:ai|a\.i\.?|artificial(?:\s*intelligence)?|bots?|robots?|machines?'
+        r'|not\s*(?:a\s*)?(?:humans?|real|persons?|natural)'
+        r'|computers?|automated|virtual\s*(?:agents?|assistants?)?|chatbots?|llms?)'
     )
 
     # Connectors & fillers between agent and keyword
-    glue = r'[\s,:\-]*(?:is|was|seems?\s*(?:like)?|looks?\s*like|felt\s*like|appeared?' \
+    # The verb group is optional so "B bot" or "A human" match directly
+    glue = r'[\s,:\-]+(?:(?:is|was|seems?\s*(?:like)?|looks?\s*like|felt\s*like|appeared?' \
            r'|sounds?\s*like|must\s*(?:be|have\s*been)|has\s*to\s*be' \
            r'|could\s*(?:be|have\s*been)|might\s*(?:be|have\s*been)' \
            r'|is\s*(?:definitely|probably|surely|clearly|obviously|certainly)' \
            r'|was\s*(?:definitely|probably|surely|clearly|obviously|certainly)' \
            r'|turned\s*out\s*(?:to\s*be)?)' \
-           r'[\s,:\-]*(?:an?\s*|the\s*)?'
+           r'[\s,:\-]*(?:an?\s*|the\s*)?)?'
 
     # Pattern 1: "<Agent> is/was/seems ... <keyword>"
     p_agent_then_class = re.compile(
@@ -59,15 +60,20 @@ def parse_vote_msg(_msg: str) -> dict[str, str]:
     )
 
     # Pattern 2: "<keyword> ... <Agent>" (e.g. "the human was B")
-    reverse_glue = r'[\s,:\-]*(?:(?:one|agent|was|is)\s*)*'
+    # No commas — prevent crossing clause boundaries like "bot, C"
+    reverse_glue = r'[\s:\-]*(?:(?:one|agent|was|is)\s*)*'
     p_class_then_agent = re.compile(
-        rf'\b({human_kw}|{ai_kw}){reverse_glue}{ag}\b', re.IGNORECASE
+        rf'\b({human_kw}|{ai_kw}){reverse_glue}\b{ag}\b', re.IGNORECASE
     )
 
     # Pattern 3: List style  "A, B and C are human"
-    agent_list = rf'({agent}(?:\s*[,;&/]\s*{agent})*\s*(?:and|&)\s*{agent}|{agent}(?:\s*[,;&/]\s*{agent})+)'
-    list_glue = r'\s*(?:are|were|all\s*(?:are|were)?|seem|seemed)' \
-                r'[\s,:\-]*(?:all\s*)?(?:(?:definitely|probably|clearly|obviously)\s*)?(?:an?\s*|the\s*)?'
+    # Word-bounded agents so letters inside words like "are" aren't captured
+    agent_b = r'\b' + agent + r'\b'
+    agent_sep = r'(?:\s*[,;&/\-]\s*(?:and|&)?\s*|\s+(?:and|&)\s+|\s+)'
+    agent_list = rf'({agent_b}(?:{agent_sep}{agent_b})+)'
+    list_glue = r'[\s,:\-]+(?:(?:is|are|was|were|all\s*(?:are|were)?|seem|seemed' \
+                r'|looks?\s*like|looked?\s*like)' \
+                r'[\s,:\-]*(?:all\s*)?(?:(?:definitely|probably|clearly|obviously)\s*)?(?:an?\s*|the\s*)?)?'
     p_list = re.compile(
         rf'\b({agent_list}){list_glue}({human_kw}|{ai_kw})\b', re.IGNORECASE
     )
@@ -82,37 +88,114 @@ def parse_vote_msg(_msg: str) -> dict[str, str]:
             return 'human'
         return 'ai'
 
-    def normalize_agent(name: str) -> str:
-        return name.upper().strip()
+    # --- Apply patterns ---
 
-    # Apply list pattern first (higher structure)
-    for m in p_list.finditer(text):
-        agents_str = m.group(1)
-        keyword = m.group(3)
-        label = classify(keyword)
-        found = re.findall(rf'\b({agent})\b', agents_str, re.IGNORECASE)
-        for a in found:
-            # Filter out stray words that look like single letters (e.g. "and" → "a")
-            if len(a) == 1 and a.lower() in ('i',):
-                continue
-            results[normalize_agent(a)] = label
-
-    # Apply agent-then-class
+    # Pattern 1
     for m in p_agent_then_class.finditer(text):
-        a, keyword = m.group(1), m.group(2)
-        if len(a) == 1 and a.lower() in ('i', 'a'):
-            # skip pronoun "I" and article "a" unless followed by digit
-            continue
-        results.setdefault(normalize_agent(a), classify(keyword))
+        name = m.group(1).upper()
+        results[name] = classify(m.group(2))
 
-    # Apply class-then-agent
+    # Pattern 2
     for m in p_class_then_agent.finditer(text):
-        keyword, a = m.group(1), m.group(2)
-        if len(a) == 1 and a.lower() in ('i',):
-            continue
-        results.setdefault(normalize_agent(a), classify(keyword))
+        name = m.group(2).upper()
+        if name not in results:
+            results[name] = classify(m.group(1))
+
+    # Pattern 3
+    for m in p_list.finditer(text):
+        raw_list = m.group(1)
+        kw = m.group(3)
+        agents = re.findall(r'\b' + agent + r'\b', raw_list, re.IGNORECASE)
+        label = classify(kw)
+        for a in agents:
+            n = a.upper()
+            if n not in results:
+                results[n] = label
+
+    # Pattern 4: Answer-framing — "my guess is B, C" → agents default to human
+    frame = (r'(?:(?:my|I)\s+)?(?:guess|vote|answer|pick|choice|bet)'
+             r'\s+(?:is|would\s+be|goes?\s+to|for)\s+')
+    p_frame = re.compile(
+        rf'\b{frame}({agent_b}(?:{agent_sep}{agent_b})*)', re.IGNORECASE
+    )
+    for m in p_frame.finditer(text):
+        agents_found = re.findall(r'\b' + agent + r'\b', m.group(1), re.IGNORECASE)
+        for a in agents_found:
+            n = a.upper()
+            if n not in results:
+                results[n] = 'human'
+
+    # Pattern 5: Bare agent names with no keywords → default to "human"
+    # Triggers only when no keyword-based patterns matched anything
+    if not results:
+        filler = {
+            'i', 'my', 'think', 'believe', 'guess', 'vote', 'is', 'the',
+            'its', 'it', 'was', 'that', 'they', 'are', 'were', 'and', 'or',
+            'but', 'maybe', 'probably', 'definitely', 'for', 'to', 'of',
+        }
+        tokens = re.findall(r'\b[A-Za-z]\d*\b', text)
+        meaningful = [t for t in tokens if t.lower() not in filler]
+        if meaningful and all(re.fullmatch(agent, t) for t in meaningful):
+            for t in meaningful:
+                results[t.upper()] = 'human'
 
     return results
+
+
+def test_parse_vote_msg():
+    tests = [
+        ("B bot", {"B": "ai"}),
+        ("B is a bot", {"B": "ai"}),
+        ("b human", {"B": "human"}),
+        ("A is human", {"A": "human"}),
+        ("A was definitely a robot", {"A": "ai"}),
+        ("the human was B", {"B": "human"}),
+        ("A, B and C are human", {"A": "human", "B": "human", "C": "human"}),
+        ("A2 is ai, B2 bot", {"A2": "ai", "B2": "ai"}),
+        ("A is not a bot", {"A": "human"}),
+        ("B is not human", {"B": "ai"}),
+        ("A human, B bot", {"A": "human", "B": "ai"}),
+        ("B and A are bots", {"B": "ai", "A": "ai"}),
+        ("B and A is a bot", {"B": "ai", "A": "ai"}),
+        ("A, B and C are humans", {"A": "human", "B": "human", "C": "human"}),
+        ("A and B were robots", {"A": "ai", "B": "ai"}),
+        # Bare agent names default to human
+        ("A", {"A": "human"}),
+        ("A, B, C", {"A": "human", "B": "human", "C": "human"}),
+        ("A B", {"A": "human", "B": "human"}),
+        ("a b c", {"A": "human", "B": "human", "C": "human"}),
+        # Mixed separators in lists
+        ("I think A, B, C are human", {"A": "human", "B": "human", "C": "human"}),
+        ("I think A and B, C are human", {"A": "human", "B": "human", "C": "human"}),
+        # Unrecognised keyword ignored
+        ("A human, B bot, C dunno", {"A": "human", "B": "ai"}),
+        # "look like" in list context
+        ("A human, B and C look like bots", {"A": "human", "B": "ai", "C": "ai"}),
+        # Space-separated list with keyword
+        ("A B c d E are bots", {"A": "ai", "B": "ai", "C": "ai", "D": "ai", "E": "ai"}),
+        ("A,B,C bots", {"A": "ai", "B": "ai", "C": "ai"}),
+        ("A, B, C human", {"A": "human", "B": "human", "C": "human"}),
+        ("A, and B, and C human", {"A": "human", "B": "human", "C": "human"}),
+        ("A, and B, an C", {"A": "human", "B": "human", "C": "human"}),
+        ("A-B-C human", {"A": "human", "B": "human", "C": "human"}),
+        ("A;B;C human", {"A": "human", "B": "human", "C": "human"}),
+        ("A; B, C human", {"A": "human", "B": "human", "C": "human"}),
+        ("A, B bots, C human", {"A": "ai", "B": "ai", "C": "human"}),
+        ("I wat thinking that A and z are the humans. I think C is artificial",
+         {"A": "human", "Z": "human", "C": "ai"}),
+        ("Nice test! Thanks for this. My guess is B, C. Pretty sure D-E are not humans",
+         {"B": "human", "C": "human", "D": "ai", "E": "ai"}),
+    ]
+    passed = 0
+    for msg, expected in tests:
+        result = parse_vote_msg(msg)
+        status = "PASS" if result == expected else "FAIL"
+        if status == "FAIL":
+            print(f"  {status}: {msg!r}\n    expected {expected}\n    got      {result}")
+        else:
+            print(f"  {status}: {msg!r} -> {result}")
+            passed += 1
+    print(f"\n{passed}/{len(tests)} passed")
 
 
 def compute_check_in_proposals(structure, guests_to_check_in: list):
@@ -238,7 +321,7 @@ def print_live(structure, status_msg: str):
 
     # Create a table
     table = Table(
-        title=f"\n🏨 [bold]Turing Hotel: {'Whole Hotel' if is_hotel else 'Single Floor'} Status[/bold]",
+        title=f"\n🏨 [bold]Turing Hotel: {'Hotel' if is_hotel else 'Single Floor'} Status[/bold]",
         box=box.HEAVY_EDGE,
         show_lines=False  # We will draw our own floor separators
     )
@@ -247,7 +330,7 @@ def print_live(structure, status_msg: str):
     table.add_column("Room", style="magenta")
     table.add_column("Occupancy", justify="center")
     table.add_column("Overbooked", justify="center")
-    table.add_column("Guests (Name | Status~Timer | Type)")
+    table.add_column(f"Guests (Name | {'Status~Timer' if not is_hotel else 'Freshness'} | Type)")
 
     floors = structure.get_floors() if is_hotel else [structure]
     for i, floor in enumerate(floors):

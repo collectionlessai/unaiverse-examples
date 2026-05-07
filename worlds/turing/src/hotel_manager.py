@@ -49,10 +49,11 @@ class WAgent(Agent):
     async def on_tick(self):
         connected_floor_managers = self.get_agents_by_role("floor_manager")
         connected_guests = self.get_agents_by_role("guest")
-        self.hotel.print(f"Floor managers: {len(self.hotel.get_floor_managers())}/{len(connected_floor_managers)} "
+        self.hotel.print(f"[Managed/Connected] Floor managers: "
+                         f"{len(self.hotel.get_floor_managers())}/{len(connected_floor_managers)} "
                          f"| Guests: {len(self.hotel.get_guests())}/{len(connected_guests)}\n"
-                         f"Last updated at " + self._last_update_received_at +
-                         "  | Last guest sent to floor at " + self._last_guest_send_to_floor_at)
+                         f"Last update: " + self._last_update_received_at +
+                         "  | Last check-in: " + self._last_guest_send_to_floor_at)
 
     def remove_floor_by_floor_manager(self, floor_manager: str):
         floor = self.hotel.get_floor_by_manager(floor_manager)
@@ -260,9 +261,6 @@ class WAgent(Agent):
                                                   hotel_manager_who_handled_the_guest=Config.unknown_guest_name)
                                 break
 
-        # Hotel manager peer ID
-        hotel_manager_peer_id = self.get_peer_id()
-
         # Getting update data, if any
         for floor_manager in self.get_agents_by_role("floor_manager"):  # Considers floor manager with handshake done
 
@@ -359,26 +357,27 @@ class WAgent(Agent):
         # The first hotel manager is the head of the whole hotel managers, responsible for sending stats to the world.
         # First in alphabetical order.
         all_hotel_managers = self.get_agents_by_role(role="hotel_manager", handshake_completed=False)
-        is_head_of_hotel_masters = len(all_hotel_managers) > 0 and min(all_hotel_managers) == self.get_peer_id()
+        is_head_of_hotel_managers = len(all_hotel_managers) > 0 and min(all_hotel_managers) == self.get_peer_id()
 
-        if is_head_of_hotel_masters:
+        if is_head_of_hotel_managers:
             int_timestamp = self.clock.get_time_ms(monotonic=True)
+            world_peer_id = self.get_connection_pool_manager().get_world_peer_id()
 
             # Referring to stats.py: CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA
             self.stats.store_stat("hotel_n_floors_active", len(self.hotel.get_floors()),
-                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=world_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("hotel_n_rooms_active", self.hotel.count_not_empty_rooms(),
-                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=world_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("hotel_n_rooms_overbooked", self.hotel.count_overbooked_rooms(),
-                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=world_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("hotel_n_agents_present",
                                   len(self.hotel.get_all_hotel_guests()) - self.hotel.count_guests_in_the_hall(),
-                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=world_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("hotel_n_agents_waiting", self.hotel.count_guests_in_the_hall(),
-                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=world_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("n_total_agents",
                                   len(self.hotel.get_all_hotel_guests()),
-                                  group_key=hotel_manager_peer_id, timestamp=int_timestamp)
+                                  group_key=world_peer_id, timestamp=int_timestamp)
 
     @action
     async def send_violations(self):
@@ -425,6 +424,7 @@ class WAgent(Agent):
 
         {
             "voter": VOTER_UNAID,
+            "voter_nature": "human" | "ai
             "vote": FULL_VOTE_MESSAGE,
             "ground_truth": (DICT) CANDIDATE_VOTEE_FAKE_NAME -> ("human" | "ai", CANDIDATE_VOTEE_UNAID),
             "session_id": FLOOR_ID:ROOM_ID,
@@ -439,6 +439,7 @@ class WAgent(Agent):
 
         {
             "voter": VOTER_UNAID,
+            "voter_nature": "human" | "ai
             "vote": "human" | "ai",
             "ground_truth": "human" | "ai"
             "session_id": FLOOR_ID:ROOM_ID,
@@ -452,7 +453,7 @@ class WAgent(Agent):
         def _build_vote_dicts_and_check_format(_vote: str) -> list[dict] | None:
 
             # Packet format
-            expected_dict_keys = ["voter", "vote", "ground_truth", "session_id",
+            expected_dict_keys = ["voter", "voter_nature", "vote", "ground_truth", "session_id",
                                   "floor_manager", "hotel_manager", "msgs_from_votee", "msgs_from_voter"]
 
             # Converting JSON encoded dict (str) to a real dict and checking format
@@ -538,6 +539,7 @@ class WAgent(Agent):
             votes = votes_stream.get("get_votes", all_uuids=True)
 
             for vote_str, _, _ in votes:
+                log.error(f"Got a vote! vote_str={vote_str}")
 
                 # Filtering out empty packets
                 if vote_str is None:
@@ -568,8 +570,12 @@ class WAgent(Agent):
                         if v < Config.min_msgs_from_votee:
                             fake_names_to_ignore.add(k)
 
+                    log.error("*** Fake names to ignore: " + str(fake_names_to_ignore))
+
                     # Parsing vote
                     parsed_vote = parse_vote_msg(vote_dict["vote"])  # Dict fake-name (votee) to "human" | "ai"
+
+                    log.error("*** Parsed vote: " + str(parsed_vote))
 
                     # Reversing the logic: the index is the votee, hence the vote dictionary must be replicated for each
                     # votee of in the parsed vote structure
@@ -577,10 +583,12 @@ class WAgent(Agent):
 
                         # Ignoring votes associated to too few exchanges with the votee
                         if fake_name in fake_names_to_ignore:
+                            log.error("*** Fake name must be ignored!")
                             continue
 
                         # Ignoring votes associated to agents that were not there at all (or wrong parsing results)
                         if fake_name not in vote_dict["ground_truth"]:
+                            log.error("*** Fake name not in ground_truth!")
                             continue
 
                         _vote_dict_ = copy.deepcopy(vote_dict)
@@ -592,6 +600,8 @@ class WAgent(Agent):
 
                         # Storing vote as stat (group_key = votee UNaID so votes are bucketed per votee)
                         int_timestamp = self.clock.get_time_ms(monotonic=True)
+                        log.error(f"*** Storing stat 'turing_vote', group_key: {_votee_unaid_}, "
+                                  f"timestamp: {int_timestamp}\n{_vote_dict_}")
                         self.stats.store_stat("turing_vote", _vote_dict_,
                                               group_key=_votee_unaid_, timestamp=int_timestamp)
 

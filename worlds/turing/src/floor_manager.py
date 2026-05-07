@@ -69,12 +69,6 @@ class WAgent(Agent):
         self._guest2reminder_time = {}  # Guest who got the survey message -> last reminder message time
         self._wants_to_exist = set()  # Guest who wants to leave
 
-        # Creating the pubsub stream where this manager will broadcast floor-related updates
-        # and the direct message stream that is used to send votes to the hotel manager
-        self.add_stream(Stream(props=DataProps(name="floor_updates", data_type="text", pubsub=True)))  # Pubsub
-        self.add_stream(Stream(props=DataProps(name="chat", data_type="text")))  # Ordinary conversation
-        self.add_stream(Stream(props=DataProps(name="votes", data_type="text")))  # Votes only
-
     def accept_new_role(self, role: int):
         super().accept_new_role(role)
 
@@ -83,21 +77,33 @@ class WAgent(Agent):
                            id=str(uuid.uuid4()),
                            managed_guest_profiles=self.world_agents)
 
+        # Creating the pubsub stream where this manager will broadcast floor-related updates
+        # and the direct message stream that is used to send votes to the hotel manager
+        self.add_stream(Stream(props=DataProps(name="floor_updates", data_type="text", pubsub=True)))  # Pubsub
+        self.add_stream(Stream(props=DataProps(name="chat", data_type="text")))  # Ordinary conversation
+        self.add_stream(Stream(props=DataProps(name="votes", data_type="text")))  # Votes only
+
+        # Updating profile (recall that this class is created when joining the world, so the profile must be updated)
+        self.update_streams_in_profile()
+
     async def remove_agent(self, peer_id: str):
         await super().remove_agent(peer_id)
 
         # Tell everybody in the room that this agent disconnected
         if self.floor is not None and self.floor.is_in_a_room(peer_id):
             room = self.floor.get_room_of(peer_id)
-            disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
-            for _guest in list(room.get_guests()):
-                if _guest != peer_id:
-                    if not await self.send(action_name="get_status_msg",
-                                           action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                                disconnected_message)},
-                                           target=_guest,
-                                           volatile=True):
-                        await self.disconnect(_guest)
+
+            # Send this message only if the agent was chatting (i.e., not if he was in the voting booth)
+            if room.get_status(peer_id) in {GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE, GuestStatus.AT_ROUND_TABLE}:
+                disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
+                for _guest in list(room.get_guests()):
+                    if _guest != peer_id:
+                        if not await self.send(action_name="get_status_msg",
+                                               action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                                    disconnected_message)},
+                                               target=_guest,
+                                               volatile=True):
+                            await self.disconnect(_guest)
 
         # Send the guest out of the floor/room and clear all his vote-related info
         # (the other status-related sets and dicts are cleared by the following method, but NOT the vote info, since
@@ -111,7 +117,7 @@ class WAgent(Agent):
         # Print info on screen
         connected_hotel_managers = self.get_agents_by_role("hotel_manager")
         connected_guests = self.get_agents_by_role("guest")
-        self.floor.print(f"Hotel managers: {len(connected_hotel_managers)} "
+        self.floor.print(f"[Managed/Connected] Hotel managers: */{len(connected_hotel_managers)} "
                          f"| Guests: {len(self.floor.get_guests())}/{len(connected_guests)}")
 
     @action
@@ -172,6 +178,7 @@ class WAgent(Agent):
             # This dictionary is almost filled, it misses the actual vote (it will be sent in its own stream)
             vote_dict = {
                 "voter": room.get_unaid_of(guest),
+                "voter_nature": room.get_ground_truth_of(guest),
                 "vote": None,  # This will be filled when actually receiving the vote from the processor stream
                 "ground_truth": {
                     votee_fake_name: (room.get_ground_truth_of(votee), room.get_unaid_of(votee))
@@ -513,6 +520,7 @@ class WAgent(Agent):
 
         {
             "voter": VOTER_UNAID,
+            "voter_nature": "human" | "ai"
             "vote": FULL_VOTE_MESSAGE,
             "ground_truth": (DICT) CANDIDATE_VOTEE_FAKE_NAME -> ("human" | "ai", CANDIDATE_VOTEE_UNAID),
             "session_id": FLOOR_ID:ROOM_ID,
