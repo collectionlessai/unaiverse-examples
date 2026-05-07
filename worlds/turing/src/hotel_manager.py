@@ -424,7 +424,7 @@ class WAgent(Agent):
 
         {
             "voter": VOTER_UNAID,
-            "voter_nature": "human" | "ai
+            "voter_nature": "human" | "ai,
             "vote": FULL_VOTE_MESSAGE,
             "ground_truth": (DICT) CANDIDATE_VOTEE_FAKE_NAME -> ("human" | "ai", CANDIDATE_VOTEE_UNAID),
             "session_id": FLOOR_ID:ROOM_ID,
@@ -439,7 +439,7 @@ class WAgent(Agent):
 
         {
             "voter": VOTER_UNAID,
-            "voter_nature": "human" | "ai
+            "voter_nature": "human" | "ai,
             "vote": "human" | "ai",
             "ground_truth": "human" | "ai"
             "session_id": FLOOR_ID:ROOM_ID,
