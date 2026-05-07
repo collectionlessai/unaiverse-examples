@@ -570,12 +570,8 @@ class WAgent(Agent):
                         if v < Config.min_msgs_from_votee:
                             fake_names_to_ignore.add(k)
 
-                    log.error("*** Fake names to ignore: " + str(fake_names_to_ignore))
-
                     # Parsing vote
                     parsed_vote = parse_vote_msg(vote_dict["vote"])  # Dict fake-name (votee) to "human" | "ai"
-
-                    log.error("*** Parsed vote: " + str(parsed_vote))
 
                     # Reversing the logic: the index is the votee, hence the vote dictionary must be replicated for each
                     # votee of in the parsed vote structure
@@ -583,12 +579,10 @@ class WAgent(Agent):
 
                         # Ignoring votes associated to too few exchanges with the votee
                         if fake_name in fake_names_to_ignore:
-                            log.error("*** Fake name must be ignored!")
                             continue
 
                         # Ignoring votes associated to agents that were not there at all (or wrong parsing results)
                         if fake_name not in vote_dict["ground_truth"]:
-                            log.error("*** Fake name not in ground_truth!")
                             continue
 
                         _vote_dict_ = copy.deepcopy(vote_dict)
@@ -600,8 +594,6 @@ class WAgent(Agent):
 
                         # Storing vote as stat (group_key = votee UNaID so votes are bucketed per votee)
                         int_timestamp = self.clock.get_time_ms(monotonic=True)
-                        log.error(f"*** Storing stat 'turing_vote', group_key: {_votee_unaid_}, "
-                                  f"timestamp: {int_timestamp}\n{_vote_dict_}")
                         self.stats.store_stat("turing_vote", _vote_dict_,
                                               group_key=_votee_unaid_, timestamp=int_timestamp)
 

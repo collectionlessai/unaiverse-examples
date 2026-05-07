@@ -132,8 +132,10 @@ def parse_vote_msg(_msg: str) -> dict[str, str]:
             'i', 'my', 'think', 'believe', 'guess', 'vote', 'is', 'the',
             'its', 'it', 'was', 'that', 'they', 'are', 'were', 'and', 'or',
             'but', 'maybe', 'probably', 'definitely', 'for', 'to', 'of',
+            'no', 'not', 'so', 'if', 'at', 'on', 'in', 'an', 'do', 'be',
         }
-        tokens = re.findall(r'\b[A-Za-z]\d*\b', text)
+        bare_text = re.sub(r"['’](?:t|s|d|m|ve|ll|re)\b", '', text, flags=re.IGNORECASE)
+        tokens = re.findall(r'\b[A-Za-z]\d*\b', bare_text)
         meaningful = [t for t in tokens if t.lower() not in filler]
         if meaningful and all(re.fullmatch(agent, t) for t in meaningful):
             for t in meaningful:
@@ -185,6 +187,16 @@ def test_parse_vote_msg():
          {"A": "human", "Z": "human", "C": "ai"}),
         ("Nice test! Thanks for this. My guess is B, C. Pretty sure D-E are not humans",
          {"B": "human", "C": "human", "D": "ai", "E": "ai"}),
+        ("I don't know", {}),
+        ("Who knows", {}),
+        ("cannot say", {}),
+        ("sorry", {}),
+        ("no votes", {}),
+        ("fuck off", {}),
+        ("It's T", {"T": "human"}),
+        ("It's S", {"S": "human"}),
+        ("i'd say d bot", {"D": "ai"}),
+        ("i'd say a bot", {"A": "ai"})
     ]
     passed = 0
     for msg, expected in tests:

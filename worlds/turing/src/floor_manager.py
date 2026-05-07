@@ -557,7 +557,6 @@ class WAgent(Agent):
         # the guests that he sponsored), by loading in on our "votes" stream, paired with an "empty" interaction
         # targeted to the hotel manager
         for hotel_manager, list_of_vote_dicts in list_of_vote_dicts_by_hotel_manager.items():
-            log.error(f"SENDING LIST OF VOTES TO HM: {list_of_vote_dicts}")
             await self.send(data_samples={"votes": json.dumps(list_of_vote_dicts)},
                             target=hotel_manager)
 
