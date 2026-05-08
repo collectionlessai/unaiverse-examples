@@ -65,9 +65,6 @@ class WWorld(World):
         behav.add_state("ready", action="check_messages",
                         args={"max_silence_seconds": 25.0, "talk_probability": 0.01, "history_len": 3},
                         msg="👍 Ready!")
-        behav.add_transit("ready", "message_sent",
-                          action="ask_gen", args={"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": True},
-                          ready=False)
         behav.add_transit("message_sent", "ready", action="nop")
         behav.add_transit("ready", "init", action="disconnected", args={"delay": 5.0})
         behav.add_transit("ready", "self_generated",
