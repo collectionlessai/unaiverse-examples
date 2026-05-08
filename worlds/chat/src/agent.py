@@ -77,6 +77,7 @@ class WAgent(Agent):
             if msgs is not None and len(msgs) > 0:
                 replied = False
                 for msg, _, _ in msgs:
+                    log.error(f"[{self.clock.get_cycle()}], msg={msg}")
                     my_rand = random.random()
                     self._last_turns.append(msg)
 
@@ -115,7 +116,7 @@ class WAgent(Agent):
                                         target=self._broadcaster_peer_id)
                         replied = True
                         log.error(f"A send done!")
-                        msg = self.stdout.get()
+                        msg = self.stdout.get("proc_output_0")
                         log.error(f"A msg was={msg}")
 
                     self._last_msg_time = tm.time()
@@ -147,7 +148,7 @@ class WAgent(Agent):
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
                         log.error(f"B send done!")
-                        msg = self.stdout.get()
+                        msg = self.stdout.get("proc_output_0")
                         log.error(f"B msg was={msg}")
 
                         self._last_msg_time = tm.time()
