@@ -78,6 +78,7 @@ class WAgent(Agent):
                 replied = False
                 for msg, _, _ in msgs:
                     my_rand = random.random()
+                    self._last_turns.append(msg)
 
                     if not replied and (((not self.is_human()) and (self.proc is not None and
                                                                     not isinstance(self.proc.module,
@@ -99,8 +100,11 @@ class WAgent(Agent):
                         augmented_msg += "The current message of the conversation is:\n"
                         augmented_msg += msg
 
+                        log.error(f"A my_rand={my_rand}, talk_probability={talk_probability}, name-found={self.get_name().lower() in msg.lower().strip()}")
+
                         self.stdin.set("proc_input_0", augmented_msg)
                         await self.process(self.im.get_current())
+                        log.error(f"A process done!")
                         await self.send(action_name="do_gen",
                                         action_kwargs={"u_hashes": [self.get_peer_id() + ":processor"],
                                                        "samples": 1,
@@ -110,6 +114,9 @@ class WAgent(Agent):
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
                         replied = True
+                        log.error(f"A send done!")
+                        msg = self.get_stream("proc_output_0").get()
+                        log.error(f"A msg was={msg}")
 
                     self._last_msg_time = tm.time()
                     self._last_turns.append(msg)
@@ -128,7 +135,9 @@ class WAgent(Agent):
                                       f"no other texts or preambles.\n")
 
                     self.stdin.set("proc_input_0", promote_prompt)
+                    log.error(f"B (tm.time() - self._last_msg_time)={tm.time() - self._last_msg_time}")
                     if await self.process(self.im.get_current()):
+                        log.error(f"B process done!")
                         await self.send(action_name="do_gen",
                                         action_kwargs={"u_hashes": [self.get_peer_id() + ":processor"],
                                                        "samples": 1,
@@ -137,7 +146,9 @@ class WAgent(Agent):
                                         num_steps=1,
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
+                        log.error(f"B send done!")
                         msg = self.get_stream("proc_output_0").get()
+                        log.error(f"B msg was={msg}")
 
                         self._last_msg_time = tm.time()
                         self._last_turns.append(msg)
