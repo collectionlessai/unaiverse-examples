@@ -91,7 +91,7 @@ class WAgent(Agent):
                             f"Generate a meaningful reply to the following conversation going on in chatroom "
                             f"(just to let you know, your name is {self.get_name()}). "
                             f"Please generate only the message to be sent in the chatroom,"
-                            f"no other texts or preambles."
+                            f"no other texts or preambles. DO NOT INCLUDE YOUR NAME IN THE GENERATED MESSAGE."
                             f"The last turns of the conversation are:\n")
                         for i, prev_msg in enumerate(self._last_turns):
                             augmented_msg += f"({i}) {prev_msg}\n"
@@ -100,7 +100,7 @@ class WAgent(Agent):
 
                         self.stdin.set("proc_input_0", augmented_msg)
                         await self.process(self.im.get_current())
-                        await self.send(action_name="ask_gen",
+                        await self.send(action_name="do_gen",
                                         streams=["processor"],
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
@@ -124,7 +124,7 @@ class WAgent(Agent):
 
                     self.stdin.set("proc_input_0", promote_prompt)
                     if await self.process():
-                        await self.send(action_name="ask_gen",
+                        await self.send(action_name="do_gen",
                                         streams=["processor"],
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
