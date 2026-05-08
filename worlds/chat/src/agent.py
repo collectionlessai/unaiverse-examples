@@ -79,7 +79,9 @@ class WAgent(Agent):
                 for msg, _, _ in msgs:
                     log.error(f"[{self.clock.get_cycle()}], msg={msg}")
                     my_rand = random.random()
+                    self._last_msg_time = tm.time()
                     self._last_turns.append(msg)
+                    self._last_turns = self._last_turns[-history_len:]
 
                     if not replied and (((not self.is_human()) and (self.proc is not None and
                                                                     not isinstance(self.proc.module,
@@ -117,10 +119,7 @@ class WAgent(Agent):
                         #log.error(f"A send done!")
                         #msg = self.stdout.get("proc_output_0")
                         #log.error(f"A msg was={msg}")
-
-                    self._last_msg_time = tm.time()
-                    self._last_turns.append(msg)
-                    self._last_turns = self._last_turns[-history_len:]
+                        self._last_msg_time = tm.time()
             else:
                 if ((not self.is_human()) and (self.proc is not None and
                                                not isinstance(self.proc.module, MultiIdentity)) and
@@ -150,7 +149,7 @@ class WAgent(Agent):
                     #    log.error(f"B msg was={msg}")
 
                     self._last_msg_time = tm.time()
-                    self._last_turns.append(msg)
+                    #self._last_turns.append(msg)
                     self._last_turns = self._last_turns[-history_len:]
             return True
         else:
