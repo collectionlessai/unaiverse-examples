@@ -72,16 +72,25 @@ class WAgent(Agent):
                         self._broadcaster_net_hash = net_hash
                         break
 
+        # Collecting my own generate messages
+        msgs = self._user_stream.get("check_messages", all_uuids=True)
+        if msgs is not None and len(msgs) > 0:
+            for msg, _, _ in msgs:
+                self._last_msg_time = tm.time()
+                self._last_turns.append(msg)
+                self._last_turns = self._last_turns[-history_len:]
+
+        # Collecting/handling received messages
         if self._broadcaster_stream is not None:
             msgs = self._broadcaster_stream.get("check_messages", all_uuids=True)
             if msgs is not None and len(msgs) > 0:
                 replied = False
                 for msg, _, _ in msgs:
-                    log.error(f"[{self.clock.get_cycle()}], msg={msg}")
-                    my_rand = random.random()
                     self._last_msg_time = tm.time()
                     self._last_turns.append(msg)
                     self._last_turns = self._last_turns[-history_len:]
+
+                    my_rand = random.random()
 
                     if not replied and (((not self.is_human()) and (self.proc is not None and
                                                                     not isinstance(self.proc.module,
@@ -103,23 +112,8 @@ class WAgent(Agent):
                         augmented_msg += "The current message of the conversation is:\n"
                         augmented_msg += msg
 
-                        log.error(f"A my_rand={my_rand}, talk_probability={talk_probability}, name-found={self.get_name().lower() in msg.lower().strip()}")
-
                         self.stdin.set("proc_input_0", augmented_msg)
-                        #await self.process()
-                        #log.error(f"A process done!")
-                        #await self.send(action_name="do_gen",
-                        #                action_kwargs={"u_hashes": [self.get_peer_id() + ":processor"],
-                        #                               "samples": 1},
-                        #                streams=["processor"],
-                        #                num_steps=1,
-                        #                copy_sys=True,
-                        #                target=self._broadcaster_peer_id)
                         replied = True
-                        #log.error(f"A send done!")
-                        #msg = self.stdout.get("proc_output_0")
-                        #log.error(f"A msg was={msg}")
-                        self._last_msg_time = tm.time()
             else:
                 if ((not self.is_human()) and (self.proc is not None and
                                                not isinstance(self.proc.module, MultiIdentity)) and
@@ -134,23 +128,6 @@ class WAgent(Agent):
                                       f"no other texts or preambles.\n")
 
                     self.stdin.set("proc_input_0", promote_prompt)
-                    #log.error(f"B (tm.time() - self._last_msg_time)={tm.time() - self._last_msg_time}")
-                    #if await self.process():
-                    #    log.error(f"B process done!")
-                    #    await self.send(action_name="do_gen",
-                    #                    action_kwargs={"u_hashes": [self.get_peer_id() + ":processor"],
-                    #                                   "samples": 1},
-                    #                    streams=["processor"],
-                    #                    num_steps=1,
-                    #                    copy_sys=True,
-                    #                    target=self._broadcaster_peer_id)
-                    #    log.error(f"B send done!")
-                    #    msg = self.stdout.get("proc_output_0")
-                    #    log.error(f"B msg was={msg}")
-
-                    self._last_msg_time = tm.time()
-                    #self._last_turns.append(msg)
-                    self._last_turns = self._last_turns[-history_len:]
             return True
         else:
             self.err("Cannot find the processor stream of the broadcaster")
