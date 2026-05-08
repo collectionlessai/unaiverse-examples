@@ -108,8 +108,7 @@ class WAgent(Agent):
                         log.error(f"A process done!")
                         await self.send(action_name="do_gen",
                                         action_kwargs={"u_hashes": [self.get_peer_id() + ":processor"],
-                                                       "samples": 1,
-                                                       "ignore_uuid": True},
+                                                       "samples": 1},
                                         streams=["processor"],
                                         num_steps=1,
                                         copy_sys=True,
@@ -141,8 +140,7 @@ class WAgent(Agent):
                         log.error(f"B process done!")
                         await self.send(action_name="do_gen",
                                         action_kwargs={"u_hashes": [self.get_peer_id() + ":processor"],
-                                                       "samples": 1,
-                                                       "ignore_uuid": True},
+                                                       "samples": 1},
                                         streams=["processor"],
                                         num_steps=1,
                                         copy_sys=True,
