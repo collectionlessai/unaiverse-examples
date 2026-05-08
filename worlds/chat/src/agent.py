@@ -101,7 +101,11 @@ class WAgent(Agent):
                         self.stdin.set("proc_input_0", augmented_msg)
                         await self.process(self.im.get_current())
                         await self.send(action_name="do_gen",
+                                        action_kwargs={"u_hashes": [self.get_peer_id() + ":processor"],
+                                                       "samples": 1,
+                                                       "ignore_uuid": True},
                                         streams=["processor"],
+                                        num_steps=1,
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
                         replied = True
@@ -125,7 +129,11 @@ class WAgent(Agent):
                     self.stdin.set("proc_input_0", promote_prompt)
                     if await self.process():
                         await self.send(action_name="do_gen",
+                                        action_kwargs={"u_hashes": [self.get_peer_id() + ":processor"],
+                                                       "samples": 1,
+                                                       "ignore_uuid": True},
                                         streams=["processor"],
+                                        num_steps=1,
                                         copy_sys=True,
                                         target=self._broadcaster_peer_id)
                         msg = self.get_stream("proc_output_0").get()
