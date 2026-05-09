@@ -21,7 +21,6 @@ from .floor import Floor
 from .config import Config
 from unaiverse.custom import Custom
 from unaiverse.streams import Stream
-from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
 from unaiverse.interaction import Interaction
 from unaiverse.streams.dataprops import DataProps
@@ -610,7 +609,7 @@ class WAgent(Agent):
 
     def __eject_and_clear_guest(self, guest):
         """Send a guest of the floor/room, without clearing his vote-related info (they might be needed to get his vote
-        after he disconnected."""
+        after he disconnected)."""
 
         if guest in self._sponsored_guests:
             del self._sponsored_guests[guest]

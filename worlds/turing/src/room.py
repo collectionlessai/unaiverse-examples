@@ -27,12 +27,12 @@ class Room:
         self.fake_names = Room.__make_fake_names()  # Generate names such as 'A', 'B', 'C', ...
         self.next_fake_name_index = 0
         self.guest2fake: dict[str, str] = {}  # peer ID -> fake name
-        self.fake2guest: dict[str, str] = {}  # fake name -> peer ID
+        self.fake2cached_info: dict[str, tuple[str, bool, str]] = {}  # fake name -> (peer ID, is a human?, unaid)
         self.guest2insert_time: dict[str, float] = {}
         self.guest2status_time: dict[str, float] = {}  # peer ID -> float time
         self.guest2status: dict[str, object] = {}  # peer ID -> status object
 
-        self.msgs_sent_by_fake_to_fake: dict[str, dict[str, int]]= {}  # peer ID, peer ID -> number of exchanges
+        self.msgs_sent_by_fake_to_fake: dict[str, dict[str, int]] = {}  # peer ID, peer ID -> number of exchanges
         self.msgs_recv_by_fake_from_fake: dict[str, dict[str, int]] = {}  # peer ID, peer ID -> number of exchanges
 
         assert len(self.fake_names) >= (Config.max_guests_per_room + Config.max_overbooked_guests)
@@ -74,7 +74,8 @@ class Room:
             return 0
 
     def count_messages_recv_by(self, fake_name: str, from_fake_name: str):
-        if fake_name in self.msgs_recv_by_fake_from_fake and from_fake_name in self.msgs_recv_by_fake_from_fake[fake_name]:
+        if (fake_name in self.msgs_recv_by_fake_from_fake and
+                from_fake_name in self.msgs_recv_by_fake_from_fake[fake_name]):
             return self.msgs_recv_by_fake_from_fake[fake_name][from_fake_name]
         else:
             return 0
@@ -122,14 +123,14 @@ class Room:
             self.next_fake_name_index = (self.next_fake_name_index + 1) % len(self.fake_names)
             if fake_name == oldest_fake_name:
                 return False  # Clash
-            while fake_name in self.fake2guest and self.is_in_room(self.fake2guest[fake_name]):
+            while fake_name in self.fake2cached_info and self.is_in_room(self.fake2cached_info[fake_name][0]):
                 fake_name = self.fake_names[self.next_fake_name_index]
                 self.next_fake_name_index = (self.next_fake_name_index + 1) % len(self.fake_names)
                 if fake_name == oldest_fake_name:
                     return False  # Clash
 
             self.guest2fake[guest] = fake_name
-            self.fake2guest[fake_name] = guest
+            self.fake2cached_info[fake_name] = (guest, self.is_human(guest), build_unaid(profile))
 
         self.guests[guest] = profile
         if profile is not None:
@@ -164,7 +165,7 @@ class Room:
                 del self.msgs_recv_by_fake_from_fake[fake_name]
             if self.count_guests() == 0:
                 self.next_fake_name_index = 0
-                self.fake2guest.clear()
+                self.fake2cached_info.clear()
 
     def fake_name_of(self, guest: str):
         if guest in self.guest2fake:
@@ -173,8 +174,8 @@ class Room:
             return None
 
     def guest_whose_fake_name_is(self, fake_name: str):
-        if fake_name in self.fake2guest:
-            return self.fake2guest[fake_name]
+        if fake_name in self.fake2cached_info:
+            return self.fake2cached_info[fake_name][0]
         else:
             return None
 
@@ -201,7 +202,7 @@ class Room:
         return "human" if is_human else "ai"
 
     def get_fake_names(self):
-        return self.fake2guest
+        return self.fake_names
 
     @staticmethod
     def __make_fake_names():
