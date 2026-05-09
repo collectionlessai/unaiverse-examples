@@ -195,10 +195,22 @@ class Room:
         else:
             return None
 
+    def get_unaid_of_fake_name(self, fake_name):
+        if fake_name in self.fake2cached_info:
+            return self.fake2cached_info[fake_name][2]
+        else:
+            return None
+
     def get_ground_truth_of(self, guest):
         is_human = self.is_human(guest)
         if is_human is None:
             return None
+        return "human" if is_human else "ai"
+
+    def get_ground_truth_of_fake_name(self, fake_name):
+        if fake_name not in self.fake2cached_info:
+            return None
+        is_human = self.fake2cached_info[fake_name][1]
         return "human" if is_human else "ai"
 
     def get_fake_names(self):

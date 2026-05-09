@@ -180,10 +180,11 @@ class WAgent(Agent):
                 "voter_nature": room.get_ground_truth_of(guest),
                 "vote": None,  # This will be filled when actually receiving the vote from the processor stream
                 "ground_truth": {
-                    votee_fake_name: (room.get_ground_truth_of(votee), room.get_unaid_of(votee))
+                    votee_fake_name: (room.get_ground_truth_of_fake_name(votee_fake_name),
+                                      room.get_unaid_of_fake_name(votee_fake_name))
                     for votee_fake_name in fake_names_seen_so_far
                     if votee_fake_name != fake_name
-                    if (votee := room.guest_whose_fake_name_is(votee_fake_name)) is not None
+                    if room.guest_whose_fake_name_is(votee_fake_name) is not None
                 },
                 "session_id": self.floor.id + ":" + room.id,
                 "floor_manager": self.get_peer_id(),
