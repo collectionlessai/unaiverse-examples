@@ -28,7 +28,7 @@
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 5.0,
+                    "retry_timeout": 0.0,
                     "time_to_wait_before_running": 0.0
                 },
                 "goto": "ready"

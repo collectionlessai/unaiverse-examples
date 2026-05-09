@@ -101,25 +101,6 @@
         "ready": [
             {
                 "on": {
-                    "action": "ask_gen",
-                    "action_kwargs": {
-                        "u_hashes": [
-                            "<agent>:processor"
-                        ],
-                        "samples": 1,
-                        "ignore_uuid": true
-                    },
-                    "msg": null,
-                    "ready": false,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "message_sent"
-            },
-            {
-                "on": {
                     "action": "disconnected",
                     "action_kwargs": {},
                     "msg": null,
@@ -173,8 +154,7 @@
                         "u_hashes": [
                             "<agent>:processor"
                         ],
-                        "samples": 1,
-                        "ignore_uuid": true
+                        "samples": 1
                     },
                     "msg": null,
                     "ready": true,
