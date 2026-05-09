@@ -71,7 +71,7 @@ class WWorld(World):
                           action="do_gen", args={"u_hashes": ["<agent>:processor_in"], "samples": 1},
                           ready=True, avoid_changing_ready=True)
         behav.add_transit("self_generated", "message_sent",
-                          action="ask_gen", args={"u_hashes": ["<agent>:processor"], "samples": 1})
+                          action="ask_gen", args={"u_hashes": ["<agent>:processor"], "samples": 1, "ignore_uuid": True})
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'user.json'), only_if_changed=dummy_agent)
