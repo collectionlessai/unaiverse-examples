@@ -839,7 +839,8 @@ tr.gridjs-tr:hover td.gridjs-td{{
   function fmtPeer(cell){{
     if(!cell) return gridjs.html('<span class="peer-cell">-</span>');
     var s=String(cell);
-    var short=s.length>18?s.substring(0,18)+'\u2026':s;
+    var idx=s.lastIndexOf('/');
+    var short=idx>=0?s.substring(idx+1):s;
     return gridjs.html('<span class="peer-cell" title="'+s+'">'+short+'</span>');
   }}
   function fmtNull(cell){{
@@ -884,7 +885,8 @@ tr.gridjs-tr:hover td.gridjs-td{{
       var html='<div class="podium">';
       top3.forEach(function(entry,i){{
         var peerId=entry.peer_id||'';
-        var shortId=peerId.length>18?peerId.substring(0,18)+'\u2026':peerId;
+        var idx=peerId.lastIndexOf('/');
+        var shortId=idx>=0?peerId.substring(idx+1):peerId;
         var score=entry[scoreKey];
         var scoreStr=(score===null||score===undefined)?'-':score;
         html+='<div class="podium-card">'

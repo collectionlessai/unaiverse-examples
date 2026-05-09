@@ -12,6 +12,7 @@ OUTER dynamic (peer_id = group key):
                       Value shape:
                         {
                           "voter":            "<unaid>",
+                          "voter_nature":     "human" | "ai",
                           "vote":             "human" | "ai",
                           "ground_truth":     "human" | "ai",
                           "session_id":       "<floor.peer_id>:<room.uuid>",
@@ -271,6 +272,7 @@ class WStats(Stats):
         Atomic votes are grouped by the votee's UNaID and the dict has the following structure:
         {
             "voter": VOTER_UNAID,
+            "voter_nature": "human" | "ai",
             "vote": "human" | "ai",
             "ground_truth": "human" | "ai"
             "session_id": FLOOR_ID:ROOM_ID,
@@ -329,6 +331,7 @@ class WStats(Stats):
         Atomic votes are grouped by the votee's UNaID and the dict has the following structure:
         {
             "voter": VOTER_UNAID,
+            "voter_nature": "human" | "ai",
             "vote": "human" | "ai",
             "ground_truth": "human" | "ai"
             "session_id": FLOOR_ID:ROOM_ID,
@@ -339,14 +342,12 @@ class WStats(Stats):
         }
         """
         _K = 10
-        # Build voter nature lookup: when a voter also appears as a votee,
-        # their ground_truth reveals whether they are human or ai.
         nature_lookup: dict[str, str] = {}
         for rec in votes:
-            votee_unaid = rec.get("_votee") or ""
-            gt = rec.get("ground_truth")
-            if votee_unaid and gt in ("human", "ai"):
-                nature_lookup[votee_unaid] = gt
+            voter_unaid = rec.get("voter") or ""
+            vn = rec.get("voter_nature")
+            if voter_unaid and vn in ("human", "ai"):
+                nature_lookup[voter_unaid] = vn
 
         by_voter: dict[str, dict] = {}
         for rec in votes:
@@ -653,14 +654,6 @@ class WStats(Stats):
 
         ops_series = cache.get("ops_series", {})
         ops_json = self._make_ops_plotly_json(ops_series)
-
-        # DEBUG: save to stats.html
-        # TODO comment this
-        with open("stats.html", "w", encoding="utf-8") as file:
-            file.write(self._render_page(
-                summary_html, scope_cms_html,
-                scope_podiums_html, scope_grids_html, ops_json,
-            ))
 
         return self._render_page(
             summary_html, scope_cms_html,
