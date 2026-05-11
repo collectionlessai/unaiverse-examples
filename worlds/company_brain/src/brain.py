@@ -94,15 +94,6 @@ class WAgent(Agent):
         self._seen_team_managers_peer_ids = set()
         self._seen_team_managers_names = set()
 
-    async def add_agent(self, peer_id: str, *args, **kwargs) -> bool:
-        ret = await super().add_agent(peer_id, *args, **kwargs)
-        if ret:
-            log.user(f"A new agent joined: "
-                     f"{self.all_agents[peer_id].get_static_profile()['node_name']}")
-            return True
-        else:
-            return False
-
     async def on_tick(self):
         agents_in_world = self.get_connection_pool_manager().world_agents_set
         for _agent in agents_in_world:
@@ -110,6 +101,8 @@ class WAgent(Agent):
                 continue
             if (not self.get_connection_pool_manager().is_connected(_agent) and
                     _agent not in self._node_agents_waiting and _agent not in self.world_agents):
+                log.user(f"A new agent joined: "
+                         f"{self.all_agents[_agent].get_static_profile()['node_name']}")
                 await self.connect_to(_agent)
                 self._contacted.add(_agent)
 
