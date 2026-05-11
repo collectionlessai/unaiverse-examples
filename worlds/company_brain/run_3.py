@@ -1,9 +1,9 @@
 from unaiverse.agent import Agent
-from unaiverse.modules.networks import Phi
 from unaiverse.networking.node.node import Node
+from unaiverse.modules.networks import TinyLLama
 
 # Agent
-agent = Agent(proc=Phi(), proc_inputs=["text"], proc_outputs=["text"])
+agent = Agent(proc=TinyLLama(), proc_inputs=["text"], proc_outputs=["text"])
 
 # Node hosting agent
 node = Node(agent, node_name="Expert", hidden=True, clock_delta=1. / 20.)
