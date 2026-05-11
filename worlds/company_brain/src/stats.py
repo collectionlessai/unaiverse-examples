@@ -5,7 +5,7 @@ class WStats(Stats):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # You can add custom initialization here if needed
-        self._deb("Custom Chat Stats Class Initialized!")
+        self._deb("Custom Company Brain Stats Class Initialized!")
 
     def _deb(self, msg: str):
         """Prints a debug message if enabled."""
