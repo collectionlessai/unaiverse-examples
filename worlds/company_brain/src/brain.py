@@ -98,7 +98,7 @@ class WAgent(Agent):
         ret = await super().add_agent(peer_id, *args, **kwargs)
         if ret:
             log.user(f"A new {self.get_role(peer_id).replace('_', ' ').title()} joined: "
-                     f"{self.all_agents[peer_id].get_static_profile()['name']}")
+                     f"{self.all_agents[peer_id].get_static_profile()['node_name']}")
             return True
         else:
             return False
