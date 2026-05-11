@@ -16,6 +16,7 @@ import textwrap
 import time as tm
 from unaiverse.agent import Agent, action
 from unaiverse.modules.utils import MultiIdentity
+from unaiverse.utils.logger import log
 
 
 class WAgent(Agent):
@@ -91,6 +92,21 @@ class WAgent(Agent):
         """)]
         self._seen_team_managers_peer_ids = set()
         self._seen_team_managers_names = set()
+
+    async def add_agent(self, peer_id: str, *args, **kwargs) -> bool:
+        ret = await super().add_agent(peer_id, *args, **kwargs)
+        if ret:
+            log.user(f"A new {self.get_role(peer_id).replace('_', ' ').title()} joined: "
+                     f"{self.all_agents[peer_id].get_static_profile()['name']}")
+            return True
+        else:
+            return False
+
+    async def on_tick(self):
+        agents_in_world = self.get_connection_pool_manager().world_agents_set
+        for _agent in agents_in_world:
+            if _agent not in self._node_agents_waiting and _agent not in self.all_agents:
+                await self.connect_to(_agent)
 
     @action
     async def connect_to_dispatcher(self, role: str):

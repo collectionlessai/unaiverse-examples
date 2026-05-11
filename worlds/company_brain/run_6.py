@@ -18,4 +18,4 @@ agent.add_stream(stream)
 node = Node(agent, node_name="Robot", hidden=True, clock_delta=1. / 20.)
 
 # Running node
-node.run(join_world="CompanyBrain", interact_mode=True, role_preference="team_member")
+node.run(join_world="CompanyBrain", role_preference="team_member")
