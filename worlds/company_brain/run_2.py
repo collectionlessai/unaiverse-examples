@@ -9,4 +9,4 @@ agent = Agent(proc=Phi(), proc_inputs=["text"], proc_outputs=["text"])
 node = Node(agent, node_name="Brain", hidden=True, clock_delta=1. / 20.)
 
 # Running node
-node.run(join_world="CompanyBrain")
+node.run(join_world="CompanyBrain", role_preference="brain")
