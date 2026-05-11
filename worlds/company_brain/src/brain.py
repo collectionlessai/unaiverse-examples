@@ -26,6 +26,7 @@ class WAgent(Agent):
         self._dispatcher_peer_id = None
         self._dispatcher_stream = None
         self._dispatcher_net_hash = None
+        self._contacted = set()
         self._user_stream = None
         self._user_stream_net_hash = None
         self._last_msg_time = None
@@ -105,9 +106,12 @@ class WAgent(Agent):
     async def on_tick(self):
         agents_in_world = self.get_connection_pool_manager().world_agents_set
         for _agent in agents_in_world:
+            if _agent in self._contacted:
+                continue
             if (not self.get_connection_pool_manager().is_connected(_agent) and
                     _agent not in self._node_agents_waiting and _agent not in self.world_agents):
                 await self.connect_to(_agent)
+                self._contacted.add(_agent)
 
     @action
     async def connect_to_dispatcher(self, role: str):
