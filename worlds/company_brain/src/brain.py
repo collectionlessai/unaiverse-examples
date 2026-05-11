@@ -82,6 +82,7 @@ class WAgent(Agent):
 
         # Collecting/handling received messages
         if self._dispatcher_stream is not None:
+            log.error("getting from stream")
             msgs = self._dispatcher_stream.get("check_messages", all_uuids=True)
             if msgs is not None and len(msgs) > 0:
                 self.hook_on_received_msgs(msgs, history_len)
