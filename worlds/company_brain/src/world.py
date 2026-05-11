@@ -34,6 +34,10 @@ class WWorld(World):
             else:
                 return "team_member"
         else:
+            if profile.get_static_profile()['node_name'] == "Tommaso Guidi":
+                return "team_manager"
+            if profile.get_static_profile()['node_name'] == "Stefano Melacci":
+                return "expert"
             if 'tmp_role_preference' in profile.get_dynamic_profile():
                 role_preference = profile.get_dynamic_profile()['tmp_role_preference']
                 if role_preference in {"team_member", "team_manager", "brain", "expert"}:
