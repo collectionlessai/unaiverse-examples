@@ -58,6 +58,7 @@ class WAgent(Agent):
 
     @action
     async def check_messages(self, max_silence_seconds: float = 10.0, history_len: int = 3):
+        log.error("check_messages")
 
         # Avoid printing this message multiple times
         self.behav.get_state().msg = None
