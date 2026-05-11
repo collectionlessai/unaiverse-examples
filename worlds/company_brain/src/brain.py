@@ -58,7 +58,6 @@ class WAgent(Agent):
 
     @action
     async def check_messages(self, max_silence_seconds: float = 10.0, history_len: int = 3):
-        log.error("check_messages")
 
         # Avoid printing this message multiple times
         self.behav.get_state().msg = None
@@ -82,7 +81,6 @@ class WAgent(Agent):
 
         # Collecting/handling received messages
         if self._dispatcher_stream is not None:
-            log.error("getting from stream")
             msgs = self._dispatcher_stream.get("check_messages", all_uuids=True)
             if msgs is not None and len(msgs) > 0:
                 self.hook_on_received_msgs(msgs, history_len)
@@ -94,11 +92,9 @@ class WAgent(Agent):
             return False
 
     def hook_on_received_msgs(self, msg_tuples: list[tuple[any, int, float]], history_len: int):
-        log.error("hook_on_received_msgs")
         if self.is_human():
             return
 
-        log.error(f"msg_tuples={msg_tuples}")
         for msg, _, _ in msg_tuples:
             if not isinstance(msg, str):
                 continue
@@ -188,11 +184,8 @@ class WAgent(Agent):
                 self.stdin.set("proc_input_0", augmented_msg)
 
     def hook_on_zero_received_msgs(self, max_silence_seconds: float):
-        log.error("hook_on_zero_received_msgs")
         if self.is_human():
             return
-
-        log.error("non human")
 
         if (((tm.time() - self._last_msg_time) > max_silence_seconds)
                 and len(self.get_agents_by_role("team_members")) > 0):
