@@ -105,7 +105,7 @@ class WAgent(Agent):
     async def on_tick(self):
         agents_in_world = self.get_connection_pool_manager().world_agents_set
         for _agent in agents_in_world:
-            if _agent not in self._node_agents_waiting and _agent not in self.all_agents:
+            if not self.get_connection_pool_manager().is_connected(_agent):
                 await self.connect_to(_agent)
 
     @action

@@ -10,7 +10,7 @@ agent = Agent(proc=None,
 
 # Robot stream
 stream = DataStream.create(TokensStream("sensor.csv"),
-                                   "sensor", "sensor_group", public=False, pubsub=True)
+                           "sensor", "sensor_group", public=False, pubsub=True)
 stream.props.delta = 10.0
 agent.add_stream(stream)
 
