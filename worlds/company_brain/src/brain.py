@@ -268,7 +268,7 @@ class WAgent(Agent):
             return
 
         if (((tm.time() - self._last_msg_time) > max_silence_seconds)
-                and len(self.get_agents_by_role("team_members")) > 0):
+                and len(self.get_agents_by_role("team_member")) > 0):
 
             promote_prompt = textwrap.dedent(f"""
                     You are a conversation facilitator in a team chat room. The room has been
@@ -278,7 +278,7 @@ class WAgent(Agent):
                     ## Currently Connected Participants
                     
                     - Team Manager(s): {self.peer_ids_to_names(self.get_agents_by_role("team_manager"))}
-                    - Team Member(s):  {self.peer_ids_to_names(self.get_agents_by_role("team_members"))}
+                    - Team Member(s):  {self.peer_ids_to_names(self.get_agents_by_role("team_member"))}
                     - Expert(s):       {self.peer_ids_to_names(self.get_agents_by_role("expert"))}
                     - Brain(s):        {self.peer_ids_to_names(self.get_agents_by_role("brain"))}
                     
