@@ -16,6 +16,7 @@ import textwrap
 import time as tm
 from unaiverse.agent import Agent, action
 from unaiverse.modules.utils import MultiIdentity
+from unaiverse.utils.logger import log
 
 
 class WAgent(Agent):
@@ -91,9 +92,11 @@ class WAgent(Agent):
             return False
 
     def hook_on_received_msgs(self, msg_tuples: list[tuple[any, int, float]], history_len: int):
+        log.error("hook_on_received_msgs")
         if self.is_human():
             return
 
+        log.error(f"msg_tuples={msg_tuples}")
         for msg, _, _ in msg_tuples:
             if not isinstance(msg, str):
                 continue
@@ -279,4 +282,3 @@ class WAgent(Agent):
 
     def is_human(self):
         return super().is_human() or (self.proc is not None and isinstance(self.proc.module, MultiIdentity))
-
