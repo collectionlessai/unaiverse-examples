@@ -42,8 +42,7 @@
             "action": "check_messages",
             "action_kwargs": {
                 "max_silence_seconds": 25.0,
-                "talk_probability": 0.01,
-                "history_len": 3
+                "history_len": 100
             },
             "msg": "&#128077; Ready!",
             "blocking": true,
