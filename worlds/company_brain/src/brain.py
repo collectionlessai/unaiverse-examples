@@ -188,8 +188,11 @@ class WAgent(Agent):
                 self.stdin.set("proc_input_0", augmented_msg)
 
     def hook_on_zero_received_msgs(self, max_silence_seconds: float):
+        log.error("hook_on_zero_received_msgs")
         if self.is_human():
             return
+
+        log.error("non human")
 
         if (((tm.time() - self._last_msg_time) > max_silence_seconds)
                 and len(self.get_agents_by_role("team_members")) > 0):
