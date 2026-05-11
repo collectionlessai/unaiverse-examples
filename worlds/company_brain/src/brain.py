@@ -16,7 +16,6 @@ import textwrap
 import time as tm
 from unaiverse.agent import Agent, action
 from unaiverse.modules.utils import MultiIdentity
-from unaiverse.utils.logger import log
 
 
 class WAgent(Agent):
@@ -29,7 +28,67 @@ class WAgent(Agent):
         self._user_stream = None
         self._user_stream_net_hash = None
         self._last_msg_time = None
-        self._last_turns = []
+        self._last_turns = [textwrap.dedent("""
+            ## Company Context
+        
+            You operate inside the internal team chat of **Acme Robotics & Automation**,
+            a mid-to-large industrial technology company that designs, deploys, and
+            maintains automated systems for manufacturing and logistics environments.
+        
+            ### What the company does
+        
+            The company integrates hardware and software into industrial cells and
+            production lines. Typical deployments combine:
+        
+            - **Robots**: industrial manipulators (6-axis arms, SCARA, collaborative
+              robots / cobots), mobile platforms (AGVs, AMRs), and end-effectors
+              (grippers, suction tools, welding heads).
+            - **Sensors**: proximity, force/torque, LIDAR, IMU, temperature, pressure,
+              vibration, and current sensors used for machine control, predictive
+              maintenance, and safety interlocks.
+            - **Cameras and vision systems**: 2D and 3D industrial cameras, thermal
+              cameras, line-scan cameras for quality inspection, defect detection,
+              bin picking, object tracking, and barcode/OCR reading.
+            - **Edge and cloud software**: on-device inference for vision and
+              anomaly detection, PLC and ROS-based control stacks, MES/SCADA
+              integrations, fleet management, and cloud dashboards for KPIs.
+        
+            ### Typical projects and topics discussed
+        
+            Conversations in this room commonly involve:
+        
+            - Designing and commissioning a new robotic cell or production line.
+            - Integrating a vision system for quality control or pick-and-place.
+            - Calibrating, tuning, or troubleshooting sensors and actuators.
+            - Training and deploying ML models for defect detection, predictive
+              maintenance, or process optimization.
+            - Safety compliance (e.g., ISO 10218, ISO/TS 15066 for cobots,
+              machine-safety risk assessments, e-stop and light-curtain logic).
+            - Customer site deployments, FAT/SAT acceptance testing, downtime
+              incidents, spare-parts logistics, firmware and software rollouts.
+            - Internal coordination across mechanical, electrical, controls,
+              software, ML, and field-service engineering.
+        
+            ### Who is in the room
+        
+            Participants are employees of the company collaborating on these
+            projects. They include Team Managers, Team Members (engineers and
+            technicians), domain Experts (e.g., robotics, computer vision, ML,
+            controls, safety, mechanical, electrical, field service), and the
+            Brain (you, when this preamble is used with the Brain role).
+        
+            ### How to use this context
+        
+            Use the above ONLY to interpret terminology, acronyms, and references
+            that appear in the conversation history — for example, recognizing
+            that "the cell" likely means a robotic work cell, "the camera" likely
+            means an industrial vision sensor, "AMR" means autonomous mobile
+            robot, and "the customer line" means a deployed production line at
+            a customer site. Do NOT use this context to invent facts, projects,
+            customer names, or decisions that are not present in the conversation
+            history. If the history does not contain the requested information,
+            say so plainly, even if this context suggests a plausible answer.
+        """)]
         self._seen_team_managers_peer_ids = set()
         self._seen_team_managers_names = set()
 
