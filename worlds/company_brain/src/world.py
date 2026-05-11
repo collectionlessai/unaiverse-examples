@@ -69,7 +69,7 @@ class WWorld(World):
                           action="connected", args={"handshake_completed": True})
         behav.add_transit("waiting_handshake", "init", action="disconnected", args={"delay": 5.0})
         behav.add_state("ready", action="check_messages",
-                        args={"max_silence_seconds": 25.0, "talk_probability": 0.01, "history_len": 3},
+                        args={"max_silence_seconds": 25.0, "history_len": 100},
                         msg="👍 Ready!")
         behav.add_transit("message_sent", "ready", action="nop")
         behav.add_transit("ready", "init", action="disconnected", args={"delay": 5.0})

@@ -56,8 +56,7 @@ class WAgent(Agent):
             return False
 
     @action
-    async def check_messages(self, max_silence_seconds: float = 10.0, talk_probability: float = 0.333,
-                             history_len: int = 3):
+    async def check_messages(self, max_silence_seconds: float = 10.0, history_len: int = 3):
 
         # Avoid printing this message multiple times
         self.behav.get_state().msg = None
