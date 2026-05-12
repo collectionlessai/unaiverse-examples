@@ -161,7 +161,8 @@ class WAgent(Agent):
         if guest is None:
             guest = interaction.target[0]
             callback_from_process_vote = True
-        log.error(f"guest_back_to_hall, guest={guest}, interaction.target={interaction.target}, callback_from_process_vote={callback_from_process_vote}")
+        if interaction is not None:
+            log.error(f"guest_back_to_hall, guest={guest}, interaction.target={interaction.target}, callback_from_process_vote={callback_from_process_vote}")
 
         # Safety
         if not self.floor.is_in_a_room(guest):
