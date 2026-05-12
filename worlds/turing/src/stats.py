@@ -517,7 +517,8 @@ class WStats(Stats):
                 "name": _HOTEL_OPS_LABELS.get(stat_name, stat_name),
                 "type": "scatter",
                 "mode": "lines",
-                "line": {"color": colour, "width": 2, "shape": "spline"},
+                # Sample-and-hold (zero-order hold) interpolation.
+                "line": {"color": colour, "width": 2, "shape": "hv"},
             })
         return json.dumps(traces)
 
