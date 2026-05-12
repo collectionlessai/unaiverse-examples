@@ -9,7 +9,7 @@ agent = Agent(proc=None,
               proc_outputs=[StreamType(data_type="text", pubsub=False, private_only=True)])
 
 # Robot stream
-stream = DataStream.create(TokensStream("sensor.csv"),
+stream = DataStream.create(TokensStream("src/sensor.dat"),
                            "sensor", "sensor_group", public=False, pubsub=True)
 stream.props.delta = 10.0
 agent.add_stream(stream)
