@@ -161,12 +161,9 @@ class WAgent(Agent):
         if guest is None:
             guest = interaction.target[0]
             callback_from_process_vote = True
-        if interaction is not None:
-            log.error(f"guest_back_to_hall, guest={guest}, interaction.target={interaction.target}, callback_from_process_vote={callback_from_process_vote}")
 
         # Safety
         if not self.floor.is_in_a_room(guest):
-            log.error("Guest non in a room, stop here")
             return True  # Return true to complete the action and hence burn the interaction
 
         # Getting info
@@ -206,12 +203,9 @@ class WAgent(Agent):
                 }
             }
 
-            log.error(f"vote_dict={vote_dict}")
-
             # We save the vote dictionary as second element of the tuple below
             # Recall that the first one is the UUID of the voting interaction
             if guest in self._guest2vote_info:
-                log.error(f"GUEST IN _guest2vote_info, SAVING! ****")
                 self._guest2vote_info[guest][1] = vote_dict
 
         # Telling hotel manager that we reset our state touch with the floor manager he suggested
@@ -549,8 +543,6 @@ class WAgent(Agent):
             vote_msg = guest_processor_stream.get(requested_by="send_votes", uuid=vote_interaction_uuid)
             if vote_msg is None:
                 continue
-
-            log.error(f"Found VOTE MSG in stream of guest {guest}, vote_msg={vote_msg}")
 
             vote_dict["vote"] = vote_msg
             hotel_manager = vote_dict["hotel_manager"]

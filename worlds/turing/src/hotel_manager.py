@@ -539,7 +539,6 @@ class WAgent(Agent):
             votes = votes_stream.get("get_votes", all_uuids=True)
 
             for vote_str, _, _ in votes:
-                log.error(f"Got a vote! vote_str={vote_str}")
 
                 # Filtering out empty packets
                 if vote_str is None:
