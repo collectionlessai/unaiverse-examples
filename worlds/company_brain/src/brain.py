@@ -103,6 +103,11 @@ class WAgent(Agent):
         else:
             return False
 
+    async def remove_agent(self, peer_id: str):
+        log.user(f"An agent left: "
+                 f"{self.all_agents[peer_id].get_static_profile()['node_name']}")
+        await super().remove_agent(peer_id)
+
     async def on_tick(self):
         agents_in_world = self.get_connection_pool_manager().world_agents_set
         for _agent in agents_in_world:

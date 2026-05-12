@@ -15,7 +15,7 @@ stream.props.delta = 10.0
 agent.add_stream(stream)
 
 # Node hosting agent
-node = Node(agent, node_name="Robot", hidden=True, clock_delta=1. / 20.)
+node = Node(agent, node_name="Drone", hidden=True, clock_delta=1. / 20.)
 
 # Running node
 node.run(join_world="CompanyBrain", role_preference="team_member")
