@@ -1,2 +1,4 @@
 hotel,stefano.melacci@unisi.it/TuringHotelManager
 floor,stefano.melacci@unisi.it/TuringFloorManager
+hotel,stefano.melacci@unisi.it/_TuringHotelManager
+floor,stefano.melacci@unisi.it/_TuringFloorManager
