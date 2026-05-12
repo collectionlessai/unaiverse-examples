@@ -5,7 +5,7 @@ from unaiverse.networking.node.node import Node
 world = WWorld()
 
 # Node hosting world
-node = Node(node_name="TuringHotel", hosted=world, hidden=True, clock_delta=1./50.)
+node = Node(node_name="TuringHotel", hosted=world, hidden=False, clock_delta=1./50.)
 
 # Running node
 node.run()

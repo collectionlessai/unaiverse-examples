@@ -5,7 +5,7 @@ from unaiverse.networking.node.node import Node
 agent = Agent(proc=None)
 
 # Node hosting agent
-node = Node(node_name="TuringHotelManager", hosted=agent, hidden=True, clock_delta=1. / 50.)
+node = Node(node_name="TuringHotelManager", hosted=agent, hidden=False, clock_delta=1. / 50.)
 
 # Running node
 node.run(join_world="TuringHotel")
