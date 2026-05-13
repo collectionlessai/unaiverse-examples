@@ -32,7 +32,7 @@ class ScriptedModule(ModuleWrapper):
 class DemoAgent(Agent):
 
     def __init__(self, *args, auto_start=False, respond_to_any=False,
-                 silence_delay=5.0, **kwargs):
+                 silence_delay=30.0, **kwargs):
         super().__init__(*args, **kwargs)
         self._auto_start = auto_start
         self._respond_to_any = respond_to_any
