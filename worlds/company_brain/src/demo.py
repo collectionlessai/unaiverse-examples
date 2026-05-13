@@ -102,7 +102,7 @@ class DemoAgent(Agent):
             self._scripted_names = set(
                 name for name, _ in self.proc.module._script if name != "HUMAN"
             )
-        log.error(f"[DEMO] DemoAgent init: is_human={self.is_human()}, scripted_names={self._scripted_names}")
+            log.error(f"[DEMO] DemoAgent init: is_human={self.is_human()}, scripted_names={self._scripted_names}")
 
     # ── hooks ──
 
