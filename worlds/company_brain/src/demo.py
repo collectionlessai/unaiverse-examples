@@ -14,8 +14,7 @@ def read_index(path):
         with open(path, 'r') as f:
             return int(f.read().strip())
     except (FileNotFoundError, ValueError):
-        log.error(f"[DEMO] read_index: failed to read index from {path}, defaulting to 0")
-        return 0
+        return -1
 
 
 def write_index(path, value):
@@ -69,7 +68,6 @@ class ScriptedModule(ModuleWrapper):
         if idx < len(self._script):
             sender, text = self._script[idx]
             if sender == self._agent_name:
-                # Realistic delay before speaking
                 wait = self._delay + random.uniform(-self._delay_variance, self._delay_variance)
                 log.error(f"[DEMO] {self._agent_name} sleeping {wait:.1f}s then sending msg #{idx}")
                 tm.sleep(max(0.5, wait))
@@ -97,7 +95,6 @@ class DemoAgent(Agent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Cache scripted agent names for HUMAN-detection
-        # Strip trailing colon+space from dispatcher-formatted names
         if hasattr(self.proc, "_script"):
             self._scripted_names = set(
                 name for name, _ in self.proc._script if name != "HUMAN"
@@ -121,7 +118,6 @@ class DemoAgent(Agent):
 
             # If this message is from the HUMAN player, advance past HUMAN entries
             raw_sender = self.get_sender_name(msg)
-            # get_sender_name returns "Name:" (with colon) — strip it
             sender = raw_sender.rstrip(":").strip() if raw_sender else None
             log.error(f"[DEMO] hook_on_received_msgs: raw_sender='{raw_sender}', parsed sender='{sender}'")
             if sender and sender not in self._scripted_names:
@@ -133,15 +129,12 @@ class DemoAgent(Agent):
         self._check_and_trigger()
 
     def hook_on_zero_received_msgs(self, max_silence_seconds):
-        # log.error(f"[DEMO] hook_on_zero_received_msgs: {self.proc.agent_name}, is_human={self.is_human()}")
         if self.is_human():
             return
         self._check_and_trigger()
 
     def _check_and_trigger(self):
         """If it's this agent's turn in the script, trigger do_gen."""
-        idx = read_index(self.proc.index_file)
-        # log.error(f"[DEMO] _check_and_trigger: {self.proc.agent_name}, has_next={self.proc.has_next()}, idx={idx}")
         if not self.proc.has_next():
             return
         idx = read_index(self.proc.index_file)

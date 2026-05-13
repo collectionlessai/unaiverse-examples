@@ -1,5 +1,5 @@
 SCRIPT = [
-    ("HUMAN", None),   # Elena: "Hey Brain, what's happened?"
+    ("HUMAN", None),   # Elena: "Hey Brain, what happened?"
     
     ("Company Brain",
      "Hi Elena, quick brief. Drone-07 flagged a thermal anomaly in Area B-3. "
