@@ -14,6 +14,7 @@ def read_index(path):
         with open(path, 'r') as f:
             return int(f.read().strip())
     except (FileNotFoundError, ValueError):
+        log.error(f"[DEMO] read_index: failed to read index from {path}, defaulting to 0")
         return 0
 
 
@@ -105,6 +106,7 @@ class DemoAgent(Agent):
     # ── hooks ──
 
     def hook_on_received_msgs(self, msg_tuples, history_len):
+        log.error(f"[DEMO] hook_on_received_msgs: {self.proc.agent_name}, is_human={self.is_human()}, n_msgs={len(msg_tuples)}")
         if self.is_human():
             return
         for msg, _, _ in msg_tuples:
@@ -127,12 +129,15 @@ class DemoAgent(Agent):
         self._check_and_trigger()
 
     def hook_on_zero_received_msgs(self, max_silence_seconds):
+        log.error(f"[DEMO] hook_on_zero_received_msgs: {self.proc.agent_name}, is_human={self.is_human()}")
         if self.is_human():
             return
         self._check_and_trigger()
 
     def _check_and_trigger(self):
         """If it's this agent's turn in the script, trigger do_gen."""
+        idx = read_index(self.proc.index_file)
+        log.error(f"[DEMO] _check_and_trigger: {self.proc.agent_name}, has_next={self.proc.has_next()}, idx={idx}")
         if not self.proc.has_next():
             return
         idx = read_index(self.proc.index_file)
