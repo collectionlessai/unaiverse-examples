@@ -10,7 +10,7 @@ messages = [
     "Brain, please record this resolution. I will review the drone footage tonight."
 ]
 
-agent = DemoAgent(proc=ScriptedModule(messages),
+agent = DemoAgent(proc=ScriptedModule(messages), silence_delay=300.0,
                   policy_filter=PolicyFilterDelayAction({"do_gen"}, wait=3., add_random_up_to=2.))
 
 node = Node(agent, node_name="Elena", hidden=True, clock_delta=1. / 20.)

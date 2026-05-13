@@ -8,7 +8,7 @@ messages = [
 ]
 
 agent = DemoAgent(proc=ScriptedModule(messages),
-                  auto_start=True, silence_delay=15.0,
+                  auto_start=True, silence_delay=30.0,
                   policy_filter=PolicyFilterDelayAction({"do_gen"}, wait=3., add_random_up_to=2.))
 
 stream = DataStream.create(TokensStream("src/sensor.dat"),

@@ -14,7 +14,7 @@ messages = [
 log_msg = "\U0001f4cb Knowledge Base updated: Type-B thermal event — Area B-3 — resolution stored."
 
 agent = DemoAgent(proc=ScriptedModule(messages, log_on_finish=log_msg),
-                  auto_start=True, silence_delay=15.0,
+                  auto_start=True, silence_delay=30.0,
                   policy_filter=PolicyFilterDelayAction({"do_gen"}, wait=3., add_random_up_to=2.))
 
 node = Node(agent, node_name="Brain", hidden=True, clock_delta=1. / 20.)
