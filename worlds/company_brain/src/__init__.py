@@ -18,4 +18,5 @@ from . import brain
 from . import team_member
 from . import team_manager
 from . import expert
+from . import demo
 from . import world

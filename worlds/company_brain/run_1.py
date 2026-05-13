@@ -11,4 +11,4 @@ agent = Agent(proc=None,
 node = Node(agent, node_name="Dispatcher", hidden=True, clock_delta=1. / 20.)
 
 # Running node
-node.run(join_world="CompanyBrain")
+node.run(join_world="ACMECorp")
