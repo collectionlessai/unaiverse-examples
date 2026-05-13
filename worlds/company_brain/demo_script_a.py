@@ -42,17 +42,13 @@ SCRIPT = [
      "Luca is on site, waiting on your input."),
 
     ("Elena Human Expert",
-     "Sounds like the March event. That kind of spike usually settles within ten minutes."),
-    
-    ("Elena Human Expert",
+     "Sounds like the March event. That kind of spike usually settles within ten minutes. "
      "Luca, can you confirm pressure on Line 4 stayed stable in the last 15?"),
 
     ("HUMAN", None),   # Luca: "Pressure stable, slightly decreasing."
 
     ("Elena Human Expert",
-     "Good. Standard procedure, log as Type-B thermal event and let it cool."),
-    
-    ("Elena Human Expert",
+     "Good. Standard procedure, log as Type-B thermal event and let it cool. "
      "Brain, please record this resolution. I will review the drone footage tonight."),
 
     ("Company Brain",
