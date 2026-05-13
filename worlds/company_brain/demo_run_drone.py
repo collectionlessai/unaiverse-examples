@@ -17,4 +17,4 @@ stream.props.delta = 10.0
 agent.add_stream(stream)
 
 node = Node(agent, node_name="Drone-07", hidden=True, clock_delta=1. / 20.)
-node.run(join_world="ACMECorp", role_preference="team_member")
+node.run(join_world="ACMECorp", role_preference="team_manager")

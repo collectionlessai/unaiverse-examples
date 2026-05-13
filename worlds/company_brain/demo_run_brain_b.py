@@ -17,5 +17,5 @@ agent = DemoAgent(proc=ScriptedModule(messages, log_on_finish=log_msg),
                   auto_start=True, silence_delay=30.0,
                   policy_filter=PolicyFilterDelayAction({"do_gen"}, wait=3., add_random_up_to=2.))
 
-node = Node(agent, node_name="Brain", hidden=True, clock_delta=1. / 20.)
+node = Node(agent, node_name="Company Brain", hidden=True, clock_delta=1. / 20.)
 node.run(join_world="ACMECorp", role_preference="brain")
