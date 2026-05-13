@@ -43,6 +43,7 @@ class ScriptedModule(ModuleWrapper):
         self._delay_variance = delay_variance
         self._sent_count = 0
         self._my_total = sum(1 for name, _ in script if name == agent_name)
+        print(f"[DEMO] ScriptedModule init: agent_name={agent_name}, my_total={self._my_total}")
 
     # ── accessors for DemoAgent ──
     @property
@@ -62,11 +63,13 @@ class ScriptedModule(ModuleWrapper):
 
     def forward(self, msg: str, first: bool = False, last: bool = False):
         idx = read_index(self._index_file)
+        print(f"[DEMO] forward() called: agent={self._agent_name}, idx={idx}, msg_in={msg[:30]}")
         if idx < len(self._script):
             sender, text = self._script[idx]
             if sender == self._agent_name:
                 # Realistic delay before speaking
                 wait = self._delay + random.uniform(-self._delay_variance, self._delay_variance)
+                print(f"[DEMO] {self._agent_name} sleeping {wait:.1f}s then sending msg #{idx}")
                 tm.sleep(max(0.5, wait))
                 # Advance index AFTER sleep → next agent sees its turn only
                 # when this message is about to be dispatched
@@ -75,6 +78,10 @@ class ScriptedModule(ModuleWrapper):
                 if not self.has_next() and self._log_on_finish:
                     log.user(self._log_on_finish)
                 return text
+            else:
+                print(f"[DEMO] forward() MISMATCH: idx={idx} sender={sender} != {self._agent_name}")
+        else:
+            print(f"[DEMO] forward() idx={idx} OUT OF RANGE (script len={len(self._script)})")
         # Safety: should never reach here if hooks gate correctly.
         # Return a space to avoid broadcasting an empty string.
         return " "
@@ -88,9 +95,11 @@ class DemoAgent(Agent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Cache scripted agent names for HUMAN-detection
+        # Strip trailing colon+space from dispatcher-formatted names
         self._scripted_names = set(
             name for name, _ in self.proc.script if name != "HUMAN"
         )
+        print(f"[DEMO] DemoAgent init: is_human={self.is_human()}, scripted_names={self._scripted_names}")
 
     # ── hooks ──
 
@@ -111,6 +120,7 @@ class DemoAgent(Agent):
             if sender and sender not in self._scripted_names:
                 idx = read_index(self.proc.index_file)
                 if 0 <= idx < len(self.proc.script) and self.proc.script[idx][0] == "HUMAN":
+                    print(f"[DEMO] {self.proc.agent_name}: human msg from '{sender}', advancing idx {idx} → {idx+1}")
                     write_index(self.proc.index_file, idx + 1)
 
         self._check_and_trigger()
@@ -128,4 +138,5 @@ class DemoAgent(Agent):
         if 0 <= idx < len(self.proc.script):
             sender, _ = self.proc.script[idx]
             if sender == self.proc.agent_name:
+                print(f"[DEMO] _check_and_trigger: {self.proc.agent_name} triggering at idx={idx}")
                 self.stdin.set("proc_input_0", "(scripted)")
