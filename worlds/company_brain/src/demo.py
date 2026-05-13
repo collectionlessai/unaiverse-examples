@@ -62,6 +62,7 @@ class ScriptedModule(ModuleWrapper):
         return self._sent_count < self._my_total
 
     def forward(self, msg: str, first: bool = False, last: bool = False):
+        log.error(f"[DEMO] forward() called: agent={self._agent_name}, msg_in={msg[:30]}")
         idx = read_index(self._index_file)
         log.error(f"[DEMO] forward() called: agent={self._agent_name}, idx={idx}, msg_in={msg[:30]}")
         if idx < len(self._script):
