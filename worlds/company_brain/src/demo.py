@@ -63,9 +63,9 @@ class ScriptedModule(ModuleWrapper):
         return self._sent_count < self._my_total
 
     def forward(self, msg: str, first: bool = False, last: bool = False):
-        log.error(f"[DEMO] forward() called: agent={self._agent_name}, msg_in={msg[:30]}")
+        # log.error(f"[DEMO] forward() called: agent={self._agent_name}, msg_in={msg[:30]}")
         idx = read_index(self._index_file)
-        log.error(f"[DEMO] forward() called: agent={self._agent_name}, idx={idx}, msg_in={msg[:30]}")
+        # log.error(f"[DEMO] forward() called: agent={self._agent_name}, idx={idx}, msg_in={msg[:30]}")
         if idx < len(self._script):
             sender, text = self._script[idx]
             if sender == self._agent_name:
@@ -80,10 +80,10 @@ class ScriptedModule(ModuleWrapper):
                 if not self.has_next() and self._log_on_finish:
                     log.user(self._log_on_finish)
                 return text
-            else:
-                log.error(f"[DEMO] forward() MISMATCH: idx={idx} sender={sender} != {self._agent_name}")
-        else:
-            log.error(f"[DEMO] forward() idx={idx} OUT OF RANGE (script len={len(self._script)})")
+        #     else:
+        #         log.error(f"[DEMO] forward() MISMATCH: idx={idx} sender={sender} != {self._agent_name}")
+        # else:
+        #     log.error(f"[DEMO] forward() idx={idx} OUT OF RANGE (script len={len(self._script)})")
         # Safety: should never reach here if hooks gate correctly.
         # Return a space to avoid broadcasting an empty string.
         return " "
@@ -121,6 +121,7 @@ class DemoAgent(Agent):
             raw_sender = self.get_sender_name(msg)
             # get_sender_name returns "Name:" (with colon) — strip it
             sender = raw_sender.rstrip(":").strip() if raw_sender else None
+            log.error(f"[DEMO] hook_on_received_msgs: raw_sender='{raw_sender}', parsed sender='{sender}'")
             if sender and sender not in self._scripted_names:
                 idx = read_index(self.proc.index_file)
                 if 0 <= idx < len(self.proc.script) and self.proc.script[idx][0] == "HUMAN":
@@ -130,7 +131,7 @@ class DemoAgent(Agent):
         self._check_and_trigger()
 
     def hook_on_zero_received_msgs(self, max_silence_seconds):
-        log.error(f"[DEMO] hook_on_zero_received_msgs: {self.proc.agent_name}, is_human={self.is_human()}")
+        # log.error(f"[DEMO] hook_on_zero_received_msgs: {self.proc.agent_name}, is_human={self.is_human()}")
         if self.is_human():
             return
         self._check_and_trigger()
@@ -138,7 +139,7 @@ class DemoAgent(Agent):
     def _check_and_trigger(self):
         """If it's this agent's turn in the script, trigger do_gen."""
         idx = read_index(self.proc.index_file)
-        log.error(f"[DEMO] _check_and_trigger: {self.proc.agent_name}, has_next={self.proc.has_next()}, idx={idx}")
+        # log.error(f"[DEMO] _check_and_trigger: {self.proc.agent_name}, has_next={self.proc.has_next()}, idx={idx}")
         if not self.proc.has_next():
             return
         idx = read_index(self.proc.index_file)
