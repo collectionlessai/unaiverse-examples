@@ -98,9 +98,9 @@ class DemoAgent(Agent):
         super().__init__(*args, **kwargs)
         # Cache scripted agent names for HUMAN-detection
         # Strip trailing colon+space from dispatcher-formatted names
-        if hasattr(self.proc, "module") and hasattr(self.proc.module, "_script"):
+        if hasattr(self.proc, "_script"):
             self._scripted_names = set(
-                name for name, _ in self.proc.module._script if name != "HUMAN"
+                name for name, _ in self.proc._script if name != "HUMAN"
             )
             log.error(f"[DEMO] DemoAgent init: is_human={self.is_human()}, scripted_names={self._scripted_names}")
 
@@ -123,7 +123,7 @@ class DemoAgent(Agent):
             sender = raw_sender.rstrip(":").strip() if raw_sender else None
             if sender and sender not in self._scripted_names:
                 idx = read_index(self.proc.index_file)
-                if 0 <= idx < len(self.proc.module.script) and self.proc.module.script[idx][0] == "HUMAN":
+                if 0 <= idx < len(self.proc.script) and self.proc.script[idx][0] == "HUMAN":
                     log.error(f"[DEMO] {self.proc.agent_name}: human msg from '{sender}', advancing idx {idx} → {idx+1}")
                     write_index(self.proc.index_file, idx + 1)
 
@@ -142,8 +142,8 @@ class DemoAgent(Agent):
         if not self.proc.has_next():
             return
         idx = read_index(self.proc.index_file)
-        if 0 <= idx < len(self.proc.module.script):
-            sender, _ = self.proc.module.script[idx]
+        if 0 <= idx < len(self.proc.script):
+            sender, _ = self.proc.script[idx]
             if sender == self.proc.agent_name:
                 log.error(f"[DEMO] _check_and_trigger: {self.proc.agent_name} triggering at idx={idx}")
                 self.stdin.set("proc_input_0", "(scripted)")
