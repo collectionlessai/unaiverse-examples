@@ -1,6 +1,5 @@
 SCRIPT = [
-    ("Luca Human Member",
-     "Brain, can you brief Elena on what happened?"),
+    ("HUMAN", None),   # Elena: "Hey Brain, what's happened?"
     
     ("Company Brain",
      "Hi Elena, quick brief. Drone-07 flagged a thermal anomaly in Area B-3. "
@@ -9,7 +8,7 @@ SCRIPT = [
 
     ("HUMAN", None),   # Elena: "Sounds like the March event. That kind of spike usually settles within ten minutes."
     
-    ("HUMAN", None),   # Luca, can you confirm pressure on Line 4 stayed stable in the last 15?"
+    ("HUMAN", None),   # Elena: "Luca, can you confirm pressure on Line 4 stayed stable in the last 15?"
 
     ("Luca Human Member",
      "Pressure stable, slightly decreasing."),

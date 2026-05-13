@@ -356,7 +356,7 @@ class WAgent(Agent):
         if msg.startswith("**"):
             tokens = msg.split("**")
             if len(tokens) == 3:
-                return tokens[-1]
+                return tokens[-1].strip()
         return None
 
     def peer_ids_to_names(self, _peer_ids: list[str], return_list: bool = False):

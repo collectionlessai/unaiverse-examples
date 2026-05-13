@@ -30,12 +30,11 @@ SCRIPT = [
     ("Company Brain",
      "I checked past resolutions for Area B-3. "
      "Elena handled a comparable case last March. "
-     "She is the best match available right now."),
-
-    ("HUMAN", None),   # Luca: "I'll try to reach her."
+     "She is the best match available right now. I notified her."),
 
     # --- Blocco C: Asincronia e memoria ---
-    ("HUMAN", None),   # Luca: "Brain, can you brief Elena on what happened?"
+    ("Elena Human Expert",
+     "Hey Brain, what's happened?"),
 
     ("Company Brain",
      "Hi Elena, quick brief. Drone-07 flagged a thermal anomaly in Area B-3. "
