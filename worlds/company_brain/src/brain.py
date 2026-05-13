@@ -136,6 +136,7 @@ class WAgent(Agent):
     async def check_messages(self, max_silence_seconds: float = 10.0, history_len: int = 3):
 
         # Avoid printing this message multiple times
+        log.error(f"[CHECK_MESSAGES] Checking messages for {self.get_name()}...")
         self.behav.get_state().msg = None
 
         if self._dispatcher_stream is None:
@@ -157,10 +158,13 @@ class WAgent(Agent):
 
         # Collecting/handling received messages
         if self._dispatcher_stream is not None:
+            log.error(f"[CHECK_MESSAGES] Found dispatcher stream for {self.get_name()}")
             msgs = self._dispatcher_stream.get("check_messages", all_uuids=True)
             if msgs is not None and len(msgs) > 0:
+                log.error(f"[CHECK_MESSAGES] Received {len(msgs)} messages for {self.get_name()}")
                 self.hook_on_received_msgs(msgs, history_len)
             else:
+                log.error(f"[CHECK_MESSAGES] No messages received for {self.get_name()}")
                 self.hook_on_zero_received_msgs(max_silence_seconds)
             return True
         else:
