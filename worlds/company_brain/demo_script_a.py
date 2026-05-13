@@ -57,8 +57,7 @@ SCRIPT = [
      "Brain, please record this resolution. I will review the drone footage tonight."),
 
     ("Company Brain",
-     "Event logged. Resolution path stored in the Company World. "
-     "I will surface this case automatically if a similar pattern reappears."),
+     "Event logged. Resolution path stored in the Company World. I will surface this case automatically if a similar pattern reappears."),
 ]
 
 LOG_ON_FINISH = "\U0001f4cb Knowledge Base updated: Type-B thermal event — Area B-3 — resolution stored."
