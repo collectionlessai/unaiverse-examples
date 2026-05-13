@@ -5,5 +5,5 @@ from unaiverse.networking.node.node import Node
 agent = DemoAgent(proc=ScriptedModule(
     SCRIPT, INDEX_FILE, agent_name="Elena Human Expert"))
 
-node = Node(agent, node_name="Elena Human Expert", hidden=True, clock_delta=1. / 20.)
+node = Node(agent, node_name="Elena Human Expert", hidden=False, clock_delta=1. / 20.)
 node.run(join_world="ACMECorp", role_preference="team_manager")

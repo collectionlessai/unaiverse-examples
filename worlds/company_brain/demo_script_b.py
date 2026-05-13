@@ -1,4 +1,7 @@
 SCRIPT = [
+    ("Luca Human Member",
+     "Brain, can you brief Elena on what happened?"),
+    
     ("Company Brain",
      "Hi Elena, quick brief. Drone-07 flagged a thermal anomaly in Area B-3. "
      "Expert assessed it as out-of-pattern with moderate confidence. "
