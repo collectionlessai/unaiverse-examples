@@ -104,8 +104,9 @@ class WAgent(Agent):
             return False
 
     async def remove_agent(self, peer_id: str):
-        log.user(f"An agent left: "
-                 f"{self.all_agents[peer_id].get_static_profile()['node_name']}")
+        if peer_id in self.all_agents:
+            log.user(f"An agent left: "
+                     f"{self.all_agents[peer_id].get_static_profile()['node_name']}")
         await super().remove_agent(peer_id)
 
     async def on_tick(self):
