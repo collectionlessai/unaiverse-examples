@@ -6,4 +6,4 @@ agent = DemoAgent(proc=ScriptedModule(
     SCRIPT, INDEX_FILE, agent_name="Drone-07"))
 
 node = Node(agent, node_name="Drone-07", hidden=True, clock_delta=1. / 20.)
-node.run(join_world="ACMECorp", role_preference="team_member")
+node.run(join_world="ACMECorp", role_preference="team_manager")

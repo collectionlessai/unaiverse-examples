@@ -6,4 +6,4 @@ agent = DemoAgent(proc=ScriptedModule(
     SCRIPT, INDEX_FILE, agent_name="AI Expert"))
 
 node = Node(agent, node_name="AI Expert", hidden=True, clock_delta=1. / 20.)
-node.run(join_world="ACMECorp", role_preference="expert")
+node.run(join_world="ACMECorp", role_preference="team_manager")
