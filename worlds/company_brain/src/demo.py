@@ -98,9 +98,10 @@ class DemoAgent(Agent):
         super().__init__(*args, **kwargs)
         # Cache scripted agent names for HUMAN-detection
         # Strip trailing colon+space from dispatcher-formatted names
-        self._scripted_names = set(
-            name for name, _ in self.proc.module.script if name != "HUMAN"
-        )
+        if hasattr(self.proc, "module") and hasattr(self.proc.module, "_script"):
+            self._scripted_names = set(
+                name for name, _ in self.proc.module._script if name != "HUMAN"
+            )
         log.error(f"[DEMO] DemoAgent init: is_human={self.is_human()}, scripted_names={self._scripted_names}")
 
     # ── hooks ──
