@@ -105,7 +105,9 @@ class DemoAgent(Agent):
             self._last_turns = self._last_turns[-history_len:]
 
             # If this message is from the HUMAN player, advance past HUMAN entries
-            sender = self.get_sender_name(msg)
+            raw_sender = self.get_sender_name(msg)
+            # get_sender_name returns "Name:" (with colon) — strip it
+            sender = raw_sender.rstrip(":").strip() if raw_sender else None
             if sender and sender not in self._scripted_names:
                 idx = read_index(self.proc.index_file)
                 if 0 <= idx < len(self.proc.script) and self.proc.script[idx][0] == "HUMAN":
