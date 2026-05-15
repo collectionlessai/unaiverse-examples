@@ -99,12 +99,11 @@ class WAgent(Agent):
                 disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
                 for _guest in list(room.get_guests()):
                     if _guest != peer_id:
-                        if not await self.send(action_name="get_status_msg",
-                                               action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                                    disconnected_message)},
-                                               target=_guest,
-                                               volatile=True):
-                            await self.disconnect(_guest)
+                        await self.send(action_name="get_status_msg",
+                                        action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                             disconnected_message)},
+                                        target=_guest,
+                                        volatile=True)
 
         # Send the guest out of the floor/room and clear all his vote-related info
         # (the other status-related sets and dicts are cleared by the following method, but NOT the vote info, since
