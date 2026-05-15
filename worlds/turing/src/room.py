@@ -113,6 +113,7 @@ class Room:
         self.temp_guests.add(guest)
 
     def insert(self, guest: str, profile: NodeProfile | None, assign_fake_name: bool = True) -> bool:
+        fake_name = None
         if assign_fake_name:
 
             # Checking the fake names of the oldest guest, to avoid clashes
@@ -129,12 +130,12 @@ class Room:
                 if fake_name == oldest_fake_name:
                     return False  # Clash
 
-            self.guests[guest] = profile  # This must be done BEFORE calling self.is_human(guest) - see below
             self.guest2fake[guest] = fake_name
-            self.fake2cached_info[fake_name] = (guest, self.is_human(guest), build_unaid(profile))
-        else:
-            self.guests[guest] = profile
 
+        self.guests[guest] = profile
+        self.guest2insert_time[guest] = time.perf_counter()
+
+        # This must be done BEFORE calling self.is_human(guest) - see below
         if profile is not None:
             is_human = profile.get_static_profile()["node_type"] == Agent.HUMAN
             if is_human:
@@ -142,7 +143,8 @@ class Room:
             else:
                 self.artificial_guests[guest] = profile
 
-        self.guest2insert_time[guest] = time.perf_counter()
+        if fake_name is not None:
+            self.fake2cached_info[fake_name] = (guest, self.is_human(guest), build_unaid(profile))
         return True
 
     def eject(self, guest: str):
