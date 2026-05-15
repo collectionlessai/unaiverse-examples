@@ -19,12 +19,12 @@ import textwrap
 # All time measures are in SECONDS.
 class Config:
     test_duration = 180  # Seconds (int)
-    survey_reply_time = 60  # Seconds
+    survey_reply_time = 75  # Seconds
     moving_time = 10  # Time to move from the floor entrance to the chat table or from the chat table to the voting both
     max_time_in_every_state = max([test_duration, survey_reply_time, moving_time]) + moving_time + 5  # Add a gap
-    max_guests_per_room = 2
+    max_guests_per_room = 4
     max_overbooked_guests = 1
-    rooms_per_floor = 5
+    rooms_per_floor = 10
     min_msgs_from_votee = 3  # Minimum number of received messages from somebody to vote hit
     send_reminder_every = 65  # Reminder on how to exit the room and vote
     send_floor_updates_every = 3  # From floor manager to hotel manager
@@ -82,7 +82,7 @@ class Config:
         SECTION 1 — YOUR IDENTITY
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         Your name in this game: <YOUR_NAME>
-        The room manager: {manager_fake_name}
+        The room MANAGER: {manager_fake_name}
         Other guests: <OTHER_NAMES>
         
         You are a regular person.
