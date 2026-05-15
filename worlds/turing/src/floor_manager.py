@@ -99,6 +99,9 @@ class WAgent(Agent):
                 disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
                 for _guest in list(room.get_guests()):
                     if _guest != peer_id:
+
+                        # Do not check if this fails: if you do, and then you disconnet when it fails,
+                        # this will in turn call remove_agent, creating a weird loop
                         await self.send(action_name="get_status_msg",
                                         action_kwargs={"msg": format_message(Config.manager_fake_name,
                                                                              disconnected_message)},
