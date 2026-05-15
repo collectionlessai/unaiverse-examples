@@ -672,7 +672,7 @@ class Config:
         GOOD: "..."
         
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        SECTION 8 — EARLY EXIT
+        SECTION 9 — EARLY EXIT
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━        
         The conversation will last {test_duration} seconds.
         Then you will get a message from the MANAGER, asking for your vote about the identity (human or bot) of the 

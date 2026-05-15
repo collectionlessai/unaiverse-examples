@@ -44,6 +44,7 @@ class Floor:
                              room_ids=["fake"], managed_guest_profiles=None)
         copied_floor.rooms = copy.deepcopy(self.rooms)
         copied_floor.guest2room = copy.deepcopy(self.guest2room)
+        return copied_floor
 
     def get_guests(self):
         return self.guest2room.keys()

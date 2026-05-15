@@ -340,6 +340,7 @@ class WAgent(Agent):
                                   f"local reconstruction ({floor.get_room(room_id).count_guests()}), resetting floor")
                         _create_or_recreate_floor(floor_manager, update_dict, update_tag,
                                                   _consider_guest_updates=True, _fill_floor=True)
+                        floor = self.hotel.get_floor(floor_id)  # Refresh this reference, since the floor was recreated
 
                     # Floor managers doing a weird job (do this AFTER having checked for discrepancies,
                     # so it the floor is rebuilt, we will check it again)
@@ -378,6 +379,7 @@ class WAgent(Agent):
             self.stats.store_stat("n_total_agents",
                                   len(self.hotel.get_all_hotel_guests()),
                                   group_key=world_peer_id, timestamp=int_timestamp)
+        return True
 
     @action
     async def send_violations(self):
@@ -415,6 +417,7 @@ class WAgent(Agent):
                             action_kwargs={"guests": guests},
                             target=self.hotel.get_floor(floor_id).floor_manager,
                             volatile=True)
+        return True
 
     @action
     async def get_votes(self):
@@ -431,7 +434,7 @@ class WAgent(Agent):
             "floor_manager": FLOOR_MANAGER_PEER_ID,
             "hotel_manager": HOTEL_MANAGER_PEER_ID,
             "msgs_from_votee": (DICT) CANDIDATE_VOTEE_FAKE_NAME -> STRING_REPRESENTING_A_NUMBER,
-            "msgs_from_voter": (DICT) CANDIDATE_VOTEE_FAKE_NAME -> STRING_REPRESENTING_A_NUMBER,
+            "msgs_from_voter": (DICT) CANDIDATE_VOTEE_FAKE_NAME -> STRING_REPRESENTING_A_NUMBER
         }
 
         and it is converted into multiple dictionaries
@@ -558,9 +561,9 @@ class WAgent(Agent):
                     # the floor manager. Checking also the number of exchanged messages
                     if (hotel_manager_peer_id != vote_dict["hotel_manager"] or
                             vote_dict["floor_manager"] != floor_manager):
-                        log.error(f"Invalid vote received: the actual hotel manager ({hotel_manager_peer_id} or "
+                        log.error(f"Invalid vote received: the actual hotel manager ({hotel_manager_peer_id}) or "
                                   f"the actual floor manager ({floor_manager}) is not the one "
-                                  f"in the vote: {vote_dict})")
+                                  f"in the vote: {vote_dict}")
                         continue
 
                     # Counting messages from votee
@@ -595,6 +598,7 @@ class WAgent(Agent):
                         int_timestamp = self.clock.get_time_ms(monotonic=True)
                         self.stats.store_stat("turing_vote", _vote_dict_,
                                               group_key=_votee_unaid_, timestamp=int_timestamp)
+        return True
 
     @action
     async def guest_back_to_hall(self, guest: str | None = None):

@@ -44,7 +44,7 @@ class Room:
         if guest in self.guest2insert_time:
             return int(time.perf_counter() - self.guest2insert_time[guest])
         else:
-            return 0.
+            return 0
 
     def get_fake_names_met_by(self, fake_name: str):
         if fake_name not in self.msgs_recv_by_fake_from_fake:
@@ -129,10 +129,12 @@ class Room:
                 if fake_name == oldest_fake_name:
                     return False  # Clash
 
+            self.guests[guest] = profile  # This must be done BEFORE calling self.is_human(guest) - see below
             self.guest2fake[guest] = fake_name
             self.fake2cached_info[fake_name] = (guest, self.is_human(guest), build_unaid(profile))
+        else:
+            self.guests[guest] = profile
 
-        self.guests[guest] = profile
         if profile is not None:
             is_human = profile.get_static_profile()["node_type"] == Agent.HUMAN
             if is_human:

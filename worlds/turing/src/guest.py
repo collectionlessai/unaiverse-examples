@@ -311,7 +311,7 @@ class WAgent(Agent):
         # this action will only be triggered by system interactions.
         # This is exactly where our message is already stored due a previous call to a solid "process".
         msgs = self.stdout.get(requested_by="send_msgs", data_type="text")
-        if msgs is None:
+        if msgs is None or len(msgs) == 0:
             return True  # Don't stop the transition
 
         # The call above returns a list with data about all the text streams (they might be more than one)

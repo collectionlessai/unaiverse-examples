@@ -68,7 +68,7 @@ class WAgent(Agent):
         # Attributes that handle some guest-status related info
         self._guest2vote_info = {}  # Guest who got the survey message -> [UUID of the request message, vote dict]
         self._guest2reminder_time = {}  # Guest who got the survey message -> last reminder message time
-        self._wants_to_exist = set()  # Guest who wants to leave
+        self._wants_to_exit = set()  # Guest who wants to leave
 
     def accept_new_role(self, role: int):
         super().accept_new_role(role)
@@ -110,8 +110,6 @@ class WAgent(Agent):
         # (the other status-related sets and dicts are cleared by the following method, but NOT the vote info, since
         # the floor manager will pick up a vote from this guest at a later stage, maybe even after he disconnected)
         self.__eject_and_clear_guest(peer_id)
-        if peer_id in self._guest2vote_info:
-            del self._guest2vote_info[peer_id]
 
     async def on_tick(self):
 
@@ -295,7 +293,10 @@ class WAgent(Agent):
             *[self.__handle_single_guest_by_status(guest) for guest in list(self.floor.get_guests())],
             return_exceptions=True
         )
-        return any(r is True for r in results)
+        for r in results:
+            if isinstance(r, Exception):
+                log.error(f"Exception in '__handle_single_guest_by_status': {str(r)}")
+        return any(r is True for r in results if not isinstance(r, Exception))
 
     async def __handle_single_guest_by_status(self, guest: str) -> bool:
         """Handle a specific guest in function of his current status."""
@@ -307,7 +308,7 @@ class WAgent(Agent):
         # A guest wants to exit or it is timeout! Test ended, GET OUT OF HERE!
         if (room.get_status(guest) == GuestStatus.AT_ROUND_TABLE and
                 (room.get_time_in_current_status(guest) >= Config.test_duration or
-                 guest in self._wants_to_exist)):
+                 guest in self._wants_to_exit)):
             if not await self.send(action_name="goto_voting_booth",
                                    from_state="room_round_table",
                                    callback="guest_joined_voting_booth",
@@ -538,8 +539,24 @@ class WAgent(Agent):
         # Votes are expected to be found on the guest's processor, with a UUID that we saved in advance
         for guest, (vote_interaction_uuid, vote_dict) in self._guest2vote_info.items():
             if vote_dict is None:
+
+                # If the vote_dict is None, then the guest was asked to go to the voting booth and was asked for a vote,
+                # but, if he disconnected, he never made it
+                if guest not in self.world_agents:
+                    to_remove.append(guest)
                 continue
+
+            # Getting the stream where the vote is
             guest_processor_stream = self.get_stream("processor", guest, data_type="text")
+
+            # If the guest disconnected when he is in the voting booth, but still did not vote, then we remove his
+            # vote dictionary (that is still missing the actual vote message) - the second check
+            # (guest not in self.world_agents) should be redundant
+            if guest_processor_stream is None or (guest not in self.world_agents):
+                to_remove.append(guest)
+                continue
+
+            # Getting the actual vote message (the string)
             vote_msg = guest_processor_stream.get(requested_by="send_votes", uuid=vote_interaction_uuid)
             if vote_msg is None:
                 continue
@@ -583,6 +600,9 @@ class WAgent(Agent):
     @action
     async def get_msg_and_broadcast(self, msg: str | None = None, interaction: Interaction | None = None):
         """Get a message from a guest and broadcast it to all the other ones in the same room."""
+        if interaction is None:
+            return False
+
         guest = interaction.requester
 
         if self.floor.is_in_a_room(guest) and (msg is not None and len(msg) > 0):
@@ -591,7 +611,7 @@ class WAgent(Agent):
             room = self.floor.get_room_of(guest)
 
             if msg.strip().lower() == Config.exit_trigger_message.lower():
-                self._wants_to_exist.add(guest)
+                self._wants_to_exit.add(guest)
                 return True
 
             async def _broadcast_to(_guest):
@@ -616,8 +636,8 @@ class WAgent(Agent):
 
         if guest in self._sponsored_guests:
             del self._sponsored_guests[guest]
-        if guest in self._wants_to_exist:
-            self._wants_to_exist.remove(guest)
+        if guest in self._wants_to_exit:
+            self._wants_to_exit.remove(guest)
         if guest in self._guest2reminder_time:
             del self._guest2reminder_time[guest]
         if self.floor is not None:  # Keep this
