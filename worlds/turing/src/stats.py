@@ -187,6 +187,8 @@ class WStats(Stats):
         ).fetchall()
         votes = []
         for ts, votee_peer_id, val_json in rows:
+            if votee_peer_id == "PARSER_SKIPPED":
+                continue
             try:
                 record = json.loads(val_json)
                 record["_ts"] = ts
