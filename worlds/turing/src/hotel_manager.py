@@ -575,6 +575,14 @@ class WAgent(Agent):
                     # Parsing vote
                     parsed_vote = parse_vote_msg(vote_dict["vote"])  # Dict fake-name (votee) to "human" | "ai"
 
+                    # If parsing failed or if the vote is actually garbage, we save the result
+                    if len(parsed_vote) == 0:
+                        int_timestamp = self.clock.get_time_ms(monotonic=True)
+                        vote_dict["VOTE_MSG"] = vote_dict["vote"]
+                        vote_dict["vote"] = "SKIPPED"
+                        self.stats.store_stat("turing_vote", vote_dict,
+                                              group_key="PARSER_SKIPPED", timestamp=int_timestamp)
+
                     # Reversing the logic: the index is the votee, hence the vote dictionary must be replicated for each
                     # votee of in the parsed vote structure
                     for fake_name, classification in parsed_vote.items():
@@ -588,6 +596,7 @@ class WAgent(Agent):
                             continue
 
                         _vote_dict_ = copy.deepcopy(vote_dict)
+                        _vote_dict_["VOTE_MSG"] = vote_dict["vote"]  # We also save the original vote message
                         _vote_dict_["vote"] = classification
                         _vote_dict_["ground_truth"] = vote_dict["ground_truth"][fake_name][0]
                         _vote_dict_["msgs_from_votee"] = vote_dict["msgs_from_votee"][fake_name]
