@@ -8,4 +8,4 @@ world = WWorld()
 node = Node(node_name="TuringHotel", hosted=world, hidden=False, clock_delta=1./50.)
 
 # Running node
-node.run()
+node.run(show_senders=False)
