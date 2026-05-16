@@ -24,7 +24,7 @@ class Room:
         self.artificial_guests: dict[str, NodeProfile] = {}  # peer ID -> profile (ARTIFICIAL guests only)
         self.temp_guests: set[str] = set()
 
-        self.fake_names = Room.__make_fake_names(letters=False)  # Generate names such as 'A', 'B', 'C', ...
+        self.fake_names = Room.make_fake_names(letters=Config.use_letter_names)  # Generate names such as 'A', 'B' ...
         self.next_fake_name_index = 0
         self.guest2fake: dict[str, str] = {}  # peer ID -> fake name
         self.fake2cached_info: dict[str, tuple[str, bool, str]] = {}  # fake name -> (peer ID, is a human?, unaid)
@@ -221,7 +221,7 @@ class Room:
         return self.fake_names
 
     @staticmethod
-    def __make_fake_names(letters: bool) -> list[str]:
+    def make_fake_names(letters: bool) -> list[str]:
         if not letters:
             return [
                 "Ada", "Ben", "Cal", "Dax", "Eli", "Fin", "Gus", "Hal", "Ivy", "Jai",

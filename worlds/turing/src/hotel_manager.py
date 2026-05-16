@@ -14,6 +14,7 @@
 """
 import copy
 import json
+from .room import Room
 from .hotel import Hotel
 from .config import Config
 from unaiverse.custom import Custom
@@ -38,6 +39,9 @@ class WAgent(Agent):
 
         # Floor updates identifier
         self._floor_update_tags = {}
+
+        # Agents fake names
+        self.fake_names = Room.make_fake_names(letters=Config.use_letter_names)
 
         # The proposed check-ins, stored to pass through actions
         self._proposed_check_ins = {}
@@ -574,6 +578,7 @@ class WAgent(Agent):
 
                     # Parsing vote
                     parsed_vote = parse_vote_msg(vote_dict["vote"],  # Dict fake-name (votee) to "human" | "ai"
+                                                 agents=self.fake_names,
                                                  bots=[k for k, v in vote_dict["ground_truth"] if v == "ai"],
                                                  humans=[k for k, v in vote_dict["ground_truth"] if v == "human"])
 

@@ -12,6 +12,7 @@ from unaiverse.utils.misc import build_unaid
 
 def parse_vote_msg(
     _msg: str,
+    agents: list[str],
     bots: list[str] | None = None,
     humans: list[str] | None = None,
 ) -> dict[str, str]:
@@ -19,45 +20,50 @@ def parse_vote_msg(
     Parse a free-text message to extract classifications (human or artificial/AI).
 
     Handles sloppy input: mixed case, typos, varied phrasing, punctuation noise,
-    and agent names like A, B, ..., Z, A2, B2, ..., A3, etc.
+    and agent names from the provided list.
 
     Args:
         _msg:    Free-text vote message.
+        agents:  List of valid agent names (e.g. ["Ada", "Ben", "Cal", ...]).
         bots:    Known bot agent names (ground truth).
         humans:  Known human agent names (ground truth).
 
     Returns:
-        Dict mapping normalised agent names (e.g. "A", "B2") to "human" or "ai".
+        Dict mapping canonical agent names to "human" or "ai".
     """
     results: dict[str, str] = {}
 
-    # Full roster of agents (normalised to uppercase)
+    # Build normalisation map and regex from the agent list
+    agent_norm: dict[str, str] = {n.lower(): n for n in agents}
+    agent_re = '(?:' + '|'.join(re.escape(n) for n in agents) + ')'
+
+    def norm(_name: str) -> str:
+        """Normalise a matched agent name to its canonical form."""
+        return agent_norm[_name.lower()]
+
+    # Full roster of known agents (normalised)
     all_agents: set[str] = set()
     if bots:
-        all_agents |= {b.upper() for b in bots}
+        all_agents |= {norm(b) for b in bots}
     if humans:
-        all_agents |= {h.upper() for h in humans}
+        all_agents |= {norm(h) for h in humans}
 
-    # Normalise whitespace for matching (keep original for nothing)
     text = _msg.strip()
 
     # --- "nobody / none" shortcut ----------------------------------
-    # If the voter says "nobody", "none", "all bots", or sends an empty
-    # message, they believe every agent is AI.
     if all_agents:
         nobody_pat = re.compile(
-            r'^\s*$'                                      # empty / whitespace
+            r'^\s*$'
             r'|^(?:nobody|no\s*one|none(?:\s+of\s+them)?'
             r'|they\s*(?:are|\'re)\s+all\s+(?:bots?|ai|robots?|machines?|artificial)'
             r'|all\s+(?:bots?|ai|robots?|machines?|artificial)'
             r'|not\s+any(?:\s*(?:one|body))?'
-            r'|nope|nah|zero|nessuno|niente)\s*$',        # common "none" words
+            r'|nope|nah|zero|nessuno|niente)\s*$',
             re.IGNORECASE,
         )
         if nobody_pat.match(text):
             return {a: 'ai' for a in sorted(all_agents)}
 
-        # "all humans" / "everyone" — voter believes every agent is human
         everybody_pat = re.compile(
             r'^\s*(?:all(?:\s+(?:humans?|real|of\s+them|people|persons?))?'
             r'|they\s*(?:are|\'re)\s+all\s+(?:humans?|real|people|persons?)'
@@ -69,13 +75,6 @@ def parse_vote_msg(
         )
         if everybody_pat.match(text):
             return {a: 'human' for a in sorted(all_agents)}
-
-    # Agent name pattern
-    # Matches: A, b, Z, A2, b12, etc.  Captures (letter, optional digit suffix)
-    agent = r'[A-Za-z](?:\d+)?'
-
-    # Build a group version for reuse
-    ag = f'({agent})'
 
     # Keyword banks
     human_kw = (
@@ -90,7 +89,7 @@ def parse_vote_msg(
     )
 
     # Connectors & fillers between agent and keyword
-    # The verb group is optional so "B bot" or "A human" match directly
+    ag = f'({agent_re})'
     glue = r'[\s,:\-]+(?:(?:is|was|seems?\s*(?:like)?|looks?\s*like|felt\s*like|appeared?' \
            r'|sounds?\s*like|must\s*(?:be|have\s*been)|has\s*to\s*be' \
            r'|could\s*(?:be|have\s*been)|might\s*(?:be|have\s*been)' \
@@ -104,16 +103,14 @@ def parse_vote_msg(
         rf'\b{ag}{glue}({human_kw}|{ai_kw})\b', re.IGNORECASE
     )
 
-    # Pattern 2: "<keyword> ... <Agent>" (e.g. "the human was B")
-    # No commas — prevent crossing clause boundaries like "bot, C"
+    # Pattern 2: "<keyword> ... <Agent>" (e.g. "the human was Ben")
     reverse_glue = r'[\s:\-]*(?:(?:one|agent|was|is)\s*)*'
     p_class_then_agent = re.compile(
         rf'\b({human_kw}|{ai_kw}){reverse_glue}\b{ag}\b', re.IGNORECASE
     )
 
-    # Pattern 3: List style  "A, B and C are human"
-    # Word-bounded agents so letters inside words like "are" aren't captured
-    agent_b = r'\b' + agent + r'\b'
+    # Pattern 3: List style  "Ada, Ben and Cal are human"
+    agent_b = r'\b' + agent_re + r'\b'
     agent_sep = r'(?:\s*[,;&/\-]\s*(?:and|&)?\s*|\s+(?:and|&)\s+|\s+)'
     agent_list = rf'({agent_b}(?:{agent_sep}{agent_b})+)'
     list_glue = r'[\s,:\-]+(?:(?:is|are|was|were|all\s*(?:are|were)?|seem|seemed' \
@@ -124,9 +121,7 @@ def parse_vote_msg(
     )
 
     def classify(_keyword: str) -> str:
-        """Decide whether a matched keyword means human or ai."""
         kw = _keyword.lower().strip()
-        # "not human" → ai, "not ai" → human
         if re.match(r'not\s+', kw):
             return 'human' if re.search(r'ai|bot|robot|artificial|machine', kw) else 'ai'
         if re.search(r'human|real|person|flesh|natural', kw):
@@ -137,12 +132,12 @@ def parse_vote_msg(
 
     # Pattern 1
     for m in p_agent_then_class.finditer(text):
-        name = m.group(1).upper()
+        name = norm(m.group(1))
         results[name] = classify(m.group(2))
 
     # Pattern 2
     for m in p_class_then_agent.finditer(text):
-        name = m.group(2).upper()
+        name = norm(m.group(2))
         if name not in results:
             results[name] = classify(m.group(1))
 
@@ -150,46 +145,202 @@ def parse_vote_msg(
     for m in p_list.finditer(text):
         raw_list = m.group(1)
         kw = m.group(3)
-        agents = re.findall(r'\b' + agent + r'\b', raw_list, re.IGNORECASE)
+        found = re.findall(r'\b' + agent_re + r'\b', raw_list, re.IGNORECASE)
         label = classify(kw)
-        for a in agents:
-            n = a.upper()
+        for a in found:
+            n = norm(a)
             if n not in results:
                 results[n] = label
 
-    # Pattern 4: Answer-framing — "my guess is B, C" → agents default to human
+    # Pattern 4: Answer-framing — "my guess is Ben, Cal" → human
     frame = (r'(?:(?:my|I)\s+)?(?:guess|vote|answer|pick|choice|bet)'
              r'\s+(?:is|would\s+be|goes?\s+to|for)\s+')
     p_frame = re.compile(
         rf'\b{frame}({agent_b}(?:{agent_sep}{agent_b})*)', re.IGNORECASE
     )
     for m in p_frame.finditer(text):
-        agents_found = re.findall(r'\b' + agent + r'\b', m.group(1), re.IGNORECASE)
-        for a in agents_found:
-            n = a.upper()
+        found = re.findall(r'\b' + agent_re + r'\b', m.group(1), re.IGNORECASE)
+        for a in found:
+            n = norm(a)
             if n not in results:
                 results[n] = 'human'
 
     # Pattern 5: Bare agent names with no keywords → default to "human"
-    # Triggers only when no keyword-based patterns matched anything
     if not results:
-        filler = {
-            'i', 'my', 'think', 'believe', 'guess', 'vote', 'is', 'the',
-            'its', 'it', 'was', 'that', 'they', 'are', 'were', 'and', 'or',
-            'but', 'maybe', 'probably', 'definitely', 'for', 'to', 'of',
-            'no', 'not', 'so', 'if', 'at', 'on', 'in', 'an', 'do', 'be',
-        }
-        bare_text = re.sub(r"[''](?:t|s|d|m|ve|ll|re)\b", '', text, flags=re.IGNORECASE)
-        tokens = re.findall(r'\b[A-Za-z]\d*\b', bare_text)
-        meaningful = [t for t in tokens if t.lower() not in filler]
-        if meaningful and all(re.fullmatch(agent, t) for t in meaningful):
-            for t in meaningful:
-                results[t.upper()] = 'human'
+        tokens = re.findall(r'\b' + agent_re + r'\b', text, re.IGNORECASE)
+        if tokens:
+            for t in tokens:
+                results[norm(t)] = 'human'
 
     return results
 
 
-def test_parse_vote_msg():
+def test_parse_vote_msg_names():
+    agents = [
+        "Ada", "Ben", "Cal", "Dax", "Eli", "Fin", "Gus", "Hal", "Ivy", "Jai",
+        "Kit", "Leo", "Mae", "Nia", "Oli", "Pia", "Rio", "Sid", "Tai", "Uma",
+        "Vic", "Wes", "Yun", "Zed", "Bex", "Lio", "Nox", "Rye", "Tov", "Zia",
+    ]
+
+    def pv(_msg, **kwargs):
+        return parse_vote_msg(_msg, agents=agents, **kwargs)
+
+    tests = [
+        # --- Basic keyword patterns ---
+        ("Ben bot", {"Ben": "ai"}),
+        ("Ben is a bot", {"Ben": "ai"}),
+        ("ben human", {"Ben": "human"}),
+        ("Ada is human", {"Ada": "human"}),
+        ("Ada was definitely a robot", {"Ada": "ai"}),
+        ("the human was Ben", {"Ben": "human"}),
+        ("Ada, Ben and Cal are human", {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        ("Eli is ai, Fin bot", {"Eli": "ai", "Fin": "ai"}),
+        ("Ada is not a bot", {"Ada": "human"}),
+        ("Ben is not human", {"Ben": "ai"}),
+        ("Ada human, Ben bot", {"Ada": "human", "Ben": "ai"}),
+        ("Ben and Ada are bots", {"Ben": "ai", "Ada": "ai"}),
+        ("Ben and Ada is a bot", {"Ben": "ai", "Ada": "ai"}),
+        ("Ada, Ben and Cal are humans", {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        ("Ada and Ben were robots", {"Ada": "ai", "Ben": "ai"}),
+        # --- Bare agent names default to human ---
+        ("Ada", {"Ada": "human"}),
+        ("Ada, Ben, Cal", {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        ("Ada Ben", {"Ada": "human", "Ben": "human"}),
+        ("ada ben cal", {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        # --- Mixed separators in lists ---
+        ("I think Ada, Ben, Cal are human",
+         {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        ("I think Ada and Ben, Cal are human",
+         {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        # --- Unrecognised keyword ignored ---
+        ("Ada human, Ben bot, Cal dunno", {"Ada": "human", "Ben": "ai"}),
+        # --- "look like" in list context ---
+        ("Ada human, Ben and Cal look like bots",
+         {"Ada": "human", "Ben": "ai", "Cal": "ai"}),
+        # --- Space-separated list with keyword ---
+        ("Ada Ben cal dax Eli are bots",
+         {"Ada": "ai", "Ben": "ai", "Cal": "ai", "Dax": "ai", "Eli": "ai"}),
+        ("Ada,Ben,Cal bots", {"Ada": "ai", "Ben": "ai", "Cal": "ai"}),
+        ("Ada, Ben, Cal human", {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        ("Ada, and Ben, and Cal human",
+         {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        ("Ada-Ben-Cal human", {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        ("Ada;Ben;Cal human", {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        ("Ada; Ben, Cal human", {"Ada": "human", "Ben": "human", "Cal": "human"}),
+        ("Ada, Ben bots, Cal human", {"Ada": "ai", "Ben": "ai", "Cal": "human"}),
+        # --- Complex multi-clause ---
+        ("I was thinking that Ada and Zed are the humans. I think Cal is artificial",
+         {"Ada": "human", "Zed": "human", "Cal": "ai"}),
+        ("I was thinking that ada and zed are the humans. I think cal is artificial",
+         {"Ada": "human", "Zed": "human", "Cal": "ai"}),
+        ("Nice test! My guess is Ben, Cal. Pretty sure Dax-Eli are not humans",
+         {"Ben": "human", "Cal": "human", "Dax": "ai", "Eli": "ai"}),
+        # --- Nonsense / refusals → empty (no roster) ---
+        ("I don't know", {}),
+        ("Who knows", {}),
+        ("cannot say", {}),
+        ("sorry", {}),
+        ("no votes", {}),
+        ("fuck off", {}),
+        # --- Case insensitivity ---
+        ("ADA is human", {"Ada": "human"}),
+        ("ada BOT", {"Ada": "ai"}),
+        ("BEN and CAL are bots", {"Ben": "ai", "Cal": "ai"}),
+        # --- Agent names that could be English words ---
+        ("i'd say Sid bot", {"Sid": "ai"}),
+        ("It's Mae", {"Mae": "human"}),
+        ("Ivy is human", {"Ivy": "human"}),
+        ("Rye bot", {"Rye": "ai"}),
+    ]
+
+    roster = {"bots": ["Ada"], "humans": ["Ben", "Cal"]}
+    all_ai = {"Ada": "ai", "Ben": "ai", "Cal": "ai"}
+    all_human = {"Ada": "human", "Ben": "human", "Cal": "human"}
+
+    roster_tests = [
+        # --- "nobody" / "none" with roster → all ai ---
+        ("nobody", all_ai, roster),
+        ("Nobody", all_ai, roster),
+        ("no one", all_ai, roster),
+        ("none", all_ai, roster),
+        ("None of them", all_ai, roster),
+        ("nope", all_ai, roster),
+        ("nah", all_ai, roster),
+        ("zero", all_ai, roster),
+        ("all bots", all_ai, roster),
+        ("all ai", all_ai, roster),
+        ("they're all bots", all_ai, roster),
+        ("they are all ai", all_ai, roster),
+        ("not anyone", all_ai, roster),
+        ("not anybody", all_ai, roster),
+        ("nessuno", all_ai, roster),
+        ("", all_ai, roster),
+        ("  ", all_ai, roster),
+        # --- "all humans" / "everyone" with roster → all human ---
+        ("all", all_human, roster),
+        ("all humans", all_human, roster),
+        ("all human", all_human, roster),
+        ("all real", all_human, roster),
+        ("all of them", all_human, roster),
+        ("all people", all_human, roster),
+        ("humans", all_human, roster),
+        ("human", all_human, roster),
+        ("humans only", all_human, roster),
+        ("human only", all_human, roster),
+        ("people", all_human, roster),
+        ("everyone", all_human, roster),
+        ("everybody", all_human, roster),
+        ("each one", all_human, roster),
+        ("each of them", all_human, roster),
+        ("they are all humans", all_human, roster),
+        ("they're all humans", all_human, roster),
+        ("they're all real", all_human, roster),
+        ("tutti", all_human, roster),
+        # --- "nobody" / "everyone" without roster → empty ---
+        ("nobody", {}, None),
+        ("none", {}, None),
+        ("", {}, None),
+        ("all", {}, None),
+        ("humans", {}, None),
+        ("everyone", {}, None),
+        # --- Normal votes still work with roster ---
+        ("Ada", {"Ada": "human"}, roster),
+        ("Ben bot", {"Ben": "ai"}, roster),
+        ("Ada human, Ben bot", {"Ada": "human", "Ben": "ai"}, roster),
+        ("Ada, Ben, Cal", {"Ada": "human", "Ben": "human", "Cal": "human"}, roster),
+    ]
+
+    passed = 0
+    total = 0
+
+    for msg, expected in tests:
+        total += 1
+        result = pv(msg)
+        status = "PASS" if result == expected else "FAIL"
+        if status == "FAIL":
+            print(f"  {status}: {msg!r}\n    expected {expected}\n    got      {result}")
+        else:
+            print(f"  {status}: {msg!r} -> {result}")
+            passed += 1
+
+    for msg, expected, r in roster_tests:
+        total += 1
+        if r is not None:
+            result = pv(msg, bots=r["bots"], humans=r["humans"])
+        else:
+            result = pv(msg)
+        status = "PASS" if result == expected else "FAIL"
+        roster_label = " [roster]" if r else " [no roster]"
+        if status == "FAIL":
+            print(f"  {status}: {msg!r}{roster_label}\n    expected {expected}\n    got      {result}")
+        else:
+            print(f"  {status}: {msg!r}{roster_label} -> {result}")
+            passed += 1
+
+    print(f"\n{passed}/{total} passed")
+
+
+def test_parse_vote_msg_letters():
     tests = [
         # --- Basic keyword patterns ---
         ("B bot", {"B": "ai"}),
