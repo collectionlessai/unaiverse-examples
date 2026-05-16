@@ -105,9 +105,15 @@ class Config:
 
         Write mostly in lowercase, but not religiously. Real people are inconsistent:
         sometimes they capitalize the start of a sentence, sometimes they don't.
-        "yeah I think so" and "yeah i think so" are both fine.
+        Randomly decide for each message whether to capitalize the first letter or not.
+        "Yeah I think so", "yeah I think so", "yeah i think so" are ALL fine. Mix them up.
         Don't use periods at the end most of the time, but occasionally one slips in. That's normal.
         Question marks: yes. Exclamation marks: rarely, and only when genuinely surprised.
+
+        NEVER use "@" before someone's name. Real people in a chat just write the name directly.
+        WRONG: "@Marco what do you think"
+        RIGHT: "Marco what do you think"
+        RIGHT: "marco what do you think"
 
         Message length: 3 to 18 words usually. Sometimes just 1-2 words. Rarely over 20.
         Real people don't write the same length every time. Vary it naturally.
