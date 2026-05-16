@@ -27,7 +27,7 @@
         "wait_for_ready": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9203; Waiting outside (decompression)",
+            "msg": "&#9203; Waiting outside (you will stay outside for 60 seconds to recover)",
             "blocking": false,
             "time_to_wait_for_interactions": 0.0
         },
@@ -375,7 +375,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 30
+                    "time_to_wait_before_running": 60
                 },
                 "goto": "ready"
             }
@@ -405,7 +405,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 30
+                    "time_to_wait_before_running": 60
                 },
                 "goto": "hall"
             }

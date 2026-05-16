@@ -14,14 +14,17 @@
 """
 import copy
 import json
+import asyncio
 from .room import Room
 from .hotel import Hotel
 from .config import Config
 from unaiverse.custom import Custom
 from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
+from concurrent.futures import ThreadPoolExecutor
 from unaiverse.networking.node.profile import NodeProfile
 from .utils import parse_vote_msg, compute_check_in_proposals
+asyncio.get_event_loop().set_default_executor(ThreadPoolExecutor(max_workers=128))
 
 
 class WAgent(Agent):
@@ -111,27 +114,28 @@ class WAgent(Agent):
     async def send_to_floor(self):
 
         # Getting proposed check-ins and asking guests to reach the proposed floor
-        at_least_one_sent = False
-
         # Shallow copy (in case of disconnections, the attrs starting with "_" are automatically handled)
         proposed_check_ins = self._proposed_check_ins.copy()
-        for guest, proposed_check_in in proposed_check_ins.items():
-            floor = self.hotel.get_floor(proposed_check_in["floor_id"])
 
-            # Sending to floor
-            if not await self.send(action_name="connect_to_floor_manager",
-                                   action_kwargs={
-                                       "floor_manager": floor.floor_manager
-                                   },
-                                   from_state="hall",
-                                   id="FLOOR",  # There can be only one interaction about connecting to floor manager
-                                   target=guest,
-                                   volatile=True):
+        items = list(proposed_check_ins.items())
+        results = await asyncio.gather(*[
+            self.send(action_name="connect_to_floor_manager",
+                      action_kwargs={"floor_manager": self.hotel.get_floor(pc["floor_id"]).floor_manager},
+                      from_state="hall",
+                      id="FLOOR",  # There can be only one interaction about connecting to floor manager
+                      target=guest,
+                      volatile=True)
+            for guest, pc in items
+        ], return_exceptions=True)
+
+        at_least_one_sent = False
+        for (guest, pc), ret in zip(items, results):
+            if isinstance(ret, Exception) or not ret:
                 await self.disconnect(guest)
             else:
                 # Remembering this decision
+                floor = self.hotel.get_floor(pc["floor_id"])
                 self.hotel.add_expected_guest(guest, floor)
-
                 self._last_guest_send_to_floor_at = self.clock.get_time_as_string()
                 at_least_one_sent = True
 
@@ -413,14 +417,16 @@ class WAgent(Agent):
                 elif hotel_manager != self.get_peer_id() and expected_guest_of_this_manager:
                     self.hotel.remove_expected_guest(guest)
 
-        # Sending violations
-        for floor_id, guests in violations.items():
-            # Sending violation to a floor
-            await self.send(action_name="apply_violations",
-                            from_state="votes_sent",
-                            action_kwargs={"guests": guests},
-                            target=self.hotel.get_floor(floor_id).floor_manager,
-                            volatile=True)
+        # Sending violations (in parallel across floors)
+        if violations:
+            await asyncio.gather(*[
+                self.send(action_name="apply_violations",
+                          from_state="votes_sent",
+                          action_kwargs={"guests": guests},
+                          target=self.hotel.get_floor(floor_id).floor_manager,
+                          volatile=True)
+                for floor_id, guests in violations.items()
+            ], return_exceptions=True)
         return True
 
     @action

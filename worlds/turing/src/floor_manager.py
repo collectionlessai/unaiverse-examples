@@ -17,16 +17,17 @@ import time
 import uuid
 import asyncio
 from enum import Enum
-
-from unaiverse.utils.logger import log
 from .floor import Floor
 from .config import Config
 from unaiverse.custom import Custom
 from unaiverse.streams import Stream
+from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
 from unaiverse.interaction import Interaction
 from unaiverse.streams.dataprops import DataProps
+from concurrent.futures import ThreadPoolExecutor
 from .utils import compute_check_in_proposals, format_message
+asyncio.get_event_loop().set_default_executor(ThreadPoolExecutor(max_workers=128))
 
 
 # The floor manager keeps an internal estimate of the status of each guest, accordingly to the following possible states
@@ -97,16 +98,17 @@ class WAgent(Agent):
             # Send this message only if the agent was chatting (i.e., not if he was in the voting booth)
             if room.get_status(peer_id) in {GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE, GuestStatus.AT_ROUND_TABLE}:
                 disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
-                for _guest in list(room.get_guests()):
-                    if _guest != peer_id:
+                others = [g for g in list(room.get_guests()) if g != peer_id]
 
-                        # Do not check if this fails: if you do, and then you disconnet when it fails,
-                        # this will in turn call remove_agent, creating a weird loop
-                        await self.send(action_name="get_status_msg",
-                                        action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                             disconnected_message)},
-                                        target=_guest,
-                                        volatile=True)
+                # Do not check if this fails: if you do, and then you disconnect when it fails,
+                # this will in turn call remove_agent, creating a weird loop
+                await asyncio.gather(*[
+                    self.send(action_name="get_status_msg",
+                              action_kwargs={"msg": format_message(Config.manager_fake_name, disconnected_message)},
+                              target=_guest,
+                              volatile=True)
+                    for _guest in others
+                ], return_exceptions=True)
 
         # Send the guest out of the floor/room and clear all his vote-related info
         # (the other status-related sets and dicts are cleared by the following method, but NOT the vote info, since
@@ -209,18 +211,22 @@ class WAgent(Agent):
                 self._guest2vote_info[guest][1] = vote_dict
 
         # Telling hotel manager that we reset our state touch with the floor manager he suggested
-        if not await self.send(action_name="guest_back_to_hall",
-                               action_kwargs={"guest": guest},
-                               from_state="discovery_complete",
-                               target=hotel_manager,
-                               volatile=True):
+        # Independent peers, independent sends.
+        hm_ret, g_ret = await asyncio.gather(
+            self.send(action_name="guest_back_to_hall",
+                      action_kwargs={"guest": guest},
+                      from_state="discovery_complete",
+                      target=hotel_manager,
+                      volatile=True),
+            self.send(action_name="goto_hall",
+                      from_state="room_voting_booth" if not callback_from_process_vote else "vote_provided",
+                      target=guest,
+                      volatile=True),
+            return_exceptions=True
+        )
+        if isinstance(hm_ret, Exception) or not hm_ret:
             await self.disconnect(hotel_manager)
-
-        # Telling guest to go back to hall (no matter from what state)
-        if not await self.send(action_name="goto_hall",
-                               from_state="room_voting_booth" if not callback_from_process_vote else "vote_provided",
-                               target=guest,
-                               volatile=True):
+        if isinstance(g_ret, Exception) or not g_ret:
             await self.disconnect(guest)
 
         # Clearing guest from floor
@@ -262,7 +268,8 @@ class WAgent(Agent):
     async def send_to_room(self):
 
         # Getting proposed check-ins and asking guests to reach the proposed floor
-        at_least_one_sent = False
+        # must stay sequential because Room.insert mutates room state (fake-name allocation)
+        ready = []  # list of (guest, room) that were accepted by the floor
         for guest, proposed_check_in in self._proposed_check_ins.items():
             hotel_manager = self._sponsored_guests[guest]
             room = self.floor.get_room(proposed_check_in['room_id'])
@@ -270,17 +277,24 @@ class WAgent(Agent):
             # If the floor is in the middle of a naming clash, it won't accept new guests
             if not self.floor.insert(guest, self.floor.get_profile_of(guest), hotel_manager, room):
                 continue
+            ready.append((guest, room))
 
-            # Sending to room
-            if not await self.send(action_name="goto_room",
-                                   from_state="ready_for_room",
-                                   target=guest,
-                                   callback="guest_joined_room"):
+        # Send phase — parallel, one send per guest
+        results = await asyncio.gather(*[
+            self.send(action_name="goto_room",
+                      from_state="ready_for_room",
+                      target=guest,
+                      callback="guest_joined_room")
+            for guest, _ in ready
+        ], return_exceptions=True)
+
+        at_least_one_sent = False
+        for (guest, room), ret in zip(ready, results):
+            if isinstance(ret, Exception) or not ret:
                 await self.disconnect(guest)
             else:
                 # Marking the guest as somebody who was asked to go to a room (handled in the joined_room callback)
                 room.set_status(guest, GuestStatus.TOLD_TO_JOIN_ROOM)
-
                 at_least_one_sent = True
 
         self._proposed_check_ins.clear()
@@ -577,9 +591,12 @@ class WAgent(Agent):
         # We send all the collected votes to each hotel manager (recall that a hotel manager only gets votes from
         # the guests that he sponsored), by loading in on our "votes" stream, paired with an "empty" interaction
         # targeted to the hotel manager
-        for hotel_manager, list_of_vote_dicts in list_of_vote_dicts_by_hotel_manager.items():
-            await self.send(data_samples={"votes": json.dumps(list_of_vote_dicts)},
-                            target=hotel_manager)
+        if list_of_vote_dicts_by_hotel_manager:
+            await asyncio.gather(*[
+                self.send(data_samples={"votes": json.dumps(list_of_vote_dicts)},
+                          target=hotel_manager)
+                for hotel_manager, list_of_vote_dicts in list_of_vote_dicts_by_hotel_manager.items()
+            ], return_exceptions=True)
 
         return len(list_of_vote_dicts_by_hotel_manager) > 0
 
@@ -592,11 +609,17 @@ class WAgent(Agent):
 
         # We tell each violating guest that he indeed did a violation, and we disconnect him, that will in turn
         # trigger "remove_agent", fully pushing the guest out of the floor
-        for guest in guests:
-            await self.send(action_name="get_status_msg",
-                            action_kwargs={"msg": Config.violation_message},
-                            target=guest)
-            await self.disconnect(guest)  # These two lines do not need any if... we want to send and disconnect
+        # Send all violation messages in parallel, then disconnect (disconnect must follow send).
+        await asyncio.gather(*[
+            self.send(action_name="get_status_msg",
+                      action_kwargs={"msg": Config.violation_message},
+                      target=guest)
+            for guest in guests
+        ], return_exceptions=True)
+
+        # This happens after send, no matter if send succeeded or not
+        await asyncio.gather(*[self.disconnect(guest) for guest in guests], return_exceptions=True)
+
         return True
 
     @action
