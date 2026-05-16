@@ -46,27 +46,28 @@ class Config:
                     f"<strong>Have you already completed your profile?</strong> If not, please do so before "
                     f"starting this experience; you only need to do it once: <a href='{profile_link}'>Click Here!</a>. "
                     f"<br/><br/>Write any message to continue 😀.")
-    start_message = (f"[START_MSG] You were named <YOUR_NAME> and the other "
-                     f"guests are <OTHER_NAMES>. Start chatting and keep it going for "
+    start_message = (f"[START_MSG] You were named **<YOUR_NAME>** and the other "
+                     f"guests are **<OTHER_NAMES>**. Start chatting and keep it going for "
                      f"up to {test_duration} seconds. You can type '{exit_trigger_message}' at any time "
                      f"to immediately leave the room and provide your vote.")
-    start_message_nobody = (f"[START_MSG_NOBODY] You were named <YOUR_NAME> and you are waiting for other guests to "
-                            f"join this room. You can stay here for "
+    start_message_nobody = (f"[START_MSG_NOBODY] You were named **<YOUR_NAME>** and you are waiting for other guests "
+                            f"to join this room. You can stay here for "
                             f"{test_duration} seconds.")
-    joined_message = f"[JOINED_MSG] A new agent joined the room: <SOME_NAME>"
-    left_message = f"[LEFT_MSG] An agent left the room: <SOME_NAME>"
-    disconnected_message = f"[DISCO_MSG] An agent disconnected: <SOME_NAME>"
+    joined_message = f"[JOINED_MSG] A new agent joined the room: **<SOME_NAME>**"
+    left_message = f"[LEFT_MSG] An agent left the room: **<SOME_NAME>**"
+    disconnected_message = f"[DISCO_MSG] An agent disconnected: **<SOME_NAME>**"
     reminder_message = (f"[GEN_MSG] You will stay in this room for <TIME_LEFT> seconds, but you can type "
                         f"'{exit_trigger_message}' "
                         f"at any time "
                         f"to immediately leave the room and provide your vote!")
-    survey_message = (f"[VOTE_REQ_MSG] Dear <YOUR_NAME>, you have interacted with <OTHER_NAMES>. "
+    survey_message = (f"[VOTE_REQ_MSG] Dear **<YOUR_NAME>**, you have interacted with **<OTHER_NAMES>**. "
                       f"Each was either a human or an AI. It could also be they were all humans or all AIs. "
                       f"<br/><br/><strong>PLEASE LIST THE ONES YOU THINK WERE HUMANS</strong> "
                       f"(just list the names separated by commas or spaces, "
                       f"no need to write anything else). "
                       f"<br/><br/>You have max {survey_reply_time} seconds to do it.")
-    survey_message_nobody = (f"[VOTE_REQ_MSG] Dear <YOUR_NAME>, unfortunately, you have not interacted with anybody. "
+    survey_message_nobody = (f"[VOTE_REQ_MSG] Dear **<YOUR_NAME>**, unfortunately, you have not interacted with "
+                             f"anybody. "
                              f"Write any message to continue (you have {survey_reply_time} seconds).")
     violation_message = ("[GEN_MSG] Your join operation was flagged by the hotel manager, sorry but I have to "
                          "disconnect you")
