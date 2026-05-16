@@ -44,7 +44,7 @@ class Config:
                     f"while others judge whether you are a human 🧑 or a machine 🤖 (remember to act human).<br/><br/>"
                     f"<strong>Have you already completed your profile?</strong> If not, please do so before "
                     f"starting this experience; you only need to do it once: <a href='{profile_link}'>Click Here!</a>. "
-                    f"<br/><br/>Write any message to continue 😀).")
+                    f"<br/><br/>Write any message to continue 😀.")
     start_message = (f"[START_MSG] You were named <YOUR_NAME> and the other "
                      f"guests are <OTHER_NAMES>. Start chatting and keep it going for "
                      f"up to {test_duration} seconds. You can type '{exit_trigger_message}' at any time "
