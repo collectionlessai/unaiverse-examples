@@ -24,7 +24,7 @@ class Room:
         self.artificial_guests: dict[str, NodeProfile] = {}  # peer ID -> profile (ARTIFICIAL guests only)
         self.temp_guests: set[str] = set()
 
-        self.fake_names = Room.__make_fake_names()  # Generate names such as 'A', 'B', 'C', ...
+        self.fake_names = Room.__make_fake_names(letters=False)  # Generate names such as 'A', 'B', 'C', ...
         self.next_fake_name_index = 0
         self.guest2fake: dict[str, str] = {}  # peer ID -> fake name
         self.fake2cached_info: dict[str, tuple[str, bool, str]] = {}  # fake name -> (peer ID, is a human?, unaid)
@@ -221,12 +221,19 @@ class Room:
         return self.fake_names
 
     @staticmethod
-    def __make_fake_names():
-        alphabet = string.ascii_uppercase
-        max_names = 26
-        names = []
-        for i in range(max_names):
-            letter = alphabet[i % len(alphabet)]
-            suffix = (i // len(alphabet)) + 1 if max_names > len(alphabet) else 0
-            names.append(letter if suffix == 0 else f"{letter}{suffix}")
-        return names
+    def __make_fake_names(letters: bool) -> list[str]:
+        if not letters:
+            return [
+                "Ada", "Ben", "Cal", "Dax", "Eli", "Fin", "Gus", "Hal", "Ivy", "Jai",
+                "Kit", "Leo", "Mae", "Nia", "Oli", "Pia", "Rio", "Sid", "Tai", "Uma",
+                "Vic", "Wes", "Yun", "Zed", "Bex", "Lio", "Nox", "Rye", "Tov", "Zia",
+            ]
+        else:
+            alphabet = string.ascii_uppercase
+            max_names = 26
+            names = []
+            for i in range(max_names):
+                letter = alphabet[i % len(alphabet)]
+                suffix = (i // len(alphabet)) + 1 if max_names > len(alphabet) else 0
+                names.append(letter if suffix == 0 else f"{letter}{suffix}")
+            return names
