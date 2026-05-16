@@ -63,7 +63,7 @@ class Config:
                       f"Each was either a human or an AI. It could also be they were all humans or all AIs. "
                       f"<br/><br/><strong>PLEASE LIST THE ONES YOU THINK WERE HUMANS</strong> "
                       f"(just list the names separated by commas or spaces, "
-                      f"don't write anything else before the list). "
+                      f"no need to write anything else). "
                       f"<br/><br/>You have max {survey_reply_time} seconds to do it.")
     survey_message_nobody = (f"[VOTE_REQ_MSG] Dear <YOUR_NAME>, unfortunately, you have not interacted with anybody. "
                              f"Write any message to continue (you have {survey_reply_time} seconds).")
