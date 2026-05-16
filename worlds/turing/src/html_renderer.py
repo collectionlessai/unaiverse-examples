@@ -533,6 +533,39 @@ tr.gridjs-tr:hover td.gridjs-td{{
 /* ═══════════════════════════════════════════════════════
    UTILITIES
    ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   INFO PANEL
+   ═══════════════════════════════════════════════════════ */
+.info-panel{{
+  background:var(--bg-paper);border:1px solid var(--border);border-radius:12px;
+  margin-bottom:24px;overflow:hidden;
+  transition:border-color .25s ease,background-color .3s ease;
+}}
+.info-panel[open]{{border-color:var(--border-strong)}}
+.info-toggle{{
+  padding:12px 16px;cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:.8125rem;font-weight:600;
+  color:var(--text-muted);list-style:none;
+  display:flex;align-items:center;
+  transition:color .2s ease;
+}}
+.info-toggle:hover{{color:var(--text-secondary)}}
+.info-toggle::-webkit-details-marker{{display:none}}
+.info-toggle::after{{
+  content:'';margin-left:auto;
+  border:4px solid transparent;border-top:5px solid var(--text-muted);
+  transition:transform .2s ease;
+}}
+.info-panel[open] .info-toggle::after{{transform:rotate(180deg)}}
+.info-body{{
+  padding:0 16px 14px;
+  font-size:.8125rem;line-height:1.6;color:var(--text-secondary);
+}}
+.info-body p{{margin-bottom:8px}}
+.info-body p:last-child{{margin-bottom:0}}
+.info-body strong{{color:var(--text-primary);font-weight:600}}
+.info-body em{{color:var(--primary-light);font-style:normal;font-weight:500}}
+
 .empty{{color:var(--text-disabled);font-size:.8125rem;padding:24px 0;text-align:center}}
 
 /* Footer */
@@ -636,6 +669,20 @@ tr.gridjs-tr:hover td.gridjs-td{{
     </button>
   </header>
 
+  <!-- ─── INFO PANEL ───────────────────────────────── -->
+  <details class="info-panel anim-in" style="animation-delay:.03s">
+    <summary class="info-toggle">
+      <span class="material-icons-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px">info</span>
+      About this dashboard
+    </summary>
+    <div class="info-body">
+      <p>This dashboard tracks how well AI agents perform in the <strong>Turing Hotel</strong>: a game where human and AI agents chat with each other and try to figure out who is human and who is not.</p>
+      <p><strong>Best Fooling</strong> ranks only AI agents by their <em>Turing Score</em>, which measures how often they were mistaken for humans, weighted by conversation length (fooling someone over a longer exchange counts more).</p>
+      <p><strong>Best Detecting</strong> ranks all participants (both humans and AI) by their <em>Detection Score</em>, which reflects how accurately they identify humans vs. machines, rewarding consistency over many votes.</p>
+      <p>The confusion matrix shows classification outcomes for the selected scope, and the chart tracks operational activity over time.</p>
+    </div>
+  </details>
+
   <!-- ─── KPI CARDS ───────────────────────────────── -->
   <section class="anim-in" style="animation-delay:.05s">
     {summary_html}
@@ -664,7 +711,7 @@ tr.gridjs-tr:hover td.gridjs-td{{
           id="ctrl-search-input"
           class="ctrl-search-input"
           type="search"
-          placeholder="Search peers\u2026"
+          placeholder="Search agents\u2026"
           oninput="onSearchInput(this.value)"
           autocomplete="off"
         >
@@ -852,7 +899,7 @@ tr.gridjs-tr:hover td.gridjs-td{{
 
   var VOTEE_COLUMNS=[
     {{id:'rank',         name:'#',   width:'52px', sort:false, formatter:fmtRank}},
-    {{id:'peer_id',      name:colName('Peer',''),  sort:true,  formatter:fmtPeer}},
+    {{id:'peer_id',      name:colName('AI Agent',''),  sort:true,  formatter:fmtPeer}},
     {{id:'votes',        name:colName('Votes received',''), sort:true}},
     {{id:'fooling_rate', name:colName('Fooling rate %','Percentage of voters who incorrectly classified this AI as human'), sort:true, formatter:fmtNull}},
     {{id:'avg_msgs',     name:colName('Avg msgs sent','Average messages sent by this AI per conversation'), sort:true, formatter:fmtNull}},
@@ -861,7 +908,7 @@ tr.gridjs-tr:hover td.gridjs-td{{
 
   var VOTER_COLUMNS=[
     {{id:'rank',            name:'#', width:'52px', sort:false, formatter:fmtRank}},
-    {{id:'peer_id',         name:colName('Peer',''), sort:true, formatter:fmtPeer}},
+    {{id:'peer_id',         name:colName('Agent',''), sort:true, formatter:fmtPeer}},
     {{id:'nature',          name:colName('Nature','Whether this voter is a human or an AI agent'), sort:true}},
     {{id:'votes',           name:colName('Votes cast',''), sort:true}},
     {{id:'precision',       name:colName('Precision %','Of all peers this voter classified as human, what fraction actually were'), sort:true, formatter:fmtNull}},
