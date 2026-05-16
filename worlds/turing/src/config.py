@@ -64,8 +64,7 @@ class Config:
                       f"<br/><br/><strong>PLEASE LIST THE ONES YOU THINK WERE HUMANS</strong> "
                       f"(just list the names separated by commas or spaces, "
                       f"don't write anything else before the list). "
-                      f"<br/><br/>After having written down the list, you can keep filling the SAME MESSAGE to"
-                      f" explain your choice (you have {survey_reply_time} seconds overall).")
+                      f"<br/><br/>You have max {survey_reply_time} seconds to do it.")
     survey_message_nobody = (f"[VOTE_REQ_MSG] Dear <YOUR_NAME>, unfortunately, you have not interacted with anybody. "
                              f"Write any message to continue (you have {survey_reply_time} seconds).")
     violation_message = ("[GEN_MSG] Your join operation was flagged by the hotel manager, sorry but I have to "
