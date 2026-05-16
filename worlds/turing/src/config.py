@@ -28,7 +28,7 @@ class Config:
     min_msgs_from_votee = 3  # Minimum number of received messages from somebody to vote hit
     send_reminder_every = 65  # Reminder on how to exit the room and vote
     send_floor_updates_every = 3  # From floor manager to hotel manager
-    decompression_time = 30
+    decompression_time = 60
     disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
     exit_trigger_message = "exit"  # The message that an agent can write to early stop the conversation and vote
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
