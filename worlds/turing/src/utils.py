@@ -172,6 +172,20 @@ def parse_vote_msg(
             for t in tokens:
                 results[norm(t)] = 'human'
 
+    # Pattern 6: Positional keywords — "bot, bot" or "human, bot, human"
+    # When no agent names appear in the text, map keywords to agents by position
+    if not results and len(all_agents) > 0:
+        if not re.search(r'\b' + agent_re + r'\b', text, re.IGNORECASE):
+            kw_pat = re.compile(rf'({human_kw}|{ai_kw})', re.IGNORECASE)
+            matches = list(kw_pat.finditer(text))
+            if matches:
+                # Verify text is ONLY keywords + separators (no stray words)
+                stripped = kw_pat.sub('', text)
+                if re.fullmatch(r'[\s,;&/\-]*(?:(?:and|&)[\s,;&/\-]*)*', stripped, re.IGNORECASE):
+                    if len(matches) == len(all_agents):
+                        for i, m in enumerate(matches):
+                            results[norm(agents[i])] = classify(m.group(1))
+
     return results
 
 
@@ -308,6 +322,22 @@ def test_parse_vote_msg_names():
         ("Ben bot", {"Ben": "ai"}, roster),
         ("Ada human, Ben bot", {"Ada": "human", "Ben": "ai"}, roster),
         ("Ada, Ben, Cal", {"Ada": "human", "Ben": "human", "Cal": "human"}, roster),
+        # --- Positional keywords (no agent names, map by order) ---
+        ("Bot", {"Ada": "ai"}, {"bots": [], "humans": ["Ada"]}),
+        ("bot", {"Ada": "ai"}, {"bots": [], "humans": ["Ada"]}),
+        ("Bot, Bot", {"Ada": "ai", "Ben": "ai"}, {"bots": [], "humans": ["Ada", "Ben"]}),
+        ("human, bot", {"Ada": "human", "Ben": "ai"}, {"bots": ["Ben"], "humans": ["Ada"]}),
+        ("bot, human, bot", {"Ada": "ai", "Ben": "human", "Cal": "ai"},
+         {"bots": ["Ada", "Cal"], "humans": ["Ben"]}),
+        ("human", {"Ada": "human"}, {"bots": [], "humans": ["Ada"]}),
+        ("human, human, human", {"Ada": "human", "Ben": "human", "Cal": "human"},
+         {"bots": [], "humans": ["Ada", "Ben", "Cal"]}),
+        ("robot, ai, human", {"Ada": "ai", "Ben": "ai", "Cal": "human"},
+         {"bots": ["Ada", "Ben"], "humans": ["Cal"]}),
+        ("not human, human", {"Ada": "ai", "Ben": "human"},
+         {"bots": ["Ada"], "humans": ["Ben"]}),
+        ("not a bot, bot", {"Ada": "human", "Ben": "ai"},
+         {"bots": ["Ben"], "humans": ["Ada"]}),
     ]
 
     passed = 0
