@@ -20,7 +20,7 @@ import textwrap
 class Config:
     use_letter_names = False
     test_duration = 180  # Seconds (int)
-    survey_reply_time = 5  # Seconds
+    survey_reply_time = 75  # Seconds
     moving_time = 10  # Time to move from the floor entrance to the chat table or from the chat table to the voting both
     max_time_in_every_state = max([test_duration, survey_reply_time, moving_time]) + moving_time + 5  # Add a gap
     max_guests_per_room = 4
