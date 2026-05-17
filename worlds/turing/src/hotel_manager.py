@@ -586,9 +586,9 @@ class WAgent(Agent):
                     parsed_vote = parse_vote_msg(vote_dict["vote"],  # Dict fake-name (votee) to "human" | "ai"
                                                  agents=self.fake_names,
                                                  bots=[k for k, v
-                                                       in vote_dict["ground_truth"].items() if v == "ai"],
+                                                       in vote_dict["ground_truth"].items() if v[0] == "ai"],
                                                  humans=[k for k, v
-                                                         in vote_dict["ground_truth"].items() if v == "human"])
+                                                         in vote_dict["ground_truth"].items() if v[0] == "human"])
 
                     # If parsing failed or if the vote is actually garbage, we save the result
                     if len(parsed_vote) == 0:
