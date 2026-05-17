@@ -438,10 +438,11 @@ class WAgent(Agent):
             time_left = Config.test_duration - room.get_time_in_current_status(guest)
             sent = False
             if time_left > 0:
+                reminder_message = (Config.reminder_message.replace("<TIME_LEFT>", str(time_left)).
+                                    replace("<YOUR_NAME>", room.fake_name_of(guest)))
                 if not await self.send(action_name="get_status_msg",
                                        action_kwargs={"msg": format_message(Config.manager_fake_name,
-                                                                            Config.reminder_message.replace(
-                                                                                "<TIME_LEFT>", str(time_left)))},
+                                                                            reminder_message)},
                                        from_state="room_round_table",
                                        target=guest,
                                        volatile=True):
