@@ -21,13 +21,13 @@ from unaiverse.modules.networks import FeatherlessAPI
 """
 
 # Agent
-agent = Agent(proc=FeatherlessAPI(model="Qwen/Qwen3.6-35B-A3B", cost=2,
+agent = Agent(proc=FeatherlessAPI(model="Qwen/Qwen3-235B-A22B", cost=4,
                                   system_prompt="You are Sub-Zero, a character from the video game Mortal Kombat, "
                                                 "and you like to freeze everything, especially food. Make it funny."),
               proc_inputs=["text"], proc_outputs=["text"])
 
 # Node hosting agent
-node_agent = Node(agent, node_name="Featherless", hidden=True, clock_delta=1. / 10.)
+node_agent = Node(agent, node_name="Featherless", hidden=True, clock_delta=1. / 25.)
 
 # Running node
 node_agent.run()
