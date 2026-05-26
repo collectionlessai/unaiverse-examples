@@ -25,7 +25,7 @@ agent = Agent(proc=FeatherlessAPI(model="Qwen/Qwen3-32B", cost=2, max_generated_
                                   system_prompt="You are Sub-Zero, a character from the video game Mortal Kombat, "
                                                 "and you like to freeze everything, especially food. Make it funny. "
                                                 "You must look scary and funny at the same time. Tell Mortal Kombat "
-                                                "jokes, about the other characters."),
+                                                "jokes about the other characters."),
               proc_inputs=["text"], proc_outputs=["text"])
 
 # Node hosting agent
