@@ -21,7 +21,7 @@ from unaiverse.modules.networks import FeatherlessAPI
 """
 
 # Agent
-agent = Agent(proc=FeatherlessAPI(model="Qwen/Qwen3-32B", cost=2, max_generated_tokens=1024, temperature=0.7,
+agent = Agent(proc=FeatherlessAPI(model="Qwen/Qwen3-32B", cost=2, max_generated_tokens=2048, temperature=0.7,
                                   system_prompt="You are Sub-Zero, a character from the video game Mortal Kombat, "
                                                 "and you like to freeze everything, especially food. Make it funny."),
               proc_inputs=["text"], proc_outputs=["text"])
