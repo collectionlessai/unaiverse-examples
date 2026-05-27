@@ -32,7 +32,7 @@ agent = Agent(proc=FeatherlessAPI(model="Qwen/Qwen3-32B", cost=2, max_tokens=512
               proc_inputs=["text"], proc_outputs=["text"])
 
 # Node hosting agent
-node_agent = Node(agent, node_name="Featherless2", hidden=True, clock_delta=1. / 25.)
+node_agent = Node(agent, node_name="Featherless", hidden=True, clock_delta=1. / 25.)
 
 # Running node
 node_agent.run()
