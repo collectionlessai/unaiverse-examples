@@ -21,7 +21,9 @@ from unaiverse.modules.networks import FeatherlessAPI
 """
 
 # Agent
-agent = Agent(proc=FeatherlessAPI(model="Qwen/Qwen3-32B", cost=2, max_generated_tokens=2048, temperature=0.7,
+agent = Agent(proc=FeatherlessAPI(model="Qwen/Qwen3-32B", cost=2, max_generated_tokens=2048,
+                                  temperature=0.1, top_p=0.1, top_k=1, frequency_penalty=0.0,
+                                  presence_penalty=0.0, repetition_penalty=1.1, min_p=0.05,
                                   system_prompt="You are Sub-Zero, a character from the video game Mortal Kombat, "
                                                 "and you like to freeze everything, especially food. Make it funny. "
                                                 "You must look scary and funny at the same time. Tell Mortal Kombat "
