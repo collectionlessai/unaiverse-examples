@@ -15,91 +15,91 @@
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "ready": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#128279; Connecting to a randomly selected hotel manager",
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "wait_for_ready": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#9203; Waiting outside (you will stay outside for 60 seconds to recover)",
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "reached_hotel_manager": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#127970; Entered the hotel (hotel manager contacted)",
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "hall": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#127970; Walking through the hall (waiting to be sent to a floor)",
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "wait_for_hall": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#9203; Waiting in the hall (decompression)",
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "reached_floor_manager": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#129692; Going upstairs (floor manager contacted)",
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "floor": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#129692; Reached the right floor (waiting to be sent to a room)",
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "ready_for_room": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "room_round_table": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "msg_prepared": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "room_voting_booth": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#128499; Entered the voting booth (waiting for vote request)",
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "vote_provided": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#9989; Vote provided",
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         }
     },
     "transitions": {
@@ -113,7 +113,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "ready"
             },
@@ -126,7 +126,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "ready"
             }
@@ -141,7 +141,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "reached_hotel_manager"
             }
@@ -156,7 +156,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "hall"
             }
@@ -171,7 +171,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "reached_floor_manager"
             }
@@ -187,7 +187,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "floor"
             }
@@ -202,7 +202,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "ready_for_room"
             }
@@ -218,7 +218,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "room_round_table"
             }
@@ -233,7 +233,7 @@
                     "high_priority": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "msg_prepared"
             },
@@ -246,7 +246,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "room_round_table"
             },
@@ -259,7 +259,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "room_round_table"
             },
@@ -272,7 +272,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "room_voting_booth"
             }
@@ -287,7 +287,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "room_round_table"
             }
@@ -302,7 +302,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "room_voting_booth"
             },
@@ -315,7 +315,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "vote_provided"
             },
@@ -328,7 +328,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "hall"
             }
@@ -343,7 +343,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "hall"
             }
@@ -360,7 +360,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 30
+                    "delay": 30
                 },
                 "goto": "wait_for_ready"
             }
@@ -375,7 +375,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 60
+                    "delay": 60
                 },
                 "goto": "ready"
             }
@@ -390,7 +390,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 30
+                    "delay": 30
                 },
                 "goto": "wait_for_hall"
             }
@@ -405,7 +405,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 60
+                    "delay": 60
                 },
                 "goto": "hall"
             }

@@ -19,7 +19,7 @@ class Room:
         """
         self.id = id
 
-        self.guests: dict[str, NodeProfile] = {}  # peer ID -> profile (ALL guests)
+        self.guests: dict[str, NodeProfile | None] = {}  # peer ID -> profile (ALL guests)
         self.human_guests: dict[str, NodeProfile] = {}  # peer ID -> profile (HUMAN guests only)
         self.artificial_guests: dict[str, NodeProfile] = {}  # peer ID -> profile (ARTIFICIAL guests only)
         self.temp_guests: set[str] = set()
@@ -144,7 +144,10 @@ class Room:
                 self.artificial_guests[guest] = profile
 
         if fake_name is not None:
-            self.fake2cached_info[fake_name] = (guest, self.is_human(guest), build_unaid(profile))
+            is_human = self.is_human(guest)
+            assert is_human is not None
+            assert fake_name is not None
+            self.fake2cached_info[fake_name] = (guest, is_human, build_unaid(profile))
         return True
 
     def eject(self, guest: str):
@@ -164,8 +167,10 @@ class Room:
             if guest in self.guest2status_time:
                 del self.guest2status_time[guest]
             if fake_name in self.msgs_sent_by_fake_to_fake:
+                assert fake_name is not None
                 del self.msgs_sent_by_fake_to_fake[fake_name]
             if fake_name in self.msgs_recv_by_fake_from_fake:
+                assert fake_name is not None
                 del self.msgs_recv_by_fake_from_fake[fake_name]
             if self.count_guests() == 0:
                 self.next_fake_name_index = 0

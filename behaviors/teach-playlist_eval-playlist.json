@@ -1,6 +1,6 @@
 {
     "machine": {
-        "role": "teach-eval-playlist",
+        "role": "teach-playlist_eval-playlist",
         "initial_state": "begin_teaching",
         "msg": null,
         "options": {
@@ -22,7 +22,14 @@
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_before_acting": 1.0
+            "time_to_wait_before_acting": 0.0
+        },
+        "change_lecture": {
+            "action": "next_pref_stream",
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
         },
         "exam_time": {
             "action": null,
@@ -36,41 +43,34 @@
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_before_acting": 5.0
+            "time_to_wait_before_acting": 0.0
         },
-        "compare_time": {
+        "eval_time": {
             "action": "evaluate",
             "action_kwargs": {
-                "stream_hash": "<agent>:eval",
-                "how": "max",
+                "stream_hash": "<playlist>",
+                "how": "mse",
                 "steps": "<eval_steps>"
             },
             "msg": null,
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
-        "best_found": {
-            "action": null,
-            "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
-            "time_to_wait_before_acting": 0.0
-        },
-        "best_not_found": {
-            "action": null,
-            "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
-            "time_to_wait_before_acting": 0.0
-        },
-        "change_lecture": {
+        "good": {
             "action": "next_pref_stream",
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
-        "finished_teaching": {
+        "bad": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "finished_work": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
@@ -94,117 +94,19 @@
                             ]
                         },
                         "num_steps": "<learn_steps>",
-                        "timeout": "<learn_time>",
                         "wait_completion": true
                     },
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 0.0,
+                    "retry_timeout": 60.0,
                     "delay": 0.0
                 },
                 "goto": "student_finished_following"
             }
         ],
         "student_finished_following": [
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "exam_time"
-            }
-        ],
-        "exam_time": [
-            {
-                "on": {
-                    "action": "send",
-                    "action_kwargs": {
-                        "action_name": "process",
-                        "streams": ["<agent>:eval"],
-                        "num_steps": "<eval_steps>",
-                        "timeout": "<exam_time>",
-                        "wait_completion": true
-                    },
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "student_finished_exam"
-            }
-        ],
-        "student_finished_exam": [
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "compare_time"
-            }
-        ],
-        "compare_time": [
-            {
-                "on": {
-                    "action": "compare_eval",
-                    "action_kwargs": {
-                        "cmp": "min",
-                        "thres": "<cmp_thres>"
-                    },
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "best_found"
-            },
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "best_not_found"
-            }
-        ],
-        "best_found": [
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "change_lecture"
-            }
-        ],
-        "best_not_found": [
             {
                 "on": {
                     "action": "nop",
@@ -224,7 +126,7 @@
                 "on": {
                     "action": "check_pref_stream",
                     "action_kwargs": {
-                        "what": "not_first"
+                        "what": "not_last_round"
                     },
                     "msg": null,
                     "ready": true,
@@ -239,6 +141,106 @@
                 "on": {
                     "action": "check_pref_stream",
                     "action_kwargs": {
+                        "what": "last_round"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "exam_time"
+            }
+        ],
+        "exam_time": [
+            {
+                "on": {
+                    "action": "send",
+                    "action_kwargs": {
+                        "action_name": "process",
+                        "streams": [
+                            "<playlist>"
+                        ],
+                        "num_steps": "<eval_steps>",
+                        "wait_completion": true
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 5.0,
+                    "delay": 0.0
+                },
+                "goto": "student_finished_exam"
+            }
+        ],
+        "student_finished_exam": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "eval_time"
+            }
+        ],
+        "eval_time": [
+            {
+                "on": {
+                    "action": "compare_eval",
+                    "action_kwargs": {
+                        "cmp": "<=",
+                        "thres": "<cmp_thres>"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "good"
+            },
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "bad"
+            }
+        ],
+        "good": [
+            {
+                "on": {
+                    "action": "check_pref_stream",
+                    "action_kwargs": {
+                        "what": "not_first"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "exam_time"
+            },
+            {
+                "on": {
+                    "action": "check_pref_stream",
+                    "action_kwargs": {
                         "what": "first"
                     },
                     "msg": null,
@@ -248,7 +250,22 @@
                     "retry_timeout": 0.0,
                     "delay": 0.0
                 },
-                "goto": "finished_teaching"
+                "goto": "finished_work"
+            }
+        ],
+        "bad": [
+            {
+                "on": {
+                    "action": "first_pref_stream",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "begin_teaching"
             }
         ]
     },

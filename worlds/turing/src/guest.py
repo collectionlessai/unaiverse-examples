@@ -57,6 +57,7 @@ class WAgent(Agent):
                                        add_pubsub_streams=False)
 
     async def on_tick(self):
+        assert self.behav is not None
 
         # Checking if we lost connection to the hotel manager
         if self.__hotel_manager is not None and await self.disconnected(agent=self.__hotel_manager):
@@ -77,7 +78,8 @@ class WAgent(Agent):
             await self.behav.act_ghost_transition(to_state="wait_for_ready")
 
         # Checking time spent in current state
-        if (self.behav.get_state().name != "init" and
+        state = self.behav.get_state()
+        if ((state is None or state.name != "init") and
                 self.behav.get_time_spent_in_current_state() > Config.max_time_in_every_state):
             log.user("❌ Uhm! Too much time passed without interactions, better get out of the hotel")
             await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
@@ -207,7 +209,7 @@ class WAgent(Agent):
         return True
 
     @action
-    async def get_status_msg(self, msg: str, process_uuid: str = None):
+    async def get_status_msg(self, msg: str, process_uuid: str | None = None):
 
         if msg.startswith("[START_MSG]") or msg.startswith("[START_MSG_NOBODY]"):
 
@@ -333,9 +335,9 @@ class WAgent(Agent):
         return True
 
     def __add_to_history(self, formatted_msg: str, timestamp: float,
-                         process_uuid: str = Custom.SYSTEM_INTERACTION_UUID):
+                         process_uuid: str | None = Custom.SYSTEM_INTERACTION_UUID):
         if formatted_msg is None:
-            return
+            return self._history
 
         # Expected message like "**A:** Hi mate."
         sender, msg_only = unformat_message(formatted_msg)
@@ -370,5 +372,6 @@ class WAgent(Agent):
         # Setting the history to our processor's default input (given UUID), so that it will be considered in
         # the next "process" action that is bound to the given UUID
         input_stream = self.get_stream("processor_in", data_type="text")
+        assert input_stream is not None
         input_stream.set(self._history, uuid=process_uuid)
         return self._history

@@ -1,18 +1,20 @@
 """
        █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
       ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
-       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░ 
-       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████   
-       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█   
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█
        ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
        ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
-        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░ 
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░
                  A Collectionless AI Project (https://collectionless.ai)
                  Registration/Login: https://unaiverse.io
                  Code Repositories:  https://github.com/collectionlessai/
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
 import os
+
+from unaiverse.custom import Custom
 from .stats import WStats
 from unaiverse.world import World
 from unaiverse.hsm import HybridStateMachine
@@ -27,32 +29,36 @@ class WWorld(World):
         stats = WStats(is_world=True, db_path=os.path.join(world_folder, "stats", "world_stats.db"))
         super().__init__(world_folder=world_folder, stats=stats, **kwargs)
 
-        # Adding streams
-        data_path = os.path.join(self.world_folder, '..', '..', '..', 'data', 'animals')
+        # Adding streams (same as the original animal_school world)
+        data_path = os.path.join(str(self.world_folder), '..', '..', '..', 'data', 'animals')
 
-        self.add_streams([DataStream.create(group="albatross", public=False,
+        self.add_streams([DataStream.create(group="albatross", public=False, delta=-1,
                                             stream=ImageFileStream(image_dir=data_path,
                                                                    list_of_image_files=data_path + "/c1_skip_10i.csv")),
-                          DataStream.create(group="albatross", public=False,
-                                            stream=LabelStream(label_dir=data_path, single_class=True, line_header=True,
+                          DataStream.create(group="albatross", public=False, delta=-1,
+                                            stream=LabelStream(label_dir=data_path, single_class=True,
+                                                               line_header=True,
                                                                label_file_csv=data_path + "/c1_skip_10i.csv"))])
-        self.add_streams([DataStream.create(group="cheetah", public=False,
+        self.add_streams([DataStream.create(group="cheetah", public=False, delta=-1,
                                             stream=ImageFileStream(image_dir=data_path,
                                                                    list_of_image_files=data_path + "/c2_skip_10i.csv")),
-                          DataStream.create(group="cheetah", public=False,
-                                            stream=LabelStream(label_dir=data_path, single_class=True, line_header=True,
+                          DataStream.create(group="cheetah", public=False, delta=-1,
+                                            stream=LabelStream(label_dir=data_path, single_class=True,
+                                                               line_header=True,
                                                                label_file_csv=data_path + "/c2_skip_10i.csv"))])
-        self.add_streams([DataStream.create(group="giraffe", public=False,
+        self.add_streams([DataStream.create(group="giraffe", public=False, delta=-1,
                                             stream=ImageFileStream(image_dir=data_path,
                                                                    list_of_image_files=data_path + "/c3_skip_10i.csv")),
-                          DataStream.create(group="giraffe", public=False,
-                                            stream=LabelStream(label_dir=data_path, single_class=True, line_header=True,
+                          DataStream.create(group="giraffe", public=False, delta=-1,
+                                            stream=LabelStream(label_dir=data_path, single_class=True,
+                                                               line_header=True,
                                                                label_file_csv=data_path + "/c3_skip_10i.csv"))])
-        self.add_streams([DataStream.create(group="all", public=False,
+        self.add_streams([DataStream.create(group="all", public=False, delta=-1,
                                             stream=ImageFileStream(image_dir=data_path,
                                                                    list_of_image_files=data_path + "/first3c_10i.csv")),
-                          DataStream.create(group="all", public=False,
-                                            stream=LabelStream(label_dir=data_path, single_class=True, line_header=True,
+                          DataStream.create(group="all", public=False, delta=-1,
+                                            stream=LabelStream(label_dir=data_path, single_class=True,
+                                                               line_header=True,
                                                                label_file_csv=data_path + "/first3c_10i.csv"))])
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
@@ -65,45 +71,69 @@ class WWorld(World):
             return "student"
 
     def create_behav_files(self):
-        """Create role-behavior JSON files: if you manually create the JSON files, no need to implement this method."""
-
-        # Creating a dummy agent to check actions
+        """Create role-behavior JSON files."""
         import sys
+        assert self.world_folder
         sys.path.append(self.world_folder)
-        from agent import WAgent
-        dummy_agent = WAgent(proc=None)
+
+        # Behavior template
+        behaviors_dir = os.path.join(self.world_folder, "..", "..", "..", "behaviors")
+        engage_by_role_json = os.path.join(behaviors_dir, "engage_by_role.json")
+        teach_eval_json = os.path.join(behaviors_dir, "teach-playlist_eval-recorded1.json")
+        listening_json = os.path.join(behaviors_dir, "listening_to_teacher.json")
 
         # ROLE 1/2: teacher
+        from .teacher import WAgent as TeacherAgent
+        dummy_agent = TeacherAgent(proc=None)
         behav = HybridStateMachine(dummy_agent)
         behav.set_role("teacher")
 
-        # Preparing exam
-        behav.add_transit("init", "exam_prepared", action="record",
-                          args={"net_hash": "<world>:all", "samples": "<eval_steps>"})
+        behav.add_transit("init", "snapshotting_albatross", action="record",
+                          args={"streams": ["<world>:all"],
+                                "num_steps": "<eval_steps>",
+                                "record_uuid": None}, avoid_changing_ready=True)
+        behav.add_transit("snapshotting_albatross", "snapshotting_cheetah", action="record",
+                          args={"streams": ["<world>:albatross"],
+                                "num_steps": "<learn_steps>",
+                                "record_uuid": None}, avoid_changing_ready=True)
+        behav.add_transit("snapshotting_cheetah", "snapshotting_giraffe", action="record",
+                          args={"streams": ["<world>:cheetah"],
+                                "num_steps": "<learn_steps>",
+                                "record_uuid": None}, avoid_changing_ready=True)
+        behav.add_transit("snapshotting_giraffe", "exam_prepared", action="record",
+                          args={"streams": ["<world>:giraffe"],
+                                "num_steps": "<learn_steps>",
+                                "record_uuid": None}, avoid_changing_ready=True)
 
-        # Engaging students, teaching and, afterward, evaluating students
-        behav.add_transit("exam_prepared",
-                          os.path.join(self.world_folder, "..", "..", "..", "behaviors",
-                                       "teach-playlist_eval-recorded1.json"),
+        # Engage students via the modern engage_by_role template (chained at 'exam_prepared')
+        behav.add_transit("exam_prepared", engage_by_role_json, action="nop", args={})
+        behav.add_wildcards({"<roles_to_engage>": "student"})
+
+        # Wire the exam dataset reference into the teach-eval template's `evaluate` state.
+        behav.add_wildcards({"<exam_data_ref>": Custom.AGENT_WILDCARD + ":recorded1"})
+
+        # Teach each class in the playlist (auto-named `recorded2` / `recorded3` / `recorded4` from
+        # the snapshotting transits above), then exam against `recorded1` (the mixed shared set).
+        behav.add_transit("engagement_complete", teach_eval_json,
                           action="set_pref_streams",
-                          args={"net_hashes": ["<world>:albatross", "<world>:cheetah", "<world>:giraffe"]})
+                          args={"net_hashes": [Custom.AGENT_WILDCARD + ":recorded2",
+                                               Custom.AGENT_WILDCARD + ":recorded3",
+                                               Custom.AGENT_WILDCARD + ":recorded4"]})
 
-        # Promoting students that were positively evaluated
-        behav.add_transit("good", "promote", action="suggest_role_to_world",
-                          args={"agent": "<valid_cmp>",
-                                "role": "teacher"})
-
-        # Providing a badge to all the agents that finished the school with a positive mark
+        # Badging successfully-evaluated students
         behav.add_state("good", action="suggest_badges_to_world",
                         args={"agent": "<valid_cmp>", "score": 1.0, "badge_type": "completed",
                               "badge_description": "Completed the Animal School #ImageClassification #AnimalPictures"})
 
-        # Freeing students
-        behav.add_transit("promote", "habilitate", action="send_disengagement")
+        # Promoting students that passed to teacher role
+        behav.add_transit("good", "promote", action="suggest_role_to_world",
+                          args={"agent": "<valid_cmp>", "role": "teacher"})
 
-        # Wildcards present in the template
-        behav.add_wildcards({"<role_to_connect>": "student",
-                             "<learn_steps>": 40, "<eval_steps>": 30, "<cmp_thres>": 0.65})
+        # Freeing students
+        behav.add_transit("promote", "habilitate", action="send_disengage")
+
+        # Wildcards used by the templates above
+        behav.add_wildcards({"<learn_steps>": 40, "<eval_steps>": 30, "<cmp_thres>": 0.65})
         behav.apply_wildcards()
 
         # Adding default messages
@@ -116,17 +146,17 @@ class WWorld(World):
         behav.save(os.path.join(self.world_folder, 'teacher.json'), only_if_changed=dummy_agent)
 
         # ROLE 2/2: student
+        from .student import WAgent as StudentAgent
+        dummy_agent = StudentAgent(proc=None)
         behav = HybridStateMachine(dummy_agent)
         behav.set_role("student")
 
-        # Generic behaviour of a student who listens to the requests from the teacher
-        behav.add_transit("init",
-                          os.path.join(self.world_folder, "..", "..", "..", "behaviors", "listening_to_teacher.json"),
-                          action="get_engagement",
+        # Plug the modern listening_to_teacher_new template at 'init' (its initial state is 'teacher_engaged')
+        behav.add_transit("init", listening_json, action="engage",
                           args={"acceptable_role": "teacher"})
 
         # When the teacher will send the student back home
-        behav.add_transit("teacher_engaged", "init", action="get_disengagement")
+        behav.add_transit("teacher_engaged", "init", action="disengage")
 
         # Adding default messages
         behav.generate_auto_messages()

@@ -10,12 +10,12 @@ from unaiverse.utils.misc import countdown_start, countdown_wait
 
 # Creating neural network
 net = CNN(d_dim=10, in_channels=1, seed=62)
-net.transforms = lambda x: x  # Processing tensor data
 
 # Evaluating before 'living'
 spec = importlib.util.find_spec("src.world")
-save_path = os.path.join(os.path.dirname(os.path.abspath(spec.origin)), "mnist_data")
-error_rate_initial = error_rate_mnist_test_set(net, mnist_data_save_path=save_path)
+save_path = os.path.join(os.path.dirname(os.path.abspath(getattr(spec, "origin", "") or "")), "mnist_data")
+assert isinstance(net.module, torch.nn.Module)
+error_rate_initial = error_rate_mnist_test_set(net.module, mnist_data_save_path=save_path)
 print(f"\n*** Error: {error_rate_initial}")
 
 # Agent
@@ -25,22 +25,22 @@ agent = Agent(proc=net,
               proc_outputs=[StreamType(data_type="tensor", tensor_shape=(None,), tensor_dtype=torch.long,
                                        pubsub=False, private_only=True,
                                        proc_to_stream_transforms=lambda x: torch.argmax(x, dim=1))],
-              proc_opts={'optimizer': torch.optim.Adam(net.parameters(), lr=0.0005),
+              proc_opts={'optimizer': torch.optim.Adam(net.module.parameters(), lr=0.0005),
                          'losses': [torch.nn.functional.cross_entropy]},
               buffer_generated_by_others="none")
 
 # Node hosting agent
-node = Node(agent, node_name="_Test1", hidden=True, clock_delta=1. / 15.)
+node = Node(agent, node_name="Test1", hidden=True, clock_delta=1. / 15.)
 
 # Starting countdown
 living_seconds = 90
 c = countdown_start(living_seconds, msg="Living")
 
 # Running node
-node.run(join_world="_DigitSocialLearning", max_time=living_seconds)
+node.run(join_world="DigitSocialLearning", max_time=living_seconds)
 
-# Evaluating after 'living
-error_rate_final = error_rate_mnist_test_set(net, mnist_data_save_path=save_path)
+# Evaluating after 'living'
+error_rate_final = error_rate_mnist_test_set(net.module, mnist_data_save_path=save_path)
 
 # Final prints
 countdown_wait(c)

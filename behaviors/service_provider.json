@@ -1,6 +1,6 @@
 {
     "machine": {
-        "role": "unknown",
+        "role": "service_provider",
         "initial_state": "ready",
         "msg": null,
         "options": {
@@ -15,29 +15,30 @@
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "user_engaged": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         }
     },
     "transitions": {
         "ready": [
             {
                 "on": {
-                    "action": "get_engagement",
+                    "action": "engage",
                     "action_kwargs": {
                         "acceptable_role": "<user_role>"
                     },
                     "msg": null,
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "user_engaged"
             }
@@ -45,13 +46,14 @@
         "user_engaged": [
             {
                 "on": {
-                    "action": "do_gen",
+                    "action": "process",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "ready"
             }
@@ -65,9 +67,10 @@
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 90.0
+                    "delay": 90.0
                 },
                 "goto": "ready"
             }

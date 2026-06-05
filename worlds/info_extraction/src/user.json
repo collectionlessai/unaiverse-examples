@@ -13,58 +13,37 @@
         "ready": {
             "action": "check_status",
             "action_kwargs": {},
-            "msg": "&#128269; Looking for new agents for information exaction",
+            "msg": "&#128269; Looking for new agents for information extraction",
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "connected_to_providers": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#128279; Connected to new agents",
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
-        },
-        "providers_asked_for_service": {
-            "action": null,
-            "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
-            "time_to_wait_for_interactions": 0.0
-        },
-        "a_provider_confirmed_availability": {
-            "action": null,
-            "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "request_sent_to_available_providers": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
+            "msg": "&#9989; Waiting for the extractors to finish their job",
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
-        },
-        "request_handled_by_a_provider": {
-            "action": null,
-            "action_kwargs": {},
-            "msg": "&#9989; An agent finished its job (good or bad), waiting others (if any)",
-            "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "time_to_ask": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#128587; Asking new agents to handle my stream of data",
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "init": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         }
     },
     "transitions": {
@@ -81,7 +60,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "connected_to_providers"
             }
@@ -96,63 +75,20 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "connected_to_providers"
             },
             {
                 "on": {
-                    "action": "send_engagement",
+                    "action": "send_engage",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "providers_asked_for_service"
-            }
-        ],
-        "providers_asked_for_service": [
-            {
-                "on": {
-                    "action": "got_engagement",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": false,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "a_provider_confirmed_availability"
-            }
-        ],
-        "a_provider_confirmed_availability": [
-            {
-                "on": {
-                    "action": "got_engagement",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": false,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "a_provider_confirmed_availability"
-            },
-            {
-                "on": {
-                    "action": "all_engagements_completed",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "time_to_ask"
             }
@@ -160,19 +96,20 @@
         "time_to_ask": [
             {
                 "on": {
-                    "action": "ask_gen",
+                    "action": "send",
                     "action_kwargs": {
-                        "u_hashes": [
-                            "<agent>:<stream_name>"
+                        "action_name": "process",
+                        "streams": [
+                            "<stream_name>"
                         ],
-                        "samples": "<stream_len>"
+                        "num_steps": "<stream_len>"
                     },
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 90.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "request_sent_to_available_providers"
             }
@@ -180,19 +117,6 @@
         "request_sent_to_available_providers": [
             {
                 "on": {
-                    "action": "done_gen",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": false,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "request_handled_by_a_provider"
-            },
-            {
-                "on": {
                     "action": "received_some_asked_data",
                     "action_kwargs": {
                         "processing_fcn": "handle_received_data"
@@ -202,50 +126,22 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "request_sent_to_available_providers"
-            }
-        ],
-        "request_handled_by_a_provider": [
+            },
             {
                 "on": {
-                    "action": "received_some_asked_data",
+                    "action": "all_sent_completed",
                     "action_kwargs": {
-                        "processing_fcn": "handle_received_data"
+                        "action_name": "process"
                     },
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "request_handled_by_a_provider"
-            },
-            {
-                "on": {
-                    "action": "done_gen",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": false,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "request_handled_by_a_provider"
-            },
-            {
-                "on": {
-                    "action": "all_asked_finished",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "ready"
             }
@@ -260,7 +156,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "ready"
             }
@@ -277,22 +173,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 60.0
-                },
-                "goto": "ready"
-            }
-        ],
-        "providers_asked_for_service": [
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 60.0
+                    "delay": 60.0
                 },
                 "goto": "ready"
             }
@@ -307,39 +188,9 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 90.0
+                    "delay": 90.0
                 },
                 "goto": "ready"
-            }
-        ],
-        "request_handled_by_a_provider": [
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 90.0
-                },
-                "goto": "ready"
-            }
-        ],
-        "a_provider_confirmed_availability": [
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 60.0
-                },
-                "goto": "time_to_ask"
             }
         ]
     }

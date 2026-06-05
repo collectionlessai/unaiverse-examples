@@ -5,14 +5,14 @@ from unaiverse.modules.networks import FasterRCNN
 
 # Agent
 agent = Agent(proc=FasterRCNN(),
-              proc_inputs=[StreamType(data_type="img", pubsub=False, private_only=True)],
+              proc_inputs=[StreamType(data_type="img", private_only=True)],
               proc_outputs=[StreamType(data_type="tensor", tensor_dtype="torch.long", tensor_shape=(None,),
-                                       pubsub=False, private_only=True),
+                                       private_only=True),
                             StreamType(data_type="tensor", tensor_dtype="torch.float32", tensor_shape=(None,),
-                                       pubsub=False, private_only=True),
+                                       private_only=True),
                             StreamType(data_type="tensor", tensor_dtype="torch.float32", tensor_shape=(None, 4),
-                                       pubsub=False, private_only=True),
-                            StreamType(data_type="text", pubsub=False, private_only=True)],
+                                       private_only=True),
+                            StreamType(data_type="text", private_only=True)],
               proc_opts={})
 
 # Node hosting agent

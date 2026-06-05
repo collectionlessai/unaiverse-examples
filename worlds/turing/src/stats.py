@@ -54,14 +54,14 @@ Derived at plot time (not stored):
   n_total_votes, n_active_rooms, n_active_floors - computed inside the TTL
   cache from raw turing_vote and hotel_n_* records.
 
-Grouping key note
+Grouping keynote
 -----------------
 The framework's peer_id parameter is used as a generic group key here.
 This matches the existing convention in agent.py where room.uuid is already
 passed as peer_id for room_activation / room_message / etc.  A formal rename
 to group_id is deferred to a separate framework PR.
 """
-
+import copy
 import html
 import json
 import time
@@ -179,6 +179,7 @@ class WStats(Stats):
         """Return all turing_vote records from SQLite as parsed dicts."""
         if not self.is_world:
             return []
+        assert self._db_conn is not None
         rows = self._db_conn.execute(
             "SELECT timestamp, peer_id, val_json "
             "FROM dynamic_stats "
@@ -251,6 +252,8 @@ class WStats(Stats):
             gt = rec.get("ground_truth")
             vt = rec.get("vote")
             if gt in counts and vt in vote_cols:
+                assert gt is not None and isinstance(gt, str)
+                assert vt is not None and isinstance(vt, str)
                 counts[gt][vt] += 1
 
         pct: dict[str, dict[str, float]] = {t: {v: .0 for v in vote_cols} for t in truths}
@@ -305,14 +308,20 @@ class WStats(Stats):
 
         rows = []
         for vid, e in by_votee.items():
-            if e["votes"] < min_votes:
+            e_votes = e["votes"]
+            e_fooling = e["fooling"]
+            e_msgs_total = e["msgs_total"]
+            assert isinstance(e_votes, int)
+            assert isinstance(e_fooling, int)
+            assert isinstance(e_msgs_total, int)
+            if e_votes < min_votes:
                 continue
-            fooling_rate = e["fooling"] / e["votes"] * 100
-            avg_msgs = e["msgs_total"] / e["votes"]
+            fooling_rate = e_fooling / e_votes * 100
+            avg_msgs = e_msgs_total / e_votes
             turing_score = fooling_rate * avg_msgs / (avg_msgs + _K)
             rows.append({
                 "peer_id":      vid,
-                "votes":        e["votes"],
+                "votes":        e_votes,
                 "fooling_rate": round(fooling_rate, 1),
                 "avg_msgs":     round(avg_msgs, 1),
                 "turing_score": round(turing_score, 1),
@@ -343,6 +352,11 @@ class WStats(Stats):
             "msgs_from_voter": STRING_REPRESENTING_A_NUMBER
         }
         """
+        basic = {
+            "peer_id": "",
+            "total": 0,
+            "tp": 0, "fp": 0, "tn": 0, "fn": 0,
+        }
         _K = 10
         nature_lookup: dict[str, str] = {}
         for rec in votes:
@@ -356,11 +370,7 @@ class WStats(Stats):
             vid = rec.get("voter") or ""
             if not vid:
                 continue
-            entry = by_voter.setdefault(vid, {
-                "peer_id": vid,
-                "total": 0,
-                "tp": 0, "fp": 0, "tn": 0, "fn": 0,
-            })
+            entry = by_voter.setdefault(vid, copy.deepcopy(basic))
             entry["total"] += 1
             gt = rec.get("ground_truth")
             vt = rec.get("vote")
@@ -375,30 +385,38 @@ class WStats(Stats):
             elif gt == "human" and vt == "ai":
                 entry["fn"] += 1
 
+        # noinspection PyUnusedLocal
         def _prf(tp: int, fp: int, tn: int, fn: int) -> tuple:
-            prec = tp / (tp + fp) if (tp + fp) else None
-            rec_ = tp / (tp + fn) if (tp + fn) else None
-            f1 = (
-                2 * prec * rec_ / (prec + rec_)
-                if (prec is not None and rec_ is not None and (prec + rec_) > 0)
+            _prec = tp / (tp + fp) if (tp + fp) else None
+            _rec_ = tp / (tp + fn) if (tp + fn) else None
+            _f1 = (
+                2 * _prec * _rec_ / (_prec + _rec_)
+                if (_prec is not None and _rec_ is not None and (_prec + _rec_) > 0)
                 else None
             )
-            return prec, rec_, f1
+            return _prec, _rec_, _f1
 
         def _fmt(v: float | None) -> str:
             return f"{v * 100:.1f}" if v is not None else None  # type: ignore[return-value]
 
         rows = []
         for vid, e in by_voter.items():
-            if e["total"] < min_votes:
+            e_total = e["total"]
+            e_tp, e_fp, e_tn, e_fn = e["tp"], e["fp"], e["tn"], e["fn"]
+            assert isinstance(e_total, int)
+            assert isinstance(e_tp, int)
+            assert isinstance(e_fp, int)
+            assert isinstance(e_tn, int)
+            assert isinstance(e_fn, int)
+            if e_total < min_votes:
                 continue
-            prec, rec_, f1 = _prf(e["tp"], e["fp"], e["tn"], e["fn"])
-            raw_detection = (f1 * e["total"] / (e["total"] + _K)) if f1 is not None else None
+            prec, rec_, f1 = _prf(e_tp, e_fp, e_tn, e_fn)
+            raw_detection = (f1 * e_total / (e_total + _K)) if f1 is not None else None
             sort_detection = raw_detection if raw_detection is not None else -1.0
             rows.append({
                 "peer_id":         vid,
                 "nature":          nature_lookup.get(vid, "-"),
-                "votes":           e["total"],
+                "votes":           e_total,
                 "precision":       _fmt(prec),
                 "recall":          _fmt(rec_),
                 "f1":              _fmt(f1),
@@ -469,17 +487,17 @@ class WStats(Stats):
 
     @staticmethod
     def _render_confusion_table(cm: dict) -> str:
-        """Coloured 2x2 confusion matrix table."""
+        """Colored 2x2 confusion matrix table."""
         counts = cm.get("counts", {})
         pct = cm.get("pct", {})
         truths = ("human", "ai")
         vote_cols = ("human", "ai")
 
-        def _bg(p: float) -> str:
+        def _bg(_p: float) -> str:
             # white → soft blue-green
-            r = int(255 - p * 0.8)
-            g = int(255 - p * 0.5)
-            b = int(255 - p * 0.1)
+            r = int(255 - _p * 0.8)
+            g = int(255 - _p * 0.5)
+            b = int(255 - _p * 0.1)
             return f"rgb({r},{g},{b})"
 
         header = (
@@ -589,8 +607,8 @@ class WStats(Stats):
 
         return podium_html, grid_html
 
+    @staticmethod
     def _render_page(
-        self,
         summary_html: str,
         scope_cms_html: str,
         scope_podiums_html: str,
@@ -658,7 +676,7 @@ class WStats(Stats):
         ops_series = cache.get("ops_series", {})
         ops_json = self._make_ops_plotly_json(ops_series)
 
-        return self._render_page(
+        return WStats._render_page(
             summary_html, scope_cms_html,
             scope_podiums_html, scope_grids_html, ops_json,
         )

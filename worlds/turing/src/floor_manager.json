@@ -15,56 +15,56 @@
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "getting_sponsorships": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "checked_in": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "ready_to_send_news": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "guests_status_updated": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "floor_updates_shared": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "votes_sent": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "collect_msgs": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         }
     },
     "transitions": {
@@ -77,7 +77,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "getting_sponsorships"
             }
@@ -91,7 +91,7 @@
                     "ready": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "getting_sponsorships"
             },
@@ -103,7 +103,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "checked_in"
             }
@@ -117,7 +117,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "ready_to_send_news"
             }
@@ -131,7 +131,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "guests_status_updated"
             }
@@ -145,7 +145,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "floor_updates_shared"
             }
@@ -159,7 +159,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "votes_sent"
             }
@@ -173,7 +173,7 @@
                     "ready": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "collect_msgs"
             }
@@ -187,7 +187,7 @@
                     "ready": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "collect_msgs"
             }
@@ -203,7 +203,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "ready_to_send_news"
             }
@@ -217,7 +217,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "ready_to_send_news"
             }
@@ -231,7 +231,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "guests_status_updated"
             }
@@ -245,7 +245,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "floor_updates_shared"
             }
@@ -259,7 +259,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "votes_sent"
             }
@@ -273,7 +273,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "collect_msgs"
             }
@@ -287,7 +287,7 @@
                     "ready": true,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "init"
             }

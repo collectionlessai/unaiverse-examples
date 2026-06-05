@@ -81,7 +81,7 @@ class WAgent(Agent):
 
         # Creating the pubsub stream where this manager will broadcast floor-related updates
         # and the direct message stream that is used to send votes to the hotel manager
-        self.add_stream(Stream(props=DataProps(name="floor_updates", data_type="text", pubsub=True)))  # Pubsub
+        self.add_stream(Stream(props=DataProps(name="floor_updates", data_type="text", pubsub=True)))  # pubsub
         self.add_stream(Stream(props=DataProps(name="chat", data_type="text")))  # Ordinary conversation
         self.add_stream(Stream(props=DataProps(name="votes", data_type="text")))  # Votes only
 
@@ -111,7 +111,7 @@ class WAgent(Agent):
                 ], return_exceptions=True)
 
         # Send the guest out of the floor/room and clear all his vote-related info
-        # (the other status-related sets and dicts are cleared by the following method, but NOT the vote info, since
+        # (the other status-related sets and dicts are cleared by the following method; but NOT the vote info, since
         # the floor manager will pick up a vote from this guest at a later stage, maybe even after he disconnected)
         self.__eject_and_clear_guest(peer_id)
 
@@ -161,6 +161,7 @@ class WAgent(Agent):
         # or if we are just calling the method somewhere else
         callback_from_process_vote = False
         if guest is None:
+            assert interaction is not None
             guest = interaction.target[0]
             callback_from_process_vote = True
 
@@ -239,6 +240,7 @@ class WAgent(Agent):
             return True  # Always return True to burn the interaction
 
         guest = interaction.requester
+        assert guest is not None
         role = self.get_role(guest)
         if role == "guest":
             self._sponsored_guests[guest] = hotel_manager  # Check-in order will follow the order in this dict, FIFO
@@ -321,7 +323,7 @@ class WAgent(Agent):
             return False
         room = self.floor.get_room_of(guest)
 
-        # A guest wants to exit or it is timeout! Test ended, GET OUT OF HERE!
+        # A guest wants to exit, or it is retry_timeout! Test ended, GET OUT OF HERE!
         if (room.get_status(guest) == GuestStatus.AT_ROUND_TABLE and
                 (room.get_time_in_current_status(guest) >= Config.test_duration or
                  guest in self._wants_to_exit)):
@@ -522,7 +524,9 @@ class WAgent(Agent):
         }
 
         # Setting data on the pubsub stream
-        self.get_stream("floor_updates").set(data=json.dumps(update), data_tag=self._floor_update_tag)
+        floor_updates_stream = self.get_stream("floor_updates")
+        assert floor_updates_stream is not None
+        floor_updates_stream.set(data=json.dumps(update), data_tag=self._floor_update_tag)
         self._floor_update_tag += 1
 
         # Saving the floor status for future comparisons
@@ -609,7 +613,7 @@ class WAgent(Agent):
             return True  # Always return True to burn the interaction
 
         # We tell each violating guest that he indeed did a violation, and we disconnect him, that will in turn
-        # trigger "remove_agent", fully pushing the guest out of the floor
+        # trigger "remove_agent", fully pushing the guest out of the floor.
         # Send all violation messages in parallel, then disconnect (disconnect must follow send).
         await asyncio.gather(*[
             self.send(action_name="get_status_msg",

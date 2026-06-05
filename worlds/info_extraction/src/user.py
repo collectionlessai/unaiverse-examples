@@ -1,12 +1,12 @@
 """
        █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
       ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
-       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░ 
-       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████   
-       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█   
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█
        ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
        ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
-        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░ 
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░  ░░░░░░░░░░
                  A Collectionless AI Project (https://collectionless.ai)
                  Registration/Login: https://unaiverse.io
                  Code Repositories:  https://github.com/collectionlessai/
@@ -16,62 +16,63 @@ import os
 import json
 import torch
 from PIL.Image import Image
-from unaiverse.agent import Agent
-from unaiverse.streams.dataprops import DataProps
 from unaiverse.utils.logger import log
+from unaiverse.agent import Agent, action
+from unaiverse.streams.dataprops import DataProps
 
 
 class WAgent(Agent):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.__exploited_extractors = set()  # it must start with "__" to avoid automatic agent clearing at removal
+
+        # Bookkeeping for the connect_by_role(filter_fcn=...) call: do not re-pick the same extractor twice in
+        # a row. Double-underscore name avoids automatic clearing on agent removal.
+        self.__exploited_extractors = set()
+
+        # Information accumulated by handle_received_data() (called by 'received_some_asked_data')
         self._extracted_info = {}
         self._first_check = True
         self._got_new_info = False
 
-    async def check_status(self):
+    @action
+    async def check_status(self) -> bool:
+        """At the start of every cycle: drop stale engagements/connections and either initialize, load or
+        persist 'extracted_info.json'."""
         await self.disengage_all()
+        await self.disconnect_by_role("extractor")
 
-        if self.get_current_role() == "extractor":
-            await self.disconnect_by_role("user")
+        if not os.path.exists("extracted_info.json"):
+            self._first_check = False
 
-        elif self.get_current_role() == "user":
-            await self.disconnect_by_role("extractor")
+            # If the JSON file was removed, we assume we want to start over -> re-enable all the extractors
+            log.user("Clearing all the information extracted so far and restarting")
+            self.__exploited_extractors = set()
+            self._extracted_info = {}
 
-            if not os.path.exists("extracted_info.json"):
-                self._first_check = False
+            # Create an "empty" file (required to mark the start of the process)
+            with open("extracted_info.json", "w") as f:
+                json.dump(self._extracted_info, f, indent=4)
 
-                # If we removed the JSON file, we assume we want to start over, so we re-enable all the extractors
-                self.out("Clearing all the information extracted so far and restarting")
-                self.__exploited_extractors = set()
-                self._extracted_info = {}
+        elif self._first_check:
+            self._first_check = False
+            log.user("Loading data from extracted_info.json...")
+            with open("extracted_info.json") as f:
+                self._extracted_info = json.load(f)
+            log.user(f"Loaded {len(self._extracted_info)} entries.")
+        else:
 
-                # Creating an "empty" file (required to mark the start of the process)
+            # Save the extracted information
+            if self._got_new_info:
+                self._got_new_info = False
+                log.user("Saving data to extracted_info.json...")
                 with open("extracted_info.json", "w") as f:
                     json.dump(self._extracted_info, f, indent=4)
-
-            elif self._first_check:
-                self._first_check = False
-                self.out("Loading data from extracted_info.json...")
-                with open("extracted_info.json") as f:
-                    self._extracted_info = json.load(f)
-                self.out(f"Loaded {len(self._extracted_info)} entries.")
-            else:
-
-                # Saving the extracted information
-                self.out("*** Information extracted so far ***")
-                self.out(str(self._extracted_info) + "\n")
-                if self._got_new_info:
-                    self._got_new_info = False
-                    self.out("Saving data to extracted_info.json...")
-                    with open("extracted_info.json", "w") as f:
-                        json.dump(self._extracted_info, f, indent=4)
-                    self.out(f"Saved {len(self._extracted_info)} entries.")
-
+                log.user(f"Saved {len(self._extracted_info)} entries.")
         return True
 
     def filter_addresses(self, addrs: list[list[str]], peer_ids: list[str]):
+        """This is a connect_by_role filter: drop extractors we have already exploited in a previous round."""
         filtered_addrs = []
         filtered_peer_ids = []
         for addr, peer_id in zip(addrs, peer_ids):
@@ -81,12 +82,13 @@ class WAgent(Agent):
         return filtered_addrs, filtered_peer_ids
 
     def handle_received_data(self, agent: str, props: DataProps, data: torch.Tensor | str | Image, data_tag: int):
+        """This part of action received_some_asked_data: record one piece of extracted information from 'agent'."""
         info = props.to_text(data, ignore_raw_tensors=True)
         profile = self.all_agents[agent]
         static_profile = profile.get_static_profile()
         node_id = static_profile['node_id']
 
-        self.out(f"Got new information from {agent} (node id: {node_id}) on data tagged with {data_tag}: {info}")
+        log.user(f"Got new information from {agent} (node id: {node_id}) on data tagged with {data_tag}: {info}")
         self.__exploited_extractors.add(agent)
 
         if info is not None:
@@ -102,4 +104,3 @@ class WAgent(Agent):
                     self._extracted_info[data_tag_str][node_id] = {"info": [], "extractor": extractor_str}
 
             self._extracted_info[data_tag_str][node_id]["info"].append(info)
-            self.out(f"Stored new information from {agent} (node id: {node_id}) on data tagged with {data_tag}: {info}")

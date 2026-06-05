@@ -6,7 +6,7 @@ from unaiverse.networking.node.node import Node
 agent = Agent(proc=Phi(), proc_inputs=["text"], proc_outputs=["text"])
 
 # Node hosting agent
-node_agent = Node(agent, node_name="Phi", hidden=True, clock_delta=1. / 10.)
+node_agent = Node(agent, node_name="Phi", hidden=True, clock_delta=1. / 25.)
 
 # Running node
 node_agent.run()

@@ -13,47 +13,48 @@
         "init": {
             "action": "clear_pending_requests",
             "action_kwargs": {
-                "preserve": "get_engagement"
+                "preserve": "engage"
             },
             "msg": "&#9203; Waiting for the next set of lectures to start",
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "teacher_engaged": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#128276; Ready for the lecture",
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "finished_learning": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "listening_to_best_student": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#128077; Ready to listen to the best student of the class",
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         }
     },
     "transitions": {
         "init": [
             {
                 "on": {
-                    "action": "get_engagement",
+                    "action": "engage",
                     "action_kwargs": {
                         "acceptable_role": "teacher"
                     },
                     "msg": null,
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "teacher_engaged"
             }
@@ -61,37 +62,40 @@
         "teacher_engaged": [
             {
                 "on": {
-                    "action": "do_learn",
+                    "action": "learn",
                     "action_kwargs": {},
                     "msg": "&#128215; Following a lecture, learning...",
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 30.0,
                     "retry_timeout": 10.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "finished_learning"
             },
             {
                 "on": {
-                    "action": "do_subscribe",
+                    "action": "subscribe",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "listening_to_best_student"
             },
             {
                 "on": {
-                    "action": "do_gen",
+                    "action": "teach",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "teacher_engaged"
             }
@@ -99,13 +103,14 @@
         "finished_learning": [
             {
                 "on": {
-                    "action": "do_gen",
+                    "action": "process",
                     "action_kwargs": {},
                     "msg": "&#9999;&#65039; Taking the exam...",
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 30.0,
                     "retry_timeout": 15.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "teacher_engaged"
             }
@@ -113,13 +118,14 @@
         "listening_to_best_student": [
             {
                 "on": {
-                    "action": "do_learn",
+                    "action": "learn_from_student",
                     "action_kwargs": {},
                     "msg": "&#128213; Learning from the best student&#8217;s feedback...",
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 30.0,
                     "retry_timeout": 9.9,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "teacher_engaged"
             }
@@ -129,13 +135,14 @@
         "all": [
             {
                 "on": {
-                    "action": "get_disengagement",
+                    "action": "disengage",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "init"
             },
@@ -145,9 +152,10 @@
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "init"
             },
@@ -157,9 +165,10 @@
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 30.0
+                    "delay": 30.0
                 },
                 "goto": "init"
             }

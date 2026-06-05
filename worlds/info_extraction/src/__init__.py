@@ -12,10 +12,6 @@
                  Code Repositories:  https://github.com/collectionlessai/
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
-from unaiverse.stats import Stats
-
-
-class WStats(Stats):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+from . import stats
+from . import user, extractor
+from . import world

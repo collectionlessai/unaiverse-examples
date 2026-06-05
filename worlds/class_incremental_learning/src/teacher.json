@@ -1,183 +1,219 @@
 {
-  "machine": {
-    "initial_state": "init",
-    "msg": "🏫 Teacher agent started",
-    "options": {
-      "highlight_blocking_states_in_messages": false,
-      "show_action_request_after_messages": false,
-      "show_action_ticks_after_messages": false
+    "machine": {
+        "role": "teacher",
+        "initial_state": "init",
+        "msg": "🏫 Teacher agent started",
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_request_after_messages": false,
+            "show_action_ticks_after_messages": false
+        }
     },
-    "role": "teacher"
-  },
-  "states": {
-    "brainstorm": {
-      "action": "should_teach_or_evaluate",
-      "action_kwargs": {},
-      "blocking": true,
-      "msg": "🤔 Deciding whether to teach or evaluate...",
-      "time_to_wait_for_interactions": 0
+    "states": {
+        "init": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "🚀 Initializing teacher...",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "wait_for_students": {
+            "action": "welcoming",
+            "action_kwargs": {},
+            "msg": "⏳ Waiting for students...",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "brainstorm": {
+            "action": "should_teach_or_evaluate",
+            "action_kwargs": {},
+            "msg": "🤔 Deciding whether to teach or evaluate...",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "lesson": {
+            "action": "init_lesson",
+            "action_kwargs": {},
+            "msg": "📖 Sending lesson to students...",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "lesson_in_progress": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "⏳ Waiting for students to finish the lesson...",
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        },
+        "exam": {
+            "action": "send_exam",
+            "action_kwargs": {},
+            "msg": "📋 Sending exam to students...",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "exam_in_progress": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "📊 Collecting student predictions...",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "scoring": {
+            "action": "score_exam",
+            "action_kwargs": {},
+            "msg": "✅ Scoring exam results...",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        }
     },
-    "exam": {
-      "action": "send_exam",
-      "action_kwargs": {},
-      "blocking": true,
-      "msg": "📋 Preparing and sending exam to students...",
-      "time_to_wait_for_interactions": 0
+    "transitions": {
+        "init": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": "➡️ Teacher ready",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "wait_for_students"
+            }
+        ],
+        "wait_for_students": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "brainstorm"
+            }
+        ],
+        "brainstorm": [
+            {
+                "on": {
+                    "action": "building_lesson",
+                    "action_kwargs": {},
+                    "msg": "📚 Will teach a new class.",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "lesson"
+            },
+            {
+                "on": {
+                    "action": "building_evaluation",
+                    "action_kwargs": {},
+                    "msg": "📝 Will run an evaluation.",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "exam"
+            }
+        ],
+        "lesson": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "lesson_in_progress"
+            }
+        ],
+        "lesson_in_progress": [
+            {
+                "on": {
+                    "action": "all_sent_completed",
+                    "action_kwargs": {"action_name": "learn"},
+                    "msg": "✅ Waiting for students to finish the lesson.",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "wait_for_students"
+            }
+        ],
+        "exam": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "exam_in_progress"
+            }
+        ],
+        "exam_in_progress": [
+            {
+                "on": {
+                    "action": "received_some_asked_data",
+                    "action_kwargs": {"processing_fcn": "collect_predictions"},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "exam_in_progress"
+            },
+            {
+                "on": {
+                    "action": "all_sent_completed",
+                    "action_kwargs": {"action_name": "process"},
+                    "msg": "✅ Waiting for students to finish the exam...",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "scoring"
+            }
+        ],
+        "scoring": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "wait_for_students"
+            }
+        ]
     },
-    "init": {
-      "action": null,
-      "action_kwargs": {},
-      "blocking": false,
-      "msg": "🚀 Initializing teacher...",
-      "time_to_wait_for_interactions": 0
-    },
-    "lesson": {
-      "action": "init_lesson",
-      "action_kwargs": {},
-      "blocking": true,
-      "msg": "📖 Preparing and sending lesson...",
-      "time_to_wait_for_interactions": 0
-    },
-    "wait_lesson": {
-      "action": null,
-      "action_kwargs": {},
-      "blocking": true,
-      "msg": "⏳ Waiting for students to finish lesson...",
-      "time_to_wait_for_interactions": 0
-    },
-    "wait": {
-      "action": null,
-      "action_kwargs": {},
-      "blocking": true,
-      "msg": "⏳ Waiting for connected students...",
-      "time_to_wait_for_interactions": 0
-    }
-  },
-  "teleports": {},
-  "transitions": {
-    "brainstorm": [
-      {
-        "goto": "lesson",
-        "on": {
-          "action": "building_lesson",
-          "action_kwargs": {},
-          "max_duration": 0,
-          "msg": "📚 Building a new lesson...",
-          "ready": true,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      },
-      {
-        "goto": "exam",
-        "on": {
-          "action": "building_evaluation",
-          "action_kwargs": {},
-          "max_duration": 0,
-          "msg": "📝 Building an evaluation...",
-          "ready": true,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      },
-      {
-        "goto": "brainstorm",
-        "on": {
-          "action": "should_teach_or_evaluate",
-          "action_kwargs": {},
-          "msg": "🔄 Re-evaluating next action...",
-          "ready": true,
-          "max_duration": 0,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      }
-    ],
-    "exam": [
-      {
-        "goto": "exam",
-        "on": {
-          "action": "get_samples",
-          "action_kwargs": {},
-          "max_duration": 0,
-          "msg": "📊 Collecting student answers...",
-          "ready": true,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      },
-      {
-        "goto": "wait",
-        "on": {
-          "action": "evaulate_exam",
-          "action_kwargs": {},
-          "max_duration": 0,
-          "msg": "✅ Evaluating exam results...",
-          "ready": true,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      }
-    ],
-    "init": [
-      {
-        "goto": "wait",
-        "on": {
-          "action": "nop",
-          "action_kwargs": {
-            "message": "None"
-          },
-          "max_duration": 0,
-          "msg": "➡️ Teacher ready, moving to wait...",
-          "ready": true,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      }
-    ],
-    "lesson": [
-      {
-        "goto": "wait_lesson",
-        "on": {
-          "action": "nop",
-          "action_kwargs": {
-            "message": "None"
-          },
-          "max_duration": 0,
-          "msg": "🔄 Lesson sent, waiting for students to finish...",
-          "ready": true,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      }
-    ],
-    "wait_lesson": [
-      {
-        "goto": "wait",
-        "on": {
-          "action": "check_lesson_finished",
-          "action_kwargs": {},
-          "max_duration": 0,
-          "msg": null,
-          "ready": true,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      }
-    ],
-    "wait": [
-      {
-        "goto": "brainstorm",
-        "on": {
-          "action": "welcoming",
-          "action_kwargs": {},
-          "max_duration": 0,
-          "msg": null,
-          "ready": true,
-          "retry_timeout": 0,
-          "time_to_wait_before_running": 0
-        }
-      }
-    ]
-  }
+    "teleports": {}
 }

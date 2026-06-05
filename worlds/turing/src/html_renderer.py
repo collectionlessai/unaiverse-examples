@@ -15,7 +15,7 @@ Usage::
         scope_cms_html=build_cm_panels(),
         scope_lbs_html=build_lb_panels(),
         default_scope="max",
-        ops_json=build_ops_json(),
+        ops_json=build_ops_json()
     )
 
 Iframe theme detection (auto):
@@ -24,6 +24,7 @@ Iframe theme detection (auto):
     3. MutationObserver on parent data-theme attribute (same-origin)
     4. URL parameter: ?theme=light
 """
+
 
 def render(
     summary_html: str = "",

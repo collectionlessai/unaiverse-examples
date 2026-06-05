@@ -1,12 +1,12 @@
 """
        █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
       ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
-       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░ 
-       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████   
-       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█   
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█
        ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
        ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
-        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░ 
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░
                  A Collectionless AI Project (https://collectionless.ai)
                  Registration/Login: https://unaiverse.io
                  Code Repositories:  https://github.com/collectionlessai/
@@ -14,11 +14,11 @@
 """
 import os
 import torch
-from unaiverse.agent import Agent
+from unaiverse.agent import Agent, action
 from unaiverse.utils.misc import prepare_app_dir
-from unaiverse.interaction import CompletionReason
 from unaiverse.streams import DataStream, DataProps
 from unaiverse.modules.utils import error_rate_mnist_test_set
+from unaiverse.interaction import Interaction, CompletionReason
 
 
 class WAgent(Agent):
@@ -31,6 +31,7 @@ class WAgent(Agent):
     def accept_new_role(self, role: int):
         super().accept_new_role(role)
 
+        # The stream where this student will possibly stream his lecture, if nominated "best student"
         self.add_streams([DataStream(props=DataProps(group="best_student_stream", name="images",
                                                      public=False, pubsub=True,
                                                      data_type="tensor",
@@ -43,72 +44,68 @@ class WAgent(Agent):
                                                      tensor_shape=(None,),
                                                      tensor_dtype=torch.long))])
 
+        # The newly added stream must appear in the profile of this agent
         self.update_streams_in_profile()
 
+    @action
     async def clear_pending_requests(self, preserve: str | None = None):
-        actions = self.behav.get_all_actions()
-        for action in actions:
-            if preserve is None or action.name != preserve:
-                interactions = action.get_list_of_interactions()
-                for interaction in interactions:
-                    await self.im.complete(interaction, CompletionReason.DISCARDED)
+        all_inters = list(self.im.received.values()) + list(self.im.sent.values()) + list(self.im.lazy.values())
+        for interaction in all_inters:
+            if preserve is None or interaction.action_name != preserve:
+                await self.im.complete(interaction, CompletionReason.DISCARDED)
         await self.set_engaged_partner(None, clear_found=False)
-
-    async def do_gen(self, u_hashes: list[str] | None = None, extra_hashes: list[str] | None = None,
-                     samples: int = 100, time: float = -1., timeout: float = -1.,
-                     _requester: str | list | None = None, _request_time: float = -1., _request_uuid: str | None = None,
-                     _completed: bool = False):
-
-        # Generic generation request
-        if not (await super().do_gen(u_hashes, extra_hashes, samples, time, timeout,
-                                     _requester, _request_time, _request_uuid, _completed)):
-            return False
-
-        # If the teacher asked to label its unlabeled data, then load the data and predictions in the apposite stream
-        if len(u_hashes) == 1 and u_hashes[0].endswith(":unlabeled") and len(self.known_streams[u_hashes[0]]) == 1:
-
-            # Getting the stream of the images coming from the teacher and of the labels predicted by my processor
-            image_stream_obj = next(iter(self.known_streams[u_hashes[0]].values()))  # This has only one data stream
-            prediction_stream_obj = None
-            for net_hash, stream_dict in self.proc_streams.items():
-                for name, stream_obj in stream_dict.items():
-                    if stream_obj.props.is_tensor():
-                        prediction_stream_obj = stream_obj
-                        break
-
-            # Loading data to the pubsub stream
-            _, best_student = self.get_peer_ids()
-            net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
-            for _, stream_dict in net_hash_to_stream_dict.items():
-                for name, stream_obj in stream_dict.items():
-
-                    # Forcing UUID
-                    stream_obj.set_uuid(_request_uuid)
-
-                    # Setting up the stream data
-                    if name == "images":
-                        stream_obj.set(image_stream_obj.get("do_gen"))  # Streaming image
-                    elif name == "labels":
-                        stream_obj.set(prediction_stream_obj.get("do_gen"))  # Streaming decision
-                    else:
-                        raise ValueError(f"Unexpected stream name in the best_student_stream group: {name}")
-                break
-        elif len(u_hashes) == 1 and u_hashes[0].endswith(":eval"):
-            pass
-        else:
-            self.err("Expected only one stream hash to be provided as input, with name ending in 'eval' or "
-                     "'unlabeled'")
-            return False
         return True
 
-    async def get_disengagement(self, disconnect_too: bool = False, _requester: str | None = None):
-        if not (await super().get_disengagement(disconnect_too, _requester)):
+    @action
+    async def learn_from_student(self, interaction: Interaction | None = None) -> bool:
+        """Learn from a peer's (the best student's) pubsub stream, just a renaming of action 'learn'."""
+        return await super().learn(interaction)
+
+    @action
+    async def teach(self, relay_uuid: str | None = None, interaction: Interaction | None = None) -> bool:
+        """Best-student social-teaching step: run one inference on the teacher's unlabeled data (built-in
+        'process' behavior) and relay the input image + our predicted label into our pubsub best_student_stream,
+        published under 'relay_uuid' (the UUID the other students read while learning).
+
+        The ordinary exam uses the built-in 'process' action (no relaying); only this dedicated action feeds
+        the best_student_stream, under the teacher-provided relay_uuid (NOT this interaction's own UUID), so
+        the relay interaction can stay independent of the other students' learn interaction.
+        """
+
+        # Base inference: reads stdin (unlabeled image), runs the processor, writes the prediction to stdout
+        if not (await super().process(interaction)):
             return False
-        
-        # we overload this so that each student, after class, takes the full mnist test set and evaluates itself
-        error_rate = error_rate_mnist_test_set(network=self.proc,
+        if interaction is None or relay_uuid is None:
+            return True
+
+        # Read what process just consumed/produced: the teacher's image (from stdin) and our prediction (from
+        # stdout), under THIS interaction's UUID. Then re-publish them on our own best_student_stream under
+        # the relay UUID the other students read with.
+        image = self.stdin.get(0, requested_by="teach")
+        prediction = self.stdout.get(0, requested_by="teach")
+
+        me = self.get_peer_id()
+        images_stream = self.get_stream("images", peer_id=me)
+        labels_stream = self.get_stream("labels", peer_id=me)
+
+        assert images_stream is not None and labels_stream is not None
+        images_stream.set(image, uuid=relay_uuid)
+        labels_stream.set(prediction, uuid=relay_uuid)
+
+        return True
+
+    @action
+    async def disengage(self, disconnect_too: bool = False, interaction: Interaction | None = None) -> bool:
+        if not (await super().disengage(disconnect_too, interaction)):
+            return False
+
+        # We overload this so that each student, after class, takes the full mnist test set and evaluates itself
+        assert self.proc is not None
+        assert isinstance(self.proc.module, torch.nn.Module)
+        error_rate = error_rate_mnist_test_set(network=self.proc.module,
                                                mnist_data_save_path=os.path.join(self._agent_folder_name, "mnist_data"))
         _t = self.clock.get_time_ms()
         _, _peer_id = self.get_peer_ids()
+        assert self.stats is not None
         self.stats.store_stat("full_test_err", error_rate, group_key=_peer_id, timestamp=_t)
         return True

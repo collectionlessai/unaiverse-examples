@@ -1,6 +1,6 @@
 {
     "machine": {
-        "role": "unknown",
+        "role": "engage_by_role",
         "initial_state": "searching",
         "msg": null,
         "options": {
@@ -17,49 +17,35 @@
             },
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 5.0
+            "time_to_wait_before_acting": 5.0
         },
         "connected": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "can_engage": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
-        },
-        "engagement_sent": {
-            "action": null,
-            "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
-            "time_to_wait_for_interactions": 0.0
-        },
-        "engaged_one": {
-            "action": null,
-            "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "engagement_complete": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "connection_timeout": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         }
     },
     "transitions": {
@@ -72,9 +58,10 @@
                     },
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "connected"
             }
@@ -86,9 +73,10 @@
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "connected"
             },
@@ -101,9 +89,10 @@
                     },
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "can_engage"
             }
@@ -111,53 +100,14 @@
         "can_engage": [
             {
                 "on": {
-                    "action": "send_engagement",
+                    "action": "send_engage",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "engagement_sent"
-            }
-        ],
-        "engagement_sent": [
-            {
-                "on": {
-                    "action": "got_engagement",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "engaged_one"
-            }
-        ],
-        "engaged_one": [
-            {
-                "on": {
-                    "action": "got_engagement",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "engaged_one"
-            },
-            {
-                "on": {
-                    "action": "all_engagements_completed",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "engagement_complete"
             }
@@ -172,9 +122,10 @@
                     },
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "can_engage"
             }
@@ -188,9 +139,10 @@
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 45.0
+                    "delay": 45.0
                 },
                 "goto": "connection_timeout"
             }
@@ -202,23 +154,10 @@
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
-                },
-                "goto": "searching"
-            }
-        ],
-        "engagement_sent": [
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 7.5
+                    "delay": 7.5
                 },
                 "goto": "searching"
             }
@@ -230,25 +169,12 @@
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "searching"
-            }
-        ],
-        "engaged_one": [
-            {
-                "on": {
-                    "action": "nop",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 7.5
-                },
-                "goto": "engagement_complete"
             }
         ]
     }

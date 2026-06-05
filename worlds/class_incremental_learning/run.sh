@@ -22,7 +22,7 @@
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 cd "$SCRIPT_DIR" || exit 1
 
-SCRIPTS=("run_w.py" "run_teacher.py" "run_student_cnn.py")
+SCRIPTS=("run_w.py" "run_1.py" "run_2.py")
 LABELS=("World" "Teacher" "Student")
 SCREEN_SESSIONS=("cil-world" "cil-teacher" "cil-student")
 TMUX_SESSION="cil"

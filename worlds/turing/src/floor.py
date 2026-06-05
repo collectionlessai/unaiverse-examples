@@ -33,7 +33,7 @@ class Floor:
 
         # Guests that are expected to be here by the hotel manager (in its personal view).
         # Basically, when this object is used to recreate the hotel structure in the hotel manager's view,
-        # this the set of guests sponsored by such an hotel manager.
+        # this the set of guests sponsored by such a hotel manager.
         self.hotel_manager_expected_guests = set()  # This is only operated by a hotel manager
 
         # Printing facilities
@@ -83,12 +83,15 @@ class Floor:
         self.hotel_manager_expected_guests.discard(guest)
 
     def is_managed_guest(self, guest: str):
+        assert self.managed_guest_profiles is not None
         return guest in self.managed_guest_profiles
 
     def get_managed_guests(self):
+        assert self.managed_guest_profiles is not None
         return list(self.managed_guest_profiles.keys())
 
     def get_profile_of(self, guest: str):
+        assert self.managed_guest_profiles is not None
         if guest in self.managed_guest_profiles:
             return self.managed_guest_profiles[guest]
         else:

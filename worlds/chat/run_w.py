@@ -5,7 +5,8 @@ from unaiverse.networking.node.node import Node
 world = WWorld()
 
 # Node hosting world
-node = Node(world, node_name="ChatRoom", hidden=True, clock_delta=1. / 20., world_masters_node_names=["Broadcaster"])
+node = Node(world, node_name="ChatRoom", hidden=True, clock_delta=1. / 20.,
+            world_masters_node_names=["Broadcaster"])
 
 # Running node
 node.run(show_senders=False)

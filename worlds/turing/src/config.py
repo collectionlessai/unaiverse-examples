@@ -19,8 +19,8 @@ import textwrap
 # All time measures are in SECONDS.
 class Config:
     use_letter_names = False
-    test_duration = 180  # Seconds (int)
-    survey_reply_time = 75  # Seconds
+    test_duration = 300  # Seconds (int)
+    survey_reply_time = 120  # Seconds
     moving_time = 10  # Time to move from the floor entrance to the chat table or from the chat table to the voting both
     max_time_in_every_state = max([test_duration, survey_reply_time, moving_time]) + moving_time + 5  # Add a gap
     max_guests_per_room = 4
@@ -411,7 +411,7 @@ class Config:
         3. OPENER: What word did your last 3 messages start with? Use a different one.
         4. CONTENT: Is your reply basically the same as something already said? Change it.
         5. LENGTH: Were your last 3 messages similar length? Mix it up.
-        6. SLANG: Did any of your last 5 messages contain "lol", "lmao", "ngl", "tbh"? If yes, do NOT use any of them now.
+        6. SLANG: Did any of your last 5 messages contain "lol", "lmao", "ngl", "tbh"? If yes, DON'T use any of them now
 
         When stuck, use these pivots:
         "[name] what's your worst opinion"

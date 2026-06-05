@@ -1,12 +1,12 @@
 """
        █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
       ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
-       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░ 
-       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████   
-       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█   
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█
        ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
        ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
-        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░ 
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░
                  A Collectionless AI Project (https://collectionless.ai)
                  Registration/Login: https://unaiverse.io
                  Code Repositories:  https://github.com/collectionlessai/
@@ -14,8 +14,8 @@
 """
 import os
 from .stats import WStats
-from unaiverse.world import World
 from unaiverse.custom import Custom
+from unaiverse.world import World
 from unaiverse.streams import DataProps
 from unaiverse.hsm import HybridStateMachine
 from unaiverse.networking.node.profile import NodeProfile
@@ -31,6 +31,8 @@ class WWorld(World):
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         dynamic_profile = profile.get_dynamic_profile()
         offers_img_stream = False
+
+        # If it offers an environmental stream, then it is a "user"
         if 'streams' in dynamic_profile and dynamic_profile['streams'] is not None:
             environmental_streams = dynamic_profile['streams']
 
@@ -75,23 +77,29 @@ class WWorld(World):
 
         # Creating a dummy agent to check actions
         import sys
+        assert self.world_folder
         sys.path.append(self.world_folder)
-        from agent import WAgent
-        dummy_agent = WAgent(proc=None)
-        welcome_msg = "Welcome to the world of Information Extraction. There are two types of citizens: " \
-                      "'users' 👤 who stream images (through an environmental stream) and 'extractors' ✍️ who " \
-                      f"provide a textual feedback about the streamed images. You joined as: '{Custom.ROLE_WILDCARD}'."
+
+        # Behavior templates (the new world reuses the same shape as the originals, but with the modernized
+        # deprecation-free service_requester.json / service_provider.json)
+        behaviors_dir = os.path.join(self.world_folder, "..", "..", "..", "behaviors")
+        service_requester_json = os.path.join(behaviors_dir, "service_requester.json")
+        service_provider_json = os.path.join(behaviors_dir, "service_provider.json")
+
+        welcome_msg = ("Welcome to the world of Information Extraction. There are two types of citizens: "
+                       "'users' 👤 who stream images (through an environmental stream) and 'extractors' ✍️ "
+                       f"who provide a textual feedback about the streamed images. You joined as: "
+                       f"'{Custom.ROLE_WILDCARD}'.")
 
         # ROLE 1/2: user
+        from .user import WAgent as UserAgent
+        dummy_agent = UserAgent(proc=None)
         behav = HybridStateMachine(dummy_agent)
         behav.set_welcome_message(welcome_msg)
-        behav.set_role("user")  # This will set the <role> (Custom.ROLE_WILDCARD) wildcard too
+        behav.set_role("user")  # Sets the <role> (Custom.ROLE_WILDCARD) wildcard too
 
-        # Let's wait a little bit before moving from init to the ready state of the service_requester.json, so that,
-        # meanwhile, this agent will become known to the others...
-        behav.add_transit("init",
-                          os.path.join(self.world_folder, "..", "..", "..", "behaviors", "service_requester.json"),
-                          action="nop", args={})
+        # Plug the service_requester_new template at 'init' (its initial state is 'ready')
+        behav.add_transit("init", service_requester_json, action="nop", args={})
         behav.add_state("ready", action="check_status")
 
         behav.add_wildcards({"<provider_role>": "extractor",
@@ -99,24 +107,25 @@ class WWorld(World):
                              "<providers_data_processing_fcn>": "handle_received_data"})
         behav.apply_wildcards()
 
-        # Messages
-        behav.add_state("ready", msg="🔍 Looking for new agents for information exaction")
+        # Per-state user-facing messages
+        behav.add_state("ready", msg="🔍 Looking for new agents for information extraction")
         behav.add_state("connected_to_providers", msg="🔗 Connected to new agents")
         behav.add_state("time_to_ask", msg="🙋 Asking new agents to handle my stream of data")
-        behav.add_state("request_handled_by_a_provider",
-                        msg="✅ An agent finished its job (good or bad), waiting others (if any)")
+        behav.add_state("request_sent_to_available_providers",
+                        msg="✅ Waiting for the extractors to finish their job")
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'user.json'), only_if_changed=dummy_agent)
 
         # ROLE 2/2: extractor
+        from .extractor import WAgent as ExtractorAgent
+        dummy_agent = ExtractorAgent(proc=None)
         behav = HybridStateMachine(dummy_agent)
         behav.set_welcome_message(welcome_msg)
         behav.set_role("extractor")
 
-        behav.add_transit("init",
-                          os.path.join(self.world_folder, "..", "..", "..", "behaviors", "service_provider.json"),
-                          action="nop", args={})
+        # Plug the service_provider_new template at 'init' (its initial state is 'ready')
+        behav.add_transit("init", service_provider_json, action="nop", args={})
 
         behav.add_wildcards({"<user_role>": "user"})
         behav.apply_wildcards()

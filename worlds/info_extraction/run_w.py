@@ -5,7 +5,7 @@ from unaiverse.networking.node.node import Node
 world = WWorld()
 
 # Node hosting world
-node = Node(node_name="InfoExtraction", hidden=True, hosted=world, clock_delta=1. / 10.)
+node = Node(node_name="InfoExtraction", hidden=True, hosted=world, clock_delta=1. / 20.)
 
 # Running node
 node.run()

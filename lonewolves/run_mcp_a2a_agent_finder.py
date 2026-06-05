@@ -96,7 +96,7 @@ class A2AMCPFinder(torch.nn.Module):
         super(A2AMCPFinder, self).__init__()
         self.config = config
 
-    def forward(self, msg: str, first: bool = False, last: bool = False):
+    def forward(self, msg: str):
         """
         The entry point when this Node receives a message.
         
@@ -240,7 +240,7 @@ if __name__ == "__main__":
         "arg_key": "query"
     }
 
-    # We wrap our custom Torch module (A2AMCPFinder) into a Unaiverse Agent
+    # We wrap our custom Torch module (A2AMCPFinder) into a UNaIVERSE Agent
     agent = Agent(
         proc=A2AMCPFinder(config=mcp_config),
         proc_inputs=["text"],

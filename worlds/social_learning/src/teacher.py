@@ -1,12 +1,12 @@
 """
        █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
       ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
-       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░ 
-       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████   
-       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█   
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█
        ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
        ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
-        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░ 
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░
                  A Collectionless AI Project (https://collectionless.ai)
                  Registration/Login: https://unaiverse.io
                  Code Repositories:  https://github.com/collectionlessai/
@@ -17,14 +17,13 @@ import math
 import copy
 import random
 import numpy as np
-from unaiverse.agent import Agent
 from torch.utils.data import Subset
-from torchvision import datasets, transforms
-
 from unaiverse.utils.logger import log
+from unaiverse.agent import Agent, action
+from torchvision import datasets, transforms
 from unaiverse.utils.misc import prepare_app_dir
+from unaiverse.interaction import Interaction, CompletionReason
 from unaiverse.streams import DataStream, Dataset
-from unaiverse.interaction import CompletionReason
 
 
 class WAgent(Agent):
@@ -36,10 +35,15 @@ class WAgent(Agent):
         self._teach_per_class = 50
         self._unlabeled_per_class = 100
         self._batch_size = 32
-        self._test_teach_and_unlabeled_data_streams = []
+        self._round_datasets = []  # All dataset streams that get shuffled per round (eval + teach_n + unlabeled)
         self._seed = 1234
         self._agent_folder_name = os.path.join(prepare_app_dir(), "social_learning")
         self._actual_best_student = None
+
+        # Peers asked by social_round still owing a completion (callback driven by on_asked_done;
+        # gated by all_asks_done). teach_round and exam_round are gone — the HSM uses
+        # `send(..., wait_completion=True)` directly in the teach-eval-playlist.json template.
+        self._pending_asks = set()
 
         os.makedirs(self._agent_folder_name, exist_ok=True)
 
@@ -98,7 +102,7 @@ class WAgent(Agent):
                               DataStream.create(group="eval", name="labels", public=False,
                                                 stream=Dataset(eval_set, shape=(None,), index=1,
                                                                batch_size=self._batch_size))])
-        self._test_teach_and_unlabeled_data_streams += s
+        self._round_datasets += s
 
         for n in range(0, self._rounds):
             s = self.add_streams([DataStream.create(group=f"teach_{n}", name="images", public=False,
@@ -107,35 +111,43 @@ class WAgent(Agent):
                                   DataStream.create(group=f"teach_{n}", name="labels", public=False,
                                                     stream=Dataset(teach_sets[n], shape=(None,), index=1,
                                                                    batch_size=self._batch_size))])
-            self._test_teach_and_unlabeled_data_streams += s
+            self._round_datasets += s
 
         s = self.add_streams([DataStream.create(group="unlabeled", name="images", public=False, pubsub=False,
                                                 stream=Dataset(unlabeled_set, shape=(None, 1, 28, 28), index=0,
                                                                batch_size=self._batch_size))])
-        self._test_teach_and_unlabeled_data_streams += s
+        self._round_datasets += s
 
-        # Initially de-activating pub-sub streams
-        for stream_dict in self._test_teach_and_unlabeled_data_streams:
-            for stream_obj in stream_dict.values():
-                stream_obj.disable()
-
+        # The added streams must appear in the profile
         self.update_streams_in_profile()
 
-    async def ask_best_to_gen_ask_others_to_learn(self):
+    @action
+    async def social_round(self) -> bool:
+        """The best student labels the teacher's unlabeled data while the other (non-isolated) students learn
+        from it. Single phase with no wait, mirroring the deprecated ask_best_to_gen_ask_others_to_learn:
+        subscribe + ask-to-learn + ask-to-label happen back-to-back so the best publishes while everyone is
+        actively engaged (the gossip sub mesh is live).
+
+        The other students learn via the dedicated 'learn_from_student' action, which receives the best student's
+        stream as a kwarg net hash (like the deprecated do_learn's u_hashes) and binds it at action time — so
+        registration never has to resolve/match a just-subscribed remote pubsub input. The best student labels
+        the unlabeled data via 'teach' and publishes under the other students' learn UUID (relay_uuid).
+        """
         if self._valid_cmp_agents is None or len(self._valid_cmp_agents) == 0:
-            self.err("There is no best student to ask for the next lecture")
+            log.error("There is no best student to ask for the next lecture")
             return False
 
         await self.find_agents("student")
         all_students = copy.deepcopy(self._engaged_agents)
         not_isolated_students = copy.deepcopy(self._found_agents)
-        _, teacher = self.get_peer_ids()
+        teacher = self.get_peer_id()
         best_student = next(iter(self._valid_cmp_agents))  # This set has only 1 element
         other_not_isolated_students = not_isolated_students - {best_student}
-        log.user("======= Best student and Other Not Isolated Students =======")
-        log.user(best_student)
-        log.user(other_not_isolated_students)
-        log.user("=================")
+
+        log.user("===================== Best student and Other Not Isolated Students =========================")
+        log.user(f"- Best Student: {best_student}")
+        log.user(f"- Other Not Isolated Students: {other_not_isolated_students}")
+        log.user("============================================================================================")
 
         if other_not_isolated_students is None or len(other_not_isolated_students) == 0:
             return False
@@ -143,107 +155,127 @@ class WAgent(Agent):
         # Considering not-isolated students (different from the best one)
         await self.set_engaged_partner(other_not_isolated_students)
 
-        # Telling them to listen to what the best student streams
+        # Locating the pubsub stream that the best student will fill (its full net hash is unambiguous)
         net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
-        best_student_stream_hash = None
-        for net_hash in net_hash_to_stream_dict.keys():
-            best_student_stream_hash = net_hash
-            break
+        best_stream_hash = next(iter(net_hash_to_stream_dict.keys()), None)
 
-        if best_student_stream_hash is None or not (await self.ask_subscribe(stream_hashes=[best_student_stream_hash])):
-            self.err("Unable to tell students to listen to what the best student is going to say")
+        # Telling the other students to subscribe to that pubsub stream (still-current action)
+        if best_stream_hash is None or not (await self.send_subscribe(stream_hashes=[best_stream_hash])):
+            log.error("Unable to tell students to listen to what the best student is going to say")
             self._engaged_agents = all_students
             return False
 
-        # Asking them to learn from the best student
-        if await self.ask_learn(u_hashes=[f"{best_student}:best_student_stream"],
-                                yhat_hashes=[f"{best_student}:best_student_stream"],
-                                samples=self.get_unlabeled_steps()):
+        self._pending_asks = set()
 
-            # Getting the UUID of the request
-            ref_uuid = self.last_ref_uuid
-            asked = self._agents_who_were_asked.copy()
-
-            # Asking the best student to label the data
-            if not (await self.ask_gen(best_student,
-                                       u_hashes=[f"{teacher}:unlabeled"],
-                                       samples=self.get_unlabeled_steps(),
-                                       ask_uuid=ref_uuid)):
-                self.err("Unable to ask the best student to for the next lecture")
-                self._agents_who_were_asked.clear()
-                self._agents_who_were_asked.update(asked)
-                self._engaged_agents = all_students
-                return False
-            else:
-                self._agents_who_were_asked.update(asked)
-
-                # From the teacher's perspective: setting the UUID of the pubsub that the best student will send
-                net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
-                for _, stream_dict in net_hash_to_stream_dict.items():
-                    for name, stream_obj in stream_dict.items():
-
-                        # Forcing UUID
-                        stream_obj.set_uuid(ref_uuid)
-
-                self._engaged_agents = all_students
-                return True
-        else:
-            self.err("Unable to ask the other not-isolated student to learn from the best student")
+        # Asking the other (non-isolated) students to learn from the best student's stream (passed as a kwarg
+        # net hash, bound at action time -> no registration-time stream resolution/rejection; a dedicated
+        # action name so the next lecture's 'learn' cannot fire this transition).
+        learn_interaction = await self._send(action_name="learn_from_student",
+                                             target=list(other_not_isolated_students),
+                                             streams={"stdin": [f"{best_student}:images"],
+                                                      "stdtar": [f"{best_student}:labels"]},
+                                             num_steps=self.get_unlabeled_steps(), callback="on_asked_done")
+        if learn_interaction is None:
+            log.error("Unable to ask the other not-isolated students to learn from the best student")
             self._engaged_agents = all_students
             return False
 
+        self._pending_asks.update(learn_interaction.target)
+
+        # The UUID under which the other students will read the best student's pubsub samples
+        relay_uuid = learn_interaction.uuid
+
+        # Asking the best student to label the teacher's unlabeled data, publishing its predictions into its
+        # best_student_stream under 'relay_uuid' (an independent interaction, so no UUID collision).
+        gen_interaction = await self._send(action_name="teach", target=best_student,
+                                           action_kwargs={"relay_uuid": relay_uuid},
+                                           streams={"stdin": [f"{teacher}:images@unlabeled"]},
+                                           num_steps=self.get_unlabeled_steps(), callback="on_asked_done")
+        if gen_interaction is None:
+            log.error("Unable to ask the best student to label the unlabeled data")
+            self._engaged_agents = all_students
+            return False
+
+        self._pending_asks.update(gen_interaction.target)
+        self._engaged_agents = all_students
+        return True
+
+    @action
+    async def on_asked_done(self, interaction: Interaction | None = None) -> bool:
+        """Completion callback for social_round (the only remaining action that fans out two interactions
+        and tracks them via _pending_asks; teach_round / exam_round are collapsed into the modern
+        `send(..., wait_completion=True)` transit in teach-eval-playlist.json). The IM fires this
+        callback exactly once per interaction (when all its targets have reported, regardless of
+        OK / TIMEOUT / DISCONNECTED), so a single difference_update is enough."""
+        if interaction is not None:
+            self._pending_asks.difference_update(interaction.target)
+        return True
+
+    @action
+    async def all_asks_done(self) -> bool:
+        """True when every peer asked in the current round has reported completion (or been dropped).
+        Used by the HSM transit out of `best_teaching` to wait for the social_round's two sends to
+        finish before moving on."""
+        return len(self._pending_asks) == 0
+
+    @action
     async def clear_pending_requests(self, preserve: str | None = None):
-        actions = self.behav.get_all_actions()
-        for action in actions:
-            if preserve is None or action.name != preserve:
-                interactions = action.get_list_of_interactions()
-                for interaction in interactions:
-                    await self.im.complete(interaction, CompletionReason.DISCARDED)
+        all_inters = list(self.im.received.values()) + list(self.im.sent.values()) + list(self.im.lazy.values())
+        for interaction in all_inters:
+            if preserve is None or interaction.action_name != preserve:
+                await self.im.complete(interaction, CompletionReason.DISCARDED)
         await self.set_engaged_partner(None, clear_found=False)
+        return True
 
-    async def shuffle_and_stop_streaming(self):
+    @action
+    async def shuffle_round_datasets(self):
+        """Re-shuffle every dataset stream's buffer at the start of each lecture round so the new
+        round serves data in a fresh order. Fresh `_send` uuids already make `BufferedStream.get` start
+        from cursor 0 for every new interaction (see `add_interaction` → buffered_data_index_by_uuid=-1),
+        so no explicit enable/disable or restart hook is needed here."""
         self._seed += 1
-        for stream_dict in self._test_teach_and_unlabeled_data_streams:
+        for stream_dict in self._round_datasets:
             for stream_obj in stream_dict.values():
                 stream_obj.shuffle_buffer(seed=self._seed)
+        return True
 
-        await self.stop_streaming()
-
-    async def stop_streaming(self):
-        for stream_dict in self._test_teach_and_unlabeled_data_streams:
-            for stream_obj in stream_dict.values():
-                stream_obj.disable()
-
+    @action
     async def evaluate(self, stream_hash: str, how: str, steps: int = 100, re_offset: bool = False):
-        # Generic evaluation request
-        if not (await super().evaluate(stream_hash, how, steps, re_offset)):
+        # We try to evaluate all the engaged agents
+        if not (await super().evaluate(stream_hash, how, steps, re_offset, self._engaged_agents)):
             return False
+
         _t = self.clock.get_time_ms()
+        assert self.stats is not None
         for _peer_id, _eval_result in self._eval_results.items():
             self.stats.store_stat("exam_err", _eval_result, group_key=_peer_id, timestamp=_t)
+        return True
 
+    @action
     async def manage_best_of_class(self):
-        if self.get_current_role() == "teacher":
-            log.user(f"Managing the best of this class...")
-            if len(self._valid_cmp_agents) > 0:
-                # self.evaluate() populates self._eval_results[peer_id] = eval_result
-                # self._valid_cmp_agents is a set of peer_ids
-                best_student_peer_id = next(iter(self._valid_cmp_agents))  # This has length 1
-                badge_type = "intermediate"
-                badge_description = "Best student of a class, MNIST classification #ImageClassification #MNIST"
-                best_student_result = self._eval_results[best_student_peer_id]
+        assert self.stats is not None
+        log.user(f"Managing the best of this class...")
 
-                if best_student_result >= 0:
-                    _t = self.clock.get_time_ms()
-                    log.user(f"The best student is {best_student_peer_id} with this result: {best_student_result})")
-                    # the agent store and then send the stat to the world with the peer_id of the best student
-                    self.stats.store_stat("best_exam_err_history", best_student_result, group_key=best_student_peer_id,
-                                          timestamp=_t)
-                    return await super().suggest_badges_to_world(agent=best_student_peer_id, score=best_student_result,
-                                                                 badge_type=badge_type,
-                                                                 badge_description=badge_description)
-                else:
-                    return True
+        if len(self._valid_cmp_agents) > 0:
+
+            # self.evaluate() populates self._eval_results[peer_id] = eval_result
+            # self._valid_cmp_agents is a set of peer_ids
+            best_student_peer_id = next(iter(self._valid_cmp_agents))  # This has length 1
+            badge_type = "intermediate"
+            badge_description = "Best student of a class, MNIST classification #ImageClassification #MNIST"
+            best_student_result = self._eval_results[best_student_peer_id]
+
+            if best_student_result >= 0:
+                _t = self.clock.get_time_ms()
+                log.user(f"The best student is {best_student_peer_id} with this result: {best_student_result})")
+
+                # The agent stores and then sends the stat to the world with the peer_id of the best student
+                self.stats.store_stat("best_exam_err_history", best_student_result, group_key=best_student_peer_id,
+                                      timestamp=_t)
+                return await super().suggest_badges_to_world(agent=best_student_peer_id,
+                                                             score=best_student_result,
+                                                             badge_type=badge_type,
+                                                             badge_description=badge_description)
             else:
                 return True
         else:

@@ -118,6 +118,8 @@ class WAgent(Agent):
         proposed_check_ins = self._proposed_check_ins.copy()
 
         items = list(proposed_check_ins.items())
+
+        # noinspection PyUnresolvedReferences
         results = await asyncio.gather(*[
             self.send(action_name="connect_to_floor_manager",
                       action_kwargs={"floor_manager": self.hotel.get_floor(pc["floor_id"]).floor_manager},
@@ -135,6 +137,7 @@ class WAgent(Agent):
             else:
                 # Remembering this decision
                 floor = self.hotel.get_floor(pc["floor_id"])
+                assert floor is not None
                 self.hotel.add_expected_guest(guest, floor)
                 self._last_guest_send_to_floor_at = self.clock.get_time_as_string()
                 at_least_one_sent = True
@@ -208,6 +211,7 @@ class WAgent(Agent):
 
             # Reference to the floor
             _floor = self.hotel.get_floor(_floor_id)
+            assert _floor is not None
 
             # Unknown guests in the floor
             unk_guests = [x for x in _floor.get_guests() if x.startswith(Config.unknown_guest_name)]
@@ -242,6 +246,7 @@ class WAgent(Agent):
 
             # Reference to the floor
             _floor = self.hotel.get_floor(_update_dict["floor_id"])
+            assert _floor is not None
 
             # Inserting/ejecting
             if _consider_guest_updates:
@@ -282,9 +287,11 @@ class WAgent(Agent):
 
             # Getting all samples stored in such a stream (all UUIDs)
             updates = floor_stream.get("update_hotel", all_uuids=True)
+            assert isinstance(updates, list)
 
             # For each update packet (one per UUID)...
             for (update_str, update_tag, update_time) in updates:
+                assert isinstance(update_str, str)
 
                 # Filtering out empty packets
                 if update_str is None:
@@ -339,6 +346,7 @@ class WAgent(Agent):
 
                 # Checking issues after update
                 floor = self.hotel.get_floor(floor_id)
+                assert floor is not None
                 for room_id, guest_count in update_dict["floor_status"]:
 
                     # Discrepancies
@@ -349,6 +357,7 @@ class WAgent(Agent):
                         _create_or_recreate_floor(floor_manager, update_dict, update_tag,
                                                   _consider_guest_updates=True, _fill_floor=True)
                         floor = self.hotel.get_floor(floor_id)  # Refresh this reference, since the floor was recreated
+                        assert floor is not None
 
                     # Floor managers doing a weird job (do this AFTER having checked for discrepancies,
                     # so it the floor is rebuilt, we will check it again)
@@ -371,6 +380,8 @@ class WAgent(Agent):
         if is_head_of_hotel_managers:
             int_timestamp = self.clock.get_time_ms(monotonic=True)
             world_peer_id = self.get_connection_pool_manager().get_world_peer_id()
+            assert world_peer_id is not None
+            assert self.stats is not None
 
             # Referring to stats.py: CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA
             self.stats.store_stat("hotel_n_floors_active", len(self.hotel.get_floors()),
@@ -419,6 +430,7 @@ class WAgent(Agent):
 
         # Sending violations (in parallel across floors)
         if violations:
+            # noinspection PyUnresolvedReferences
             await asyncio.gather(*[
                 self.send(action_name="apply_violations",
                           from_state="votes_sent",
@@ -538,6 +550,7 @@ class WAgent(Agent):
             return _list_of_valid_vote_dicts
 
         hotel_manager_peer_id = self.get_peer_id()
+        assert self.stats is not None
 
         # Getting the stream where votes are sent: all floor manager might send votes
         for floor_manager in self.get_agents_by_role("floor_manager"):
@@ -550,8 +563,10 @@ class WAgent(Agent):
 
             # Getting all samples stored in such a stream (all UUIDs)
             votes = votes_stream.get("get_votes", all_uuids=True)
+            assert isinstance(votes, list)
 
             for vote_str, _, _ in votes:
+                assert isinstance(vote_str, str)
 
                 # Filtering out empty packets
                 if vote_str is None:
@@ -626,5 +641,6 @@ class WAgent(Agent):
 
     @action
     async def guest_back_to_hall(self, guest: str | None = None):
+        assert guest is not None
         self.hotel.eject(guest)
         return True

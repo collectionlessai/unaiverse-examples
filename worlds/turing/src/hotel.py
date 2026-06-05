@@ -120,6 +120,7 @@ class Hotel:
     def insert(self, guest: str, floor_id: str, room_id: str, hotel_manager_who_handled_the_guest: str):
         if floor_id in self.floors and room_id in self.rooms:
             floor = self.get_floor(floor_id)
+            assert floor is not None
             room = floor.get_room(room_id)
             floor.insert(guest, self.get_profile_of(guest), hotel_manager_who_handled_the_guest, room,
                          assign_fake_name=False)  # Do not assign nicks

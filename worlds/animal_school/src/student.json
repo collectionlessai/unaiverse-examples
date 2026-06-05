@@ -15,73 +15,73 @@
             "action_kwargs": {},
             "msg": "&#128205; Teacher engaged",
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
-        "done_learn": {
+        "finished_learning": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#128205; Done learn",
+            "msg": "&#128205; Finished learning",
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
-        "done_gen": {
+        "finished_exam": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#128205; Done gen",
+            "msg": "&#128205; Finished exam",
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
         "init": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#128205; Init",
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         }
     },
     "transitions": {
         "teacher_engaged": [
             {
                 "on": {
-                    "action": "do_learn",
+                    "action": "learn",
                     "action_kwargs": {},
-                    "msg": "&#128640; Do learn",
+                    "msg": "&#128640; Learn",
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
-                "goto": "done_learn"
+                "goto": "finished_learning"
             },
             {
                 "on": {
-                    "action": "do_gen",
+                    "action": "process",
                     "action_kwargs": {},
-                    "msg": "&#128640; Do gen",
+                    "msg": "&#128640; Process",
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
-                "goto": "done_gen"
+                "goto": "finished_exam"
             },
             {
                 "on": {
-                    "action": "get_disengagement",
+                    "action": "disengage",
                     "action_kwargs": {},
-                    "msg": "&#128640; Get disengagement",
+                    "msg": "&#128640; Disengage",
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "init"
             }
         ],
-        "done_learn": [
+        "finished_learning": [
             {
                 "on": {
                     "action": "nop",
@@ -91,12 +91,12 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "teacher_engaged"
             }
         ],
-        "done_gen": [
+        "finished_exam": [
             {
                 "on": {
                     "action": "nop",
@@ -106,7 +106,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "teacher_engaged"
             }
@@ -114,16 +114,16 @@
         "init": [
             {
                 "on": {
-                    "action": "get_engagement",
+                    "action": "engage",
                     "action_kwargs": {
                         "acceptable_role": "teacher"
                     },
-                    "msg": "&#128640; Get engagement",
+                    "msg": "&#128640; Engage",
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "teacher_engaged"
             }

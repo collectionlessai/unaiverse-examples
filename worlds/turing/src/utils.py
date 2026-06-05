@@ -33,15 +33,15 @@ def parse_vote_msg(
     """
     results: dict[str, str] = {}
 
-    # Build normalisation map and regex from the agent list
+    # Build normalization map and regex from the agent list
     agent_norm: dict[str, str] = {n.lower(): n for n in agents}
     agent_re = '(?:' + '|'.join(re.escape(n) for n in agents) + ')'
 
     def norm(_name: str) -> str:
-        """Normalise a matched agent name to its canonical form."""
+        """Normalize a matched agent name to its canonical form."""
         return agent_norm[_name.lower()]
 
-    # Full roster of known agents (normalised)
+    # Full roster of known agents (normalized)
     all_agents: set[str] = set()
     if bots:
         all_agents |= {norm(b) for b in bots}
@@ -121,10 +121,10 @@ def parse_vote_msg(
     )
 
     def classify(_keyword: str) -> str:
-        kw = _keyword.lower().strip()
-        if re.match(r'not\s+', kw):
-            return 'human' if re.search(r'ai|bot|robot|artificial|machine', kw) else 'ai'
-        if re.search(r'human|real|person|flesh|natural', kw):
+        _kw = _keyword.lower().strip()
+        if re.match(r'not\s+', _kw):
+            return 'human' if re.search(r'ai|bot|robot|artificial|machine', _kw) else 'ai'
+        if re.search(r'human|real|person|flesh|natural', _kw):
             return 'human'
         return 'ai'
 
@@ -371,6 +371,11 @@ def test_parse_vote_msg_names():
 
 
 def test_parse_vote_msg_letters():
+    agents = ["A", "B", "C", "D", "E", "F", "G"]
+
+    def pv(_msg, **kwargs):
+        return parse_vote_msg(_msg, agents=agents, **kwargs)
+
     tests = [
         # --- Basic keyword patterns ---
         ("B bot", {"B": "ai"}),
@@ -492,7 +497,7 @@ def test_parse_vote_msg_letters():
     # Tests without roster
     for msg, expected in tests:
         total += 1
-        result = parse_vote_msg(msg)
+        result = pv(msg)
         status = "PASS" if result == expected else "FAIL"
         if status == "FAIL":
             print(f"  {status}: {msg!r}\n    expected {expected}\n    got      {result}")
@@ -505,9 +510,9 @@ def test_parse_vote_msg_letters():
         msg, expected, r = entry
         total += 1
         if r is not None:
-            result = parse_vote_msg(msg, bots=r["bots"], humans=r["humans"])
+            result = pv(msg, bots=r["bots"], humans=r["humans"])
         else:
-            result = parse_vote_msg(msg)
+            result = pv(msg)
         status = "PASS" if result == expected else "FAIL"
         roster_label = f" [roster]" if r else " [no roster]"
         if status == "FAIL":

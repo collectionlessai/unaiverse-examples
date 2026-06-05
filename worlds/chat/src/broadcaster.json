@@ -15,21 +15,21 @@
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         }
     },
     "transitions": {
         "ready": [
             {
                 "on": {
-                    "action": "do_gen",
+                    "action": "broadcast_message",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "ready"
             }

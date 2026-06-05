@@ -1,6 +1,6 @@
 {
     "machine": {
-        "role": "unknown",
+        "role": "listening_to_teacher",
         "initial_state": "teacher_engaged",
         "msg": null,
         "options": {
@@ -15,74 +15,78 @@
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
-        "done_learn": {
+        "finished_learning": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         },
-        "done_gen": {
+        "finished_exam": {
             "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": true,
-            "time_to_wait_for_interactions": 0.0
+            "time_to_wait_before_acting": 0.0
         }
     },
     "transitions": {
         "teacher_engaged": [
             {
                 "on": {
-                    "action": "do_learn",
+                    "action": "learn",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
-                "goto": "done_learn"
+                "goto": "finished_learning"
             },
             {
                 "on": {
-                    "action": "do_gen",
+                    "action": "process",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": false,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
-                "goto": "done_gen"
+                "goto": "finished_exam"
             }
         ],
-        "done_learn": [
+        "finished_learning": [
             {
                 "on": {
                     "action": "nop",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "teacher_engaged"
             }
         ],
-        "done_gen": [
+        "finished_exam": [
             {
                 "on": {
                     "action": "nop",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
+                    "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "time_to_wait_before_running": 0.0
+                    "delay": 0.0
                 },
                 "goto": "teacher_engaged"
             }

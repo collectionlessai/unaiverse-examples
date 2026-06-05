@@ -1,5 +1,4 @@
 from unaiverse.agent import Agent
-from unaiverse.streams import StreamType
 from unaiverse.modules.networks import SiteRAG
 from unaiverse.networking.node.node import Node
 

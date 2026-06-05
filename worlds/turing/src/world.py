@@ -59,6 +59,7 @@ class WWorld(World):
 
     def load_managers_from_file(self):
         """Load list of managers from file (CSV file, every line is: floor|manager,unaid)."""
+        assert self.world_folder is not None
         with open(os.path.join(self.world_folder, "managers.txt"), "r") as f:
             managers = {line.strip() for line in f}
             for manager in managers:
@@ -78,6 +79,7 @@ class WWorld(World):
 
     def create_behav_files(self):
         """Create role-behavior JSON files."""
+        assert self.world_folder is not None
         sys.path.append(self.world_folder)
 
         # ROLE 1/3: hotel manager
@@ -111,8 +113,7 @@ class WWorld(World):
         behav.add_transit("votes_processed", "init", action="send_violations")
         behav.add_transit("votes_processed", "init", action="nop", teleport=True)
 
-        if behav.save(os.path.join(self.world_folder, 'hotel_manager.json'), only_if_changed=dummy_agent):
-            behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'hotel_manager.pdf'))
+        behav.save(os.path.join(self.world_folder, 'hotel_manager.json'), only_if_changed=dummy_agent)
 
         # ROLE 2/3: floor manager
         from .floor_manager import WAgent
@@ -152,8 +153,7 @@ class WWorld(World):
         behav.add_transit("collect_msgs", "collect_msgs", action="get_msg_and_broadcast", ready=False)
         behav.add_transit("collect_msgs", "init", action="nop", teleport=True)
 
-        if behav.save(os.path.join(self.world_folder, 'floor_manager.json'), only_if_changed=dummy_agent):
-            behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'floor_manager.pdf'))
+        behav.save(os.path.join(self.world_folder, 'floor_manager.json'), only_if_changed=dummy_agent)
 
         # ROLE 3/3: guest
         from .guest import WAgent
@@ -218,5 +218,4 @@ class WWorld(World):
         behav.add_transit("room_voting_booth", "hall", action="goto_hall", args={}, ready=False)
         behav.add_transit("vote_provided", "hall", action="goto_hall", args={}, ready=False)
 
-        if behav.save(os.path.join(self.world_folder, 'guest.json'), only_if_changed=dummy_agent):
-            behav.save_pdf(os.path.join(self.world_folder, 'pdf', 'guest.pdf'))
+        behav.save(os.path.join(self.world_folder, 'guest.json'), only_if_changed=dummy_agent)
