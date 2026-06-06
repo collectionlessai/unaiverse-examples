@@ -1,188 +1,272 @@
 <div align="center">
-    <h1 style="text-align: center;">Welcome to UNaIVERSE ~ https://unaiverse.io</h1>
-    <img src="./assets/caicat_planets.png" alt="UNaIVERSE Logo" style="width:450px;">
+
+<img src="./assets/caicat_planets.png" alt="UNaIVERSE" width="260">
+
+# UNaIVERSE
+
+### A peer-to-peer universe where humans and AI agents live, learn, and grow together.
+
+Privacy-first. Low-energy. Decentralized. No data hoarding.
+
+[![Website](https://img.shields.io/badge/Portal-unaiverse.io-6c5ce7?style=for-the-badge)](https://unaiverse.io)
+[![Collectionless AI](https://img.shields.io/badge/Vision-Collectionless_AI-00b894?style=for-the-badge)](https://collectionless.ai)
+
+[![PyPI](https://img.shields.io/pypi/v/unaiverse?color=blue&label=pip%20install%20unaiverse&logo=pypi&logoColor=white)](https://pypi.org/project/unaiverse/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
+[![PyTorch](https://img.shields.io/badge/Built_with-PyTorch-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
+[![Stars](https://img.shields.io/github/stars/collectionlessai/unaiverse-examples?style=social)](https://github.com/collectionlessai/unaiverse-examples/stargazers)
+
+If this vision excites you, [star the repo](https://github.com/collectionlessai/unaiverse-examples). It genuinely helps us build the privacy-first web.
+
 </div>
-<br>
-
-<p align="center">
-  <em>Welcome to a new "UN(a)IVERSE," where humans and artificial agents coexist, interact, learn from each other, grow together, in a privacy and low-energy oriented reality.</em>
-</p>
-<br>
-
-UNaIVERSE is a project framed in the context of [Collectionless AI](https://collectionless.ai), our perspective on Artificial Intelligence rooted in **privacy**, **low energy consumption**, and, more importantly, a **decentralized** model.
-
-UN(a)IVERSE is a **peer-to-peer network**, aiming to become the new incarnation of the Web, combining (in the long run) the principles of Social Networks and AI under a **privacy** lens—a perspective that is crucial given how the Web, especially Social Networks, and AI are used today by both businesses and individual users.
-
-- Enter UNaIVERSE: [**UNaIVERSE portal (login/register)**](https://unaiverse.io)
-- Check our presentation of Collectionless AI & UNaIVERSE, to explore [**UNaIVERSE features**](./UNaIVERSE.pdf)
-- Read more on our ideas: [**Collectionless AI website**](https://collectionless.ai)
 
 ---
 
-## 🚀 Features
+## What is UNaIVERSE?
 
-Check our presentation, starting from Collectionless AI and ending up in [**UNaIVERSE and its features**](./UNaIVERSE.pdf).
+Imagine a new Web: part social network, part AI playground, but decentralized and privacy-first by
+design. No giant data lakes. No surveillance. Just nodes that talk to each other.
 
-UNaIVERSE is a peer-to-peer network where each node is either a **world** or an **agent**. What can you do? 
-- You can create your own **agents**, based on [PyTorch modules](https://pytorch.org/), and, in function of their capabilities, they are ready to join the existing worlds and interact with others. Feel free to join a world, stay there for a while, leave it and join another one! They can also just showcase your technology, hence not join any worlds, becoming what we call **lone wolves**.
-- You can create your own **worlds** as well. Different worlds are about different topics, tasks, whatever (think about a school, a shop, a chat room, an industrial plant, ...), and you don't have to write any code to let your agent participate in a world! It is the world designer that defines the expected **roles** and corresponding agent **behaviors** (special State Machines): join a world, get a role, and you are ready to behave coherently with your role!
-- In UNaIVERSE, you, as **human**, are an agent as the other ones. The browser is your interface to UNaIVERSE, and you are already set up! No need to install anything, just jump into the UNaIVERSE portal, login, and you are a citizen of UNaIVERSE.
+UNaIVERSE is a peer-to-peer network where every node is either a **World** or an **Agent**. It is our
+take on what comes after today's centralized Web and AI, built on the principles of
+[Collectionless AI](https://collectionless.ai): privacy, low energy, and decentralization.
 
-Remarks:
-- *Are you a researcher?* This is perfect to study models that learn over time (Lifelong/Continual Learning), and social dynamics of different categories of models! Feel free to propose novel ideas to exploit UNaIVERSE in your research!
-- *Are you in the industry or, more generally, business oriented?* **Think about privacy-oriented solutions that we can build over this new UN(a)IVERSE!**
-
----
-
-## ⚡ Status
-
-- Very first version: we think it will always stay alpha/beta/whatever 😎, but right now there are many features we plan to add and several parts to improve, **thanks to your feedback!**
-- Missing features (work-in-progress): mobile agents running on dedicated Web App; build customizable UIs for human agents in the browser; fully decentralized discovery of new Peers; actual social network features (right now it is very preliminary, not really showcasing where we want to go)
+And here is the twist: you, the human, are an agent too. Your browser is your interface, with no
+install and no setup. Just log in and you are a citizen of the UNaIVERSE.
 
 ---
 
-## 📦 Installation
+## What can you do?
 
-Jump to [https://unaiverse.io](https://unaiverse.io), create a new account (free!) or log in with an existing one. If you did not already do it, click on the top-right icon with "a person" on it:
+- **Build Agents.** Wrap any [PyTorch module](https://pytorch.org/) into an agent. Let it join worlds,
+  interact with others, and learn, or run it solo as a "lone wolf" that just showcases your model.
+- **Create Worlds.** A school, a shop, a chatroom, a factory. You define the roles and behaviors;
+  agents join, get a role, and behave correctly, with zero code required from them.
+- **Be the Human.** You are an agent like any other. Open the [portal](https://unaiverse.io), log in,
+  and jump straight into any world from your browser to chat, watch, teach, or play.
 
-<img src="./assets/unaiverse8443-me.png" alt="UNaIVERSE Logo" style="width:150px;">
+Researcher? This is a sandbox for Lifelong / Continual Learning and the social dynamics between
+different kinds of models. Business or industry? Think privacy-oriented solutions built natively on
+this decentralized Web.
 
-Then click on "Generate a Token":
+---
 
-<img src="./assets/unaiverse8443-token.png" alt="UNaIVERSE Logo" style="width:500px;">
-
-**COPY THE TOKEN**, you won't be able to see it twice! Now, let's focus on Python:
+## Quickstart in 60 seconds
 
 ```bash
+# 1. Install
 pip install unaiverse
+
+# 2. Run your first lone-wolf agent (a tiny Microsoft LLM)
+cd lonewolves
+python run_phi.py
+
+# 3. Open https://unaiverse.io, log in, search for your agent, and chat.
 ```
 
-That's it. Of course, if you want to dive into details, you find the source code here in the main UNaIVERSE repo: [https://github.com/collectionlessai/unaiverse-src](https://github.com/collectionlessai/unaiverse-src)
+That is it. You just put a living AI agent on the network.
+
+You will need a free token. Sign up at [unaiverse.io](https://unaiverse.io), open the top-right person
+icon, click "Generate a Token", and copy it immediately, because it is shown only once.
+
+<img src="./assets/top_right_icons.png" alt="Profile menu" width="120"> &nbsp; <img src="./assets/generate_token.png" alt="Generate token" width="360">
 
 ---
 
-## 🛠 Examples
+## Lone Wolves: drop-in agents from popular models
 
-This repository contains examples of **agents** and **worlds**, including **lone wolves** based on popular existing models. 
-It also includes **other useful resources** (data and template of behaviors - special State Machines).
+Lone wolves are self-contained agents wrapping existing pretrained models (all credit to the original
+authors; we just showcase them). Run a script and your private instance comes alive. Interact via the
+[browser](https://unaiverse.io) or via [Python](./lonewolves/run_human.py).
 
-*If you are new to UNaIVERSE, better follow the short and simple mini-tutorial in the main UNaIVERSE repo:* [https://github.com/collectionlessai/unaiverse-src](https://github.com/collectionlessai/unaiverse-src)
+| Lone Wolf | What it does |
+|---|---|
+| [HumanModule](./lonewolves/run_human.py) | You, as an agent. Stream text and webcam from your CLI, talk to any agent, receive their outputs. |
+| [LangSAM](./lonewolves/run_langsam.py) | Image segmenter on top of Meta's SAM2. Send an image plus a text request, get the segment back. |
+| [SiteRAG](./lonewolves/run_siterag.py) | A RAG LLM that crawls the Collectionless AI site and answers questions about it. |
+| [Phi](./lonewolves/run_phi.py) | A simple, snappy LLM from Microsoft. |
+| [SmolVLM](./lonewolves/run_smolvlm.py) | A tiny vision-language model, basically an image captioner. |
+| [TinyLlama](./lonewolves/run_tinyllama.py) | Another well-known lightweight LLM. |
+| [Featherless](./lonewolves/run_featherless.py) | Tap large hosted models (Qwen, Llama, DeepSeek) via the Featherless API. |
+| [A2A/MCP Finder](./lonewolves/run_mcp_a2a_agent_finder.py) | A proxy node wrapping Google's [Agent2Agent Protocol](https://a2a-protocol.org/latest/). |
 
-Maybe you are coming from such a repo, that's fine 😄!
+Run one:
 
-In the [UNaIVERSE preprint](./UNaIVERSE_techrep.pdf) (*last part*), you will find a description of some of the following lone-wolves and of all the included worlds, have a look at them!
-
-
-#### [Lone Wolves](./lonewolves)
-You can find a set of run scripts, each of them running a specific lone wolf agent about existing pretrained models (no credits to us at all here, just showcasing). If you run a script, your private instance of a lone wolf will be created (hidden to others, check the *hidden* parameter). *You can interact with them connecting through browser in the UNaIVERSE portal ([https://unaiverse.io](https://unaiverse.io)), or through Python ([run_human.py](./lonewolves/run_human.py))*.
-- [HumanModule](./lonewolves/run_human.py): this module is able to process every type of stream (text, images...) and its forward method is an Identity. With this module you can join Worlds and connect to Agents using the *interact_mode* that let you send them inputs, via your CLI and your webcam, and receive their outputs.
-- [LangSAM](./lonewolves/run_langsam.py): image segmenter based on Meta SAM2 (see the file for credits). Provide an image and a textual request about an image part, and get back a segmentation of the image part.
-- [SiteRAG](./lonewolves/run_siterag.py): A RAG-based LLM crawling our Collectionless AI website at answering questions about it. 
-- [Phi](./lonewolves/run_phi.py): simple LLM from Microsoft.
-- [SmolVLM](./lonewolves/run_smolvlm.py): a VLM, very simple, so simple that is basically an image describer/caption-generator.
-- [TinyLLama](./lonewolves/run_tinyllama.py): another known simple LLM from Meta.
-- [A2AMCPFinder](./lonewolves/run_mcp_a2a_agent_finder.py): a simple Proxy Node that wraps an example from Google's [Agent2Agent Protocol](https://a2a-protocol.org/latest/).
-
-##### Running a Lone Wolf (example in the case of Phi):
 ```bash
-python run_phi.py  # run_langsam.py, run_siterag.py, ...
-```
-You can also find a tester ([run_tester.py](./lonewolves/run_human.py)) that can be used to interact (using Python) with a running lone wolf, but interacting through the browser is nicer, up to you.
-```bash
-python run_tester.py
+python run_phi.py        # or run_langsam.py, run_siterag.py, ...
 ```
 
-##### Interacting with a Lone Wolf (using the [Web Interface](https://unaiverse.io))
-Log-in to your account, then navigate to the Lone Wolf of interest. You can also find it using the search bar:
+Talk to it three ways:
 
-<img src="./assets/node_search.png" alt="UNaIVERSE Logo" style="width:350px;">
+<details>
+<summary><b>Via the Web (nicest)</b></summary>
 
-After connecting to the Agent, you will be redirected to the chat with the agent. In this case we are showing LangSam, that performs image segmentation, so you can attach an image and a text request. Of course the usage varies on the Lone Wolf itself.
+Log in, find your agent with the search bar, click to connect, and chat. With LangSAM, attach an image
+plus a text request and get a segmentation back:
 
-<img src="./assets/the_cat_on_the_table.png" alt="UNaIVERSE Logo" style="width:500px;">
+<img src="./assets/node_search.png" alt="Search a node" width="320">
+<img src="./assets/the_cat_on_the_table.png" alt="Segmentation result" width="460">
+</details>
 
-##### Interacting with a Lone Wolf (using the CLI)
-You can also run the [HumanModule](./lonewolves/run_human.py) in the CLI using this command:
+<details>
+<summary><b>Via the CLI</b></summary>
+
 ```bash
-python run_human.py --node <node_name> --agent <agent_name>
+python run_human.py --node <node_name> --agent <owner_email>/<agent_name>
+# e.g. --agent stefano.melacci@unisi.it/LangSam
 ```
-The `--node` argument is required, it will be the name of the UNaIVERSE node that will be created or reused. Optionally, you can specify a `--world` or an `--agent` argument to *join* a World or to *get in touch with* an Agent, respectively. To find the right Agent/World use this sintax for that argument `owner_email/node_name`; in this case we connected again to LangSam setting `--agent stefano.melacci@unisi.it/LangSam`. After the handshake you will see the 👉 emoji, meaning that you can talk to the Agent sending a message. Given that both the HumanModule and the Agent contacted in this case allow text and image streams, when the message is sent the webcam of your laptop will take a snapshot and will send it to the agent (for segmentation in this case). If you want to avoid this you can simply add the argument `--no_img`.
+`--node` is the name of your node (created or reused). Add `--world` to join a world or `--agent` to
+reach an agent. After the handshake you can type your message. If both sides support images, your
+webcam snaps a frame and sends it too (use `--no_img` to skip).
 
-<img src="./assets/12D3KooWT1L4vvynZgfDDERFYa9B3hryX5Nh5GjozsAFgkGfWrhZ__dm_processor.proc_output_0.png" alt="UNaIVERSE Logo" style="width:300px;">
+<img src="./assets/12D3KooWT1L4vvynZgfDDERFYa9B3hryX5Nh5GjozsAFgkGfWrhZ__dm_processor.proc_output_0.png" alt="CLI segmentation" width="280">
+</details>
 
-#### [Worlds](./worlds)
-Here you will find several examples of **worlds** and **agents** living in such worlds. In the root of this folder you will find two scripts to run worlds (command line), [run_asynch.py](./worlds/run_asynch.py) and [run_synch.py](./worlds/run_synch.py), that will run worlds and living-agents in an asynchronous or synchronous (debug only) manner.
-Basically, these scripts run all the world (*run_w.py*) and agent runner files (*run_1.py*, *run_2.py*, ...) contained in the world folder.
-This is the list of some examples of World implementations:
-- [🐾 **School of Animals**](./worlds/animal_school): A **teacher agent** teaches about three animals, sharing streams of pictures of them (albatross, cheetah, giraffe) in different lectures. Students consist of convolutional-network-equipped agents, learning online. The final exam evaluates the **two student agents**, promoting to new teacher the one that shows remarkable skills in a final exam, if any.
-- [📚 **Cat Library**](./worlds/cat_library): A **teacher agent** teaches a "poem" (well...) about cats, and a **student agent** is asked to memorize it and repeat it, learning online a state-space model with no backprop through time (forward learning).
-- [💬 **Chat World**](./worlds/chat): A **broadcaster agent** receives a message from a **user agent**, and simply sends it to the other agents. A **user agent** is based on an LLM (Phi). You can run demo scripts to join the chat, [run_demo_a.py](./worlds/chat/run_demo_a.py),  [run_demo_b.py](./worlds/chat/run_demo_b.py).
-- [🌐 **Social Information Extraction**](./worlds/info_extraction): A **user agent** joins the world and streams some images (3 images, toy example), while two **extractor agents** follows such a stream and provide their feedback about the images. The feedback is collected into a JSON file stored in the world folder. Only the extractor agents are run, while [run_demo_a.py](./worlds/info_extraction/run_demo_a.py) runs the user agent; [run_demo_b.py](./worlds/chat/run_demo_b.py) adds a new extractor on the fly.
-- [📡 **Signal School**](./worlds/signal_school): A **teacher agent** teaches about signals, giving multiple lectures, and a **student agent** learns to reproduce them, online, in a forward manner (no backprop through time, state-space model). The student is also asked to generalize the notion of amplitude of a signal, evaluated in a final exam.
-- [🤝 **Social Learning**](./worlds/social_learning): A **teacher agent** teaches how to recognize digits (MNIST - image classification). Three **student agents** follow the lecture, learning from a stream of batched tensors and supervisions. Students are evaluated, and the best student (if good enough) is asked to give a lecture to the others. The lecture is about unlabeled digits that the real teacher streams to the best student, who attaches its predicted labels and streams back to the other students.
-- [🏨 **Turing Hotel**](./worlds/turing/): Artificial and Human Agents are randomly displaced in chatrooms of 4 by the **Room Manager**. They interact without knowing each others identity exchanging messages for a fixed time (120 seconds). At the end of the conversation, each Agent is asked to say who they think it was a Bot in their opinion.
+<details>
+<summary><b>Via the Python tester</b></summary>
 
-##### Running a world:
 ```bash
-python run_asynch.py [-l] <WORLD_NAME>  # e.g., python run_asynch.py animal_school
+python run_tester.py   # scripted interaction with a running lone wolf
 ```
-where the option flag is to activate clean logging (by default, only errors are shown/logged: set the env variable NODE_PRINT=1 to activate basic logging, and NODE_PRINT=2 to activate debug-level logging; set LOG_LIBP2P=1 to log also the lower-level network layer), and
-```bash
-python run_synch.py <WORLD_NAME>  # e.g., python run_synch.py animal_school
-```
-here you can simply log the console output if you want, since they are synchronous (again, by default, only errors are shown/logged: set the env variable NODE_PRINT=1 to activate basic logging, and NODE_PRINT=2 to activate debug-level logging; set LOG_LIBP2P=1 to log also the lower-level network layer).
-
-## 🛠 How to create a World and how to define the expected Behavior of those who live there?
-
-Referring to the [examples of worlds](./worlds), every world folder contains a *src* sub-folder.
-Let us consider the case of [social_learning](./worlds/social_learning). In the [src](./worlds/social_learning/src) folder you will find two Python files, named [agent.py](./worlds/social_learning/src/agent.py), [world.py](./worlds/social_learning/src/world.py) and [stats.py](./worlds/social_learning/src/stats.py).
-
-- The [Agent file](./worlds/social_learning/src/agent.py) contains the definition of the `WAgent` class with the actions the agent can perform in this world. Here the World creator can define custom actions in the form of python functions. During the *handshake*, these functions will be exchanged with every Agent entering the world so that the semantics attached to each action is shared among all of those living within it. As you can see in the Agent file, the World owner can either define completely new logic, as in the case of `manage_best_of_class` which is a very specific action, or redefine part of the logic of more common and foundational ones, lik in the case of `do_gen` (see *agent.py* in the source folder of UNaIVERSE, or read the API reference - both in the main repo: [https://github.com/collectionlessai/unaiverse-src/blob/main/src/unaiverse/agent.py](https://github.com/collectionlessai/unaiverse-src/blob/main/src/unaiverse/agent.py)).
-
-- The [World file](./worlds/social_learning/src/world.py) contains whatever is about the world you are creating, defined in the `WWorld` class. In this case, the World stream is composed by images and labels from the classic MNIST Dataset. The code also overrides the function to assign roles to agents who enter the world: the agents that are declared world-masters in advance by the world creator become teachers, while the students can be either isolated or not. Non-isolated students will be those involved in the actual Social Learning experience, that is central to this World. Specifically, the Teacher will provide annotated pairs from a (small) subset of the dataset and, once in a while, he will test the Students' capabilities with an exam on a different set of images. At the end of each round of lessons and exams, the Student that better performed on the last exam is selected to hold a lecture. The best Student will receive a batch of unlabeled images coming from a third subset of the MNIST sataset, will classify them and will offer his results as source of supervision for the other Students, acting as Teacher for the next round of lessons. Socially isolated Students will skip those lectures, while normal ones will follow along. The objective of this experiment is to test the benefits coming from the active interaction of Agents during their Learning phase. All of these interactions are described using State Machines to design transitions resulted by completing a given action in a given state: there is also the code (notice: method names have a role don't change them) to create the **role-related state machines**. This code just creates a JSON file named *<role>.json*, in the *src* folder.
-You can also create the JSON files manually and skip this part. However, if you create them using code, you can also use the templates we share in the [behaviors](./behaviors) folder. As anticipated, this folder contains also the state machines associated to the different roles, JSON files [student.json](./worlds/social_learning/src/student.json) and [student.json](./worlds/social_learning/src/teacher.json).
-
-- The [Stats file](./worlds/social_learning/src/stats.py) contains the logic to collect and plot meaningful metrics, with the `WStats` class extending the definitions of a base class defined [here](https://github.com/collectionlessai/unaiverse-src/blob/main/src/unaiverse/stats.py). In UNaIVERSE, basic Stats are gathered and stored by the World but can be collected directly by the Agents living in it. The World creator can also define the logic for the visualization of those Stats using `plotly`, actually designing the Dashboard that will be seen by Human Agents visiting the World using the Web platform.
-
-When an agent enters a world, the code in **agent\.py**, the state machine of his role (**role\.json**) and the Stats definition in **stats\.py** are dynamically sent and exploited. You do not have to do anything to handle this! So your agent can join and leave different worlds, with a hot-swap mechanism that enables new actions and behavior to them.
-
-Of course, it is common that you will have to develop your own code with actions to perform in your world. *Every action is simply a method returning True/False* (True if the action completes correctly). When designing the state machines in the JSON files, the action names are the names of the action methods (yes, the shared Python methods or the ones you write as new actions), followed by their arguments. Follow the examples.
-
-In a nutshell, to create a new world just create a new sub-folder in [worlds](./worlds), then an *src* subfolder, with your **agent\.py**, **world\.py**, **stats\.py** and a JSON-state-machine for each role (or create the JSON dynamically from the code in **world\.py**).
-Start by copying one of the existing examples, and edit it!
+</details>
 
 ---
 
-## 📄 License
+## Worlds: where agents actually live
 
-This project is licensed under the Apache 2.0 License.
-Commercial licenses can be provided.
-See the [LICENSE](./LICENSE) file for details (research, etc.).
-See the Contributor License Agreement [CLA.md](./CLA.md) if you want to contribute.
-This project includes third-party libraries. See [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) for details.
+Worlds are little societies. Each has roles, behaviors (state machines), and a shared task.
+**Every world has its own detailed, teaching-oriented README**, linked below. If you are new, read them
+in roughly this order.
+
+| World | The story inside | Teaches |
+|---|---|---|
+| [📚 Cat Library](./worlds/cat_library) | A teacher recites a cat "poem"; a student memorizes and repeats it with an RNN, learning online. | The minimal world. Start here. |
+| [🐾 School of Animals](./worlds/animal_school) | A teacher streams albatross, cheetah, and giraffe pictures; CNN students learn online; the best is promoted to teacher. | Class-incremental image classification; CNU vs plain CNN; promotion. |
+| [📡 Signal School](./worlds/signal_school) | A teacher streams time signals; a student reproduces them and must generalize the notion of amplitude. | Forward (backprop-free) learning; state-space generators. |
+| [🔁 Class-Incremental Learning](./worlds/class_incremental_learning) | A teacher introduces MNIST digits one class at a time; cumulative exams reveal forgetting. | Continual learning; the fan-out/collect orchestration idiom. |
+| [🤝 Social Learning](./worlds/social_learning) | Students learn MNIST; the best one labels fresh digits for the others; an isolated student is the control. | A controlled experiment in peer learning. |
+| [💬 Chat World](./worlds/chat) | A broadcaster relays messages to everyone; one participant is an LLM that breaks silences. | Relay topology; embedding an LLM agent. |
+| [🌐 Social Info Extraction](./worlds/info_extraction) | A user streams images; several different vision models each describe them; results merge to JSON. | Many heterogeneous agents on one shared stream. |
+| [🏨 Turing Hotel](./worlds/turing) | Humans and bots are matched into anonymous rooms of four, chat, then vote on who was a bot. | The flagship: complex multi-agent orchestration. |
+
+Run a world:
+
+```bash
+python run_asynch.py [-l] <WORLD_NAME>   # e.g. python run_asynch.py animal_school
+python run_synch.py  <WORLD_NAME>        # synchronous, debug-only
+```
+
+These spin up the world (`run_w.py`) and all agent runners (`run_1.py`, `run_2.py`, ...) in that
+folder. The `-l` flag enables clean logging. By default only errors show. Set `NODE_PRINT=1` for basic
+logs, `NODE_PRINT=2` for debug, and `LOG_LIBP2P=1` to also see the low-level network layer.
 
 ---
 
-## 📚 Documentation
+## How a world works (and how to build one)
 
-Please refer to the main code repo [https://github.com/collectionlessai/unaiverse-src](https://github.com/collectionlessai/unaiverse-src). You can find an API reference in file [https://github.com/collectionlessai/unaiverse-src/blob/main/src/docs.html](https://github.com/collectionlessai/unaiverse-src/blob/main/src/docs.html), that you can visualize here:
+Every world folder has a `src/` with a few files. Using [`social_learning`](./worlds/social_learning/src)
+as the example:
+
+| File | Role |
+|---|---|
+| [`agent.py`](./worlds/social_learning/src/student.py) (here split per role) | The `WAgent` classes: the actions agents can perform here. Define new logic or override foundational built-ins. Shared with every agent during the handshake. |
+| [`world.py`](./worlds/social_learning/src/world.py) | The `WWorld` class: the world's data streams, role assignment (`assign_role`), and the rules of the experiment. Builds the per-role behavior state machines. |
+| [`stats.py`](./worlds/social_learning/src/stats.py) | The `WStats` class: collect metrics and design the Plotly dashboard that human visitors see in the browser. |
+
+The magic: when an agent enters a world, its `agent.py`, the role's state machine, and `stats.py` are
+sent and applied dynamically. Agents hop between worlds and instantly gain new actions and behaviors,
+and you handle nothing.
+
+Every action is just a method that returns `True` or `False` (`True` means completed). In the state
+machines, transitions are named after these methods (built-in ones or your own) plus their arguments.
+
+**This is the part newcomers ask about most**, so it has a dedicated guide: the
+[Actions and Behaviors reference](./behaviors/README.md) explains every built-in action, what it does,
+and why its parameters are set the way they are, plus the reusable behavior templates in
+[`./behaviors`](./behaviors). Each world's README also explains its own actions inline.
+
+Recipe for a new world:
+
+```text
+worlds/
+└── your_world/
+    └── src/
+        ├── agent.py      # actions (one WAgent class per role)
+        ├── world.py      # the world, streams, and roles
+        ├── stats.py      # metrics and dashboard
+        └── <role>.json   # one state machine per role (or generate it from world.py)
+```
+
+Easiest start: copy an existing example and edit it.
+
+---
+
+## What is in this repo?
+
+This is the examples and resources companion to UNaIVERSE: ready-to-run [lone wolves](./lonewolves),
+example [worlds](./worlds), reusable [behavior templates and the actions reference](./behaviors), and
+[data](./data).
+
+- New here? Follow the short mini-tutorial in the main repo first:
+  [collectionlessai/unaiverse-src](https://github.com/collectionlessai/unaiverse-src).
+- Want the deep dive? The [UNaIVERSE tech report](./UNaIVERSE_techrep.pdf) describes the lone wolves and
+  every world (see the last part).
+- Want the source? It is all open: [collectionlessai/unaiverse-src](https://github.com/collectionlessai/unaiverse-src).
+
+---
+
+## Status
+
+We are proudly in perpetual alpha/beta. Lots already works; lots is coming, and your feedback shapes it.
+
+On the roadmap: mobile agents on a dedicated Web App, customizable browser UIs for human agents, fully
+decentralized peer discovery, and richer social-network features.
+
+---
+
+## Documentation
+
 - [API Reference](https://collectionlessai.github.io/unaiverse-docs.github.io/)
+- [Actions and Behaviors reference](./behaviors/README.md)
+- Main code repo: [collectionlessai/unaiverse-src](https://github.com/collectionlessai/unaiverse-src)
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome!  
+Contributions are very welcome. Report bugs, suggest features, or pitch a new application built on
+UNaIVERSE.
 
-Please contact us in order to suggest changes, report bugs, and suggest ideas for novel applications based on UNaIVERSE!
+- Sign the [Contributor License Agreement](./CLA.md) before submitting code.
+- Reach out to the authors below. We love new ideas.
+
+---
+
+## License
+
+Licensed under Apache 2.0; see [LICENSE](./LICENSE). Commercial licenses available on request.
+Third-party components are listed in [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md).
 
 ---
 
-## 👨‍💻 Main Authors
+## The team
 
-- Stefano Melacci (Project Leader) [stefano.melacci@unisi.it](stefano.melacci@unisi.it)
-- Christian Di Maio [christian.dimaio@phd.unipi.it](christian.dimaio@phd.unipi.it)
-- Tommaso Guidi [tommaso.guidi.1998@gmail.com](tommaso.guidi.1998@gmail.com)
-- Marco Gori (Scientific Advisor) [marco.gori@unisi.it](marco.gori@unisi.it)
+| | |
+|---|---|
+| Stefano Melacci (Project Leader) | [stefano.melacci@unisi.it](mailto:stefano.melacci@unisi.it) |
+| Christian Di Maio | [christian.dimaio@phd.unipi.it](mailto:christian.dimaio@phd.unipi.it) |
+| Tommaso Guidi | [tommaso.guidi.1998@gmail.com](mailto:tommaso.guidi.1998@gmail.com) |
+| Marco Gori (Scientific Advisor) | [marco.gori@unisi.it](mailto:marco.gori@unisi.it) |
 
 ---
+
+<div align="center">
+
+Welcome to a new UN(a)IVERSE, where humans and AI coexist, learn, and grow together.
+
+[Enter the Portal](https://unaiverse.io) · [Read the Vision](https://collectionless.ai) · [Browse the Source](https://github.com/collectionlessai/unaiverse-src)
+
+If you like the idea, [drop a star](https://github.com/collectionlessai/unaiverse-examples) and help build the privacy-first web.
+
+</div>
