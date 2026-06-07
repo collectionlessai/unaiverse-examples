@@ -248,6 +248,7 @@ class WAgent(Agent):
         ok = await self.send(
             action_name="learn",
             target=list(self._students.keys()),
+            from_state="wait",
             streams={"stdin": [f"{prv_id}:images@teach_{cls}"],
                      "stdtar": [f"{prv_id}:labels@teach_{cls}"],
                      "stdext": []},
@@ -282,10 +283,17 @@ class WAgent(Agent):
             "scores": {},
         }
 
+        # Clearing data received due to previous interactions
+        for stud in students:
+            stud_proc = self.get_stream("processor", stud)
+            if stud_proc is not None:
+                stud_proc.clear_all_data()
+
         _, prv_id = self.get_peer_ids()
         ok = await self.send(
             action_name="process",
             target=students,
+            from_state="wait",
             streams={"stdin": [f"{prv_id}:images@eval"], "stdtar": [], "stdext": []},
             num_steps=self.EVAL_PER_CLASS * len(seen),
             timeout=self.EXAM_TIMEOUT_SEC,
@@ -324,4 +332,5 @@ class WAgent(Agent):
 
         log.user(f"\n{WAgent._format_exam_table(self._current_exam)}")
         self._current_exam = None
+        self._current_lesson = -1
         return True

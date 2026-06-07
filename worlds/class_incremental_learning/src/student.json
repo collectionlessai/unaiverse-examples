@@ -89,7 +89,7 @@
                 "on": {
                     "action": "find_agents",
                     "action_kwargs": {"role": "teacher", "handshake_completed": true},
-                    "msg": "✋ Handshake with teacher completed.",
+                    "msg": "✋ Checking handshake with teacher...",
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,

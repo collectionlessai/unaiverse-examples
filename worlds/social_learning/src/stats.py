@@ -53,7 +53,7 @@ class WorldSidebarDash:
             "xaxis6": {"domain": [0.82, 1]}, "yaxis6": {"domain": [0, 0.45]},
         }
         self._map = {
-            "left_top": ("xaxis1", "yaxis1"), "left_mid": ("domain_left_mid"), "left_bot": ("domain_left_bot"),
+            "left_top": ("xaxis1", "yaxis1"), "left_mid": "domain_left_mid", "left_bot": "domain_left_bot",
             "center_top": ("xaxis2", "yaxis2"), "center_bot": ("xaxis4", "yaxis4"),
             "right_top": ("xaxis5", "yaxis5"), "right_bot": ("xaxis6", "yaxis6")
         }
@@ -64,7 +64,7 @@ class WorldSidebarDash:
         
         # Handle Tables specifically as they rely on 'domain' not 'xaxis/yaxis'
         if position == "left_mid":
-            x_dom, y_dom = [0, 0.20], [0.35, 0.55] # Explicit coords for Table 1
+            x_dom, y_dom = [0, 0.20], [0.35, 0.55]  # Explicit coords for Table 1
             axis_key = None
         elif position == "left_bot":
             x_dom, y_dom = [0, 0.20], [0.0, 0.30]  # Explicit coords for Table 2
@@ -77,7 +77,7 @@ class WorldSidebarDash:
             axis_key = (xa, ya)
 
         # Merge Traces
-        for t in ui_plot._data:
+        for t in ui_plot.data:
             nt = t.copy()
             if nt.get("type") == "table":
                 # Tables use 'domain' for positioning, not axis references
@@ -92,12 +92,14 @@ class WorldSidebarDash:
         # Merge Layout (Titles, Ranges) - Skip if it's just a table container
         if axis_key:
             xa, ya = axis_key
-            src_l = ui_plot._layout
+            src_l = ui_plot.layout
             dest_x = self.layout.setdefault(xa, {})
             dest_y = self.layout.setdefault(ya, {})
             
-            if "xaxis" in src_l: dest_x.update({k:v for k,v in src_l["xaxis"].items() if k != "domain"})
-            if "yaxis" in src_l: dest_y.update({k:v for k,v in src_l["yaxis"].items() if k != "domain"})
+            if "xaxis" in src_l:
+                dest_x.update({k: v for k, v in src_l["xaxis"].items() if k != "domain"})
+            if "yaxis" in src_l:
+                dest_y.update({k: v for k, v in src_l["yaxis"].items() if k != "domain"})
 
             # Add Title via Annotation
             if src_l.get("title"):
@@ -113,8 +115,8 @@ class WorldSidebarDash:
                 })
         
         # Merge Legend settings if present in the source plot
-        if "legend" in ui_plot._layout:
-             self.layout["legend"] = ui_plot._layout["legend"]
+        if "legend" in ui_plot.layout:
+            self.layout["legend"] = ui_plot.layout["legend"]
 
     def to_json(self):
         return json.dumps({"data": self.traces, "layout": self.layout})

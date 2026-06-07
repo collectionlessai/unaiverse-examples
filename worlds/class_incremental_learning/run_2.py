@@ -18,7 +18,7 @@ proc_opts = {'optimizer': torch.optim.SGD(net.module.parameters(), lr=0.05),
 agent = Agent(proc=net, proc_inputs=proc_inputs, proc_outputs=proc_outputs, proc_opts=proc_opts)
 
 # Node hosting the student agent
-node = Node(node_name="Test2", hosted=agent, hidden=True, clock_delta=1./10.)
+node = Node(node_name="Test2", hosted=agent, hidden=True, clock_delta=1./50.)
 
 # Running node
 node.run(join_world="ClassIncrementalWorld")
