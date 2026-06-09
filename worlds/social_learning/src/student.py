@@ -15,8 +15,8 @@
 import os
 import torch
 from unaiverse.agent import Agent, action
+from unaiverse.streams import Stream, DataProps
 from unaiverse.utils.misc import prepare_app_dir
-from unaiverse.streams import DataStream, DataProps
 from unaiverse.modules.utils import error_rate_mnist_test_set
 from unaiverse.interaction import Interaction, CompletionReason
 
@@ -32,17 +32,17 @@ class WAgent(Agent):
         super().accept_new_role(role)
 
         # The stream where this student will possibly stream his lecture, if nominated "best student"
-        self.add_streams([DataStream(props=DataProps(group="best_student_stream", name="images",
-                                                     public=False, pubsub=True,
-                                                     data_type="tensor",
-                                                     data_desc="Batched images if this is the best student",
-                                                     tensor_shape=(None, 1, 28, 28),
-                                                     tensor_dtype=torch.float32)),
-                          DataStream(props=DataProps(group="best_student_stream", name="labels", public=False,
-                                                     data_type="tensor", pubsub=True,
-                                                     data_desc="Batched class-indices if this is the best student",
-                                                     tensor_shape=(None,),
-                                                     tensor_dtype=torch.long))])
+        self.add_streams([Stream(props=DataProps(group="best_student_stream", name="images",
+                                                 public=False, pubsub=True,
+                                                 data_type="tensor",
+                                                 data_desc="Batched images if this is the best student",
+                                                 tensor_shape=(None, 1, 28, 28),
+                                                 tensor_dtype=torch.float32)),
+                          Stream(props=DataProps(group="best_student_stream", name="labels", public=False,
+                                                 data_type="tensor", pubsub=True,
+                                                 data_desc="Batched class-indices if this is the best student",
+                                                 tensor_shape=(None,),
+                                                 tensor_dtype=torch.long))])
 
         # The newly added stream must appear in the profile of this agent
         self.update_streams_in_profile()

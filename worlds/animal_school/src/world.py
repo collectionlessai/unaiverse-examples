@@ -19,7 +19,7 @@ from .stats import WStats
 from unaiverse.world import World
 from unaiverse.hsm import HybridStateMachine
 from unaiverse.networking.node.profile import NodeProfile
-from unaiverse.streams import DataStream, ImageFileStream, LabelStream
+from unaiverse.streams import Stream, ImageFileStream, LabelStream
 
 
 class WWorld(World):
@@ -32,34 +32,34 @@ class WWorld(World):
         # Adding streams (same as the original animal_school world)
         data_path = os.path.join(str(self.world_folder), '..', '..', '..', 'data', 'animals')
 
-        self.add_streams([DataStream.create(group="albatross", public=False, delta=-1,
-                                            stream=ImageFileStream(image_dir=data_path,
-                                                                   list_of_image_files=data_path + "/c1_skip_10i.csv")),
-                          DataStream.create(group="albatross", public=False, delta=-1,
-                                            stream=LabelStream(label_dir=data_path, single_class=True,
-                                                               line_header=True,
-                                                               label_file_csv=data_path + "/c1_skip_10i.csv"))])
-        self.add_streams([DataStream.create(group="cheetah", public=False, delta=-1,
-                                            stream=ImageFileStream(image_dir=data_path,
-                                                                   list_of_image_files=data_path + "/c2_skip_10i.csv")),
-                          DataStream.create(group="cheetah", public=False, delta=-1,
-                                            stream=LabelStream(label_dir=data_path, single_class=True,
-                                                               line_header=True,
-                                                               label_file_csv=data_path + "/c2_skip_10i.csv"))])
-        self.add_streams([DataStream.create(group="giraffe", public=False, delta=-1,
-                                            stream=ImageFileStream(image_dir=data_path,
-                                                                   list_of_image_files=data_path + "/c3_skip_10i.csv")),
-                          DataStream.create(group="giraffe", public=False, delta=-1,
-                                            stream=LabelStream(label_dir=data_path, single_class=True,
-                                                               line_header=True,
-                                                               label_file_csv=data_path + "/c3_skip_10i.csv"))])
-        self.add_streams([DataStream.create(group="all", public=False, delta=-1,
-                                            stream=ImageFileStream(image_dir=data_path,
-                                                                   list_of_image_files=data_path + "/first3c_10i.csv")),
-                          DataStream.create(group="all", public=False, delta=-1,
-                                            stream=LabelStream(label_dir=data_path, single_class=True,
-                                                               line_header=True,
-                                                               label_file_csv=data_path + "/first3c_10i.csv"))])
+        self.add_streams([Stream.create(group="albatross", public=False, delta=-1,
+                                        stream=ImageFileStream(image_dir=data_path,
+                                                               list_of_image_files=data_path + "/c1_skip_10i.csv")),
+                          Stream.create(group="albatross", public=False, delta=-1,
+                                        stream=LabelStream(label_dir=data_path, single_class=True,
+                                                           line_header=True,
+                                                           label_file_csv=data_path + "/c1_skip_10i.csv"))])
+        self.add_streams([Stream.create(group="cheetah", public=False, delta=-1,
+                                        stream=ImageFileStream(image_dir=data_path,
+                                                               list_of_image_files=data_path + "/c2_skip_10i.csv")),
+                          Stream.create(group="cheetah", public=False, delta=-1,
+                                        stream=LabelStream(label_dir=data_path, single_class=True,
+                                                           line_header=True,
+                                                           label_file_csv=data_path + "/c2_skip_10i.csv"))])
+        self.add_streams([Stream.create(group="giraffe", public=False, delta=-1,
+                                        stream=ImageFileStream(image_dir=data_path,
+                                                               list_of_image_files=data_path + "/c3_skip_10i.csv")),
+                          Stream.create(group="giraffe", public=False, delta=-1,
+                                        stream=LabelStream(label_dir=data_path, single_class=True,
+                                                           line_header=True,
+                                                           label_file_csv=data_path + "/c3_skip_10i.csv"))])
+        self.add_streams([Stream.create(group="all", public=False, delta=-1,
+                                        stream=ImageFileStream(image_dir=data_path,
+                                                               list_of_image_files=data_path + "/first3c_10i.csv")),
+                          Stream.create(group="all", public=False, delta=-1,
+                                        stream=LabelStream(label_dir=data_path, single_class=True,
+                                                           line_header=True,
+                                                           label_file_csv=data_path + "/first3c_10i.csv"))])
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         if is_world_master:
@@ -91,7 +91,7 @@ class WWorld(World):
         behav.add_transit("init", "snapshotting_albatross", action="record",
                           args={"streams": ["<world>:all"],
                                 "num_steps": "<eval_steps>",
-                                "record_uuid": None}, avoid_changing_ready=True)
+                                "record_uuid": None}, avoid_changing_ready=True, timeout=30.0)
         behav.add_transit("snapshotting_albatross", "snapshotting_cheetah", action="record",
                           args={"streams": ["<world>:albatross"],
                                 "num_steps": "<learn_steps>",

@@ -352,7 +352,7 @@
                     "action": "compare_eval",
                     "action_kwargs": {
                         "cmp": "min",
-                        "thres": 0.5
+                        "thres": 1.0
                     },
                     "msg": null,
                     "ready": true,

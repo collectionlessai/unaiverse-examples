@@ -311,9 +311,9 @@ class WStats(Stats):
             e_votes = e["votes"]
             e_fooling = e["fooling"]
             e_msgs_total = e["msgs_total"]
-            assert isinstance(e_votes, int)
-            assert isinstance(e_fooling, int)
-            assert isinstance(e_msgs_total, int)
+            assert isinstance(e_votes, (float, int))
+            assert isinstance(e_fooling, (float, int))
+            assert isinstance(e_msgs_total, (float, int))
             if e_votes < min_votes:
                 continue
             fooling_rate = e_fooling / e_votes * 100

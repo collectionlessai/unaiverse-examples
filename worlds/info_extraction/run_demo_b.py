@@ -16,7 +16,7 @@ agent = Agent(proc=FasterRCNN(),
               proc_opts={})
 
 # Node hosting agent
-node = Node(agent, node_name="Test1", hidden=True, clock_delta=1. / 15.)
+node = Node(agent, node_name="Test2", hidden=True, clock_delta=1. / 15.)
 
 # Running node
 node.run(join_world="InfoExtraction")

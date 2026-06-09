@@ -293,7 +293,7 @@
                                 "<playlist>"
                             ]
                         },
-                        "num_steps": 10000,
+                        "num_steps": 1000,
                         "wait_completion": true
                     },
                     "msg": "&#128640; Send",

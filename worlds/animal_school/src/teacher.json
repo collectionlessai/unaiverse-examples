@@ -178,7 +178,7 @@
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 10.0,
+                    "retry_timeout": 30.0,
                     "delay": 0.0
                 },
                 "goto": "snapshotting_albatross"

@@ -13,10 +13,9 @@
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
 import os
-
-from unaiverse.custom import Custom
 from .stats import WStats
 from unaiverse.world import World
+from unaiverse.custom import Custom
 from unaiverse.utils.logger import log
 from unaiverse.hsm import HybridStateMachine
 from unaiverse.networking.node.profile import NodeProfile
@@ -82,7 +81,7 @@ class WWorld(World):
                                                for i in range(0, dummy_agent.get_num_rounds())]})
         behav.add_wildcards({"<learn_steps>": dummy_agent.get_teach_steps(),
                              "<eval_steps>": dummy_agent.get_eval_steps(),
-                             "<cmp_thres>": 0.5})
+                             "<cmp_thres>": 1.0})
 
         # Counting
         behav.add_state("engagement_complete", msg="🔔 Ready for the lecture")

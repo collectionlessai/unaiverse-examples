@@ -21,9 +21,9 @@ from torch.utils.data import Subset
 from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
 from torchvision import datasets, transforms
+from unaiverse.streams import Stream, Dataset
 from unaiverse.utils.misc import prepare_app_dir
 from unaiverse.interaction import Interaction, CompletionReason
-from unaiverse.streams import DataStream, Dataset
 
 
 class WAgent(Agent):
@@ -96,26 +96,26 @@ class WAgent(Agent):
                                   grp=0, offset=self._rounds * self._teach_per_class)
 
         # Adding streams
-        s = self.add_streams([DataStream.create(group="eval", name="images", public=False,
-                                                stream=Dataset(eval_set, shape=(None, 1, 28, 28), index=0,
-                                                               batch_size=self._batch_size)),
-                              DataStream.create(group="eval", name="labels", public=False,
-                                                stream=Dataset(eval_set, shape=(None,), index=1,
-                                                               batch_size=self._batch_size))])
+        s = self.add_streams([Stream.create(group="eval", name="images", public=False,
+                                            stream=Dataset(eval_set, shape=(None, 1, 28, 28), index=0,
+                                                           batch_size=self._batch_size)),
+                              Stream.create(group="eval", name="labels", public=False,
+                                            stream=Dataset(eval_set, shape=(None,), index=1,
+                                                           batch_size=self._batch_size))])
         self._round_datasets += s
 
         for n in range(0, self._rounds):
-            s = self.add_streams([DataStream.create(group=f"teach_{n}", name="images", public=False,
-                                                    stream=Dataset(teach_sets[n], shape=(None, 1, 28, 28), index=0,
-                                                                   batch_size=self._batch_size)),
-                                  DataStream.create(group=f"teach_{n}", name="labels", public=False,
-                                                    stream=Dataset(teach_sets[n], shape=(None,), index=1,
-                                                                   batch_size=self._batch_size))])
+            s = self.add_streams([Stream.create(group=f"teach_{n}", name="images", public=False,
+                                                stream=Dataset(teach_sets[n], shape=(None, 1, 28, 28), index=0,
+                                                               batch_size=self._batch_size)),
+                                  Stream.create(group=f"teach_{n}", name="labels", public=False,
+                                                stream=Dataset(teach_sets[n], shape=(None,), index=1,
+                                                               batch_size=self._batch_size))])
             self._round_datasets += s
 
-        s = self.add_streams([DataStream.create(group="unlabeled", name="images", public=False, pubsub=False,
-                                                stream=Dataset(unlabeled_set, shape=(None, 1, 28, 28), index=0,
-                                                               batch_size=self._batch_size))])
+        s = self.add_streams([Stream.create(group="unlabeled", name="images", public=False, pubsub=False,
+                                            stream=Dataset(unlabeled_set, shape=(None, 1, 28, 28), index=0,
+                                                           batch_size=self._batch_size))])
         self._round_datasets += s
 
         # The added streams must appear in the profile

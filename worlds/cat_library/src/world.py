@@ -17,7 +17,7 @@ from .stats import WStats
 from unaiverse.world import World
 from unaiverse.custom import Custom
 from unaiverse.hsm import HybridStateMachine
-from unaiverse.streams import DataStream, TokensStream
+from unaiverse.streams import Stream, TokensStream
 from unaiverse.networking.node.profile import NodeProfile
 
 
@@ -30,8 +30,8 @@ class WWorld(World):
 
         # Adding streams (same as the original cat_library world)
         data_path = os.path.join(str(self.world_folder), '..', '..', '..', 'data', 'cats', 'stream_of_words.csv')
-        self.add_stream(DataStream.create(name="cats", public=False,
-                                          stream=TokensStream(tokens_file_csv=data_path, max_tokens=998)))
+        self.add_stream(Stream.create(name="cats", public=False,
+                                      stream=TokensStream(tokens_file_csv=data_path, max_tokens=998)))
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         if is_world_master:
@@ -60,7 +60,7 @@ class WWorld(World):
         behav = HybridStateMachine(dummy_agent)
         behav.set_role("teacher")
 
-        # Snapshot the world's `cats` token stream into a teacher-owned BufferedDataStream
+        # Snapshot the world's `cats` token stream into a teacher-owned BufferedStream
         # (`recorded1`).
         behav.add_transit("init", "book_prepared", action="record",
                           args={"streams": ["<world>:cats"],
