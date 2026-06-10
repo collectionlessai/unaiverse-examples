@@ -177,8 +177,9 @@ class WWorld(World):
         behav.add_state("ready_for_room", blocking=False)
         behav.add_state("room_round_table", blocking=True)
         behav.add_state("msg_prepared", blocking=False)
-        behav.add_state("room_voting_booth", blocking=True,
+        behav.add_state("room_voting_booth", blocking=False,
                         msg="🗳 Entered the voting booth (waiting for vote request)")
+        behav.add_state("can_vote", blocking=True)
         behav.add_state("vote_provided", blocking=True, msg="✅ Vote provided")
 
         behav.add_transit("init", "ready", action="process", args={},
@@ -210,12 +211,17 @@ class WWorld(World):
                           ready=False)
         behav.add_transit("room_round_table", "room_voting_booth", action="goto_voting_booth",
                           args={}, ready=False)
+        behav.add_transit("room_voting_booth", "can_vote",
+                          action="nop", args={}, delay=Config.time_in_voting_booth_before_activating_vote)
+        behav.add_transit("room_voting_booth", "room_voting_booth",
+                          action="get_status_msg", args={}, ready=False)
         behav.add_transit("msg_prepared", "room_round_table", action="send_msg", args={})
-        behav.add_transit("room_voting_booth", "room_voting_booth", action="get_status_msg", args={},
+        behav.add_transit("can_vote", "can_vote",
+                          action="get_status_msg", args={}, ready=False)
+        behav.add_transit("can_vote", "vote_provided", action="process", args={},
                           ready=False)
-        behav.add_transit("room_voting_booth", "vote_provided", action="process", args={},
+        behav.add_transit("can_vote", "hall", action="goto_hall", args={},
                           ready=False)
-        behav.add_transit("room_voting_booth", "hall", action="goto_hall", args={}, ready=False)
         behav.add_transit("vote_provided", "hall", action="goto_hall", args={}, ready=False)
 
         behav.save(os.path.join(self.world_folder, 'guest.json'), only_if_changed=dummy_agent)

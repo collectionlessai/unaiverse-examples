@@ -220,7 +220,7 @@ class WAgent(Agent):
                       target=hotel_manager,
                       volatile=True),
             self.send(action_name="goto_hall",
-                      from_state="room_voting_booth" if not callback_from_process_vote else "vote_provided",
+                      from_state="can_vote" if not callback_from_process_vote else "vote_provided",
                       target=guest,
                       volatile=True),
             return_exceptions=True
@@ -404,7 +404,7 @@ class WAgent(Agent):
                 "<YOUR_NAME>", room.fake_name_of(guest)).replace("<OTHER_NAMES>", ", ".join(other_guests_names))
 
             interaction = await self._send(action_name="process",
-                                           from_state="room_voting_booth",
+                                           from_state="can_vote",
                                            callback="guest_back_to_hall",
                                            target=guest)
             if interaction is None:
@@ -421,7 +421,7 @@ class WAgent(Agent):
                                           action_name="get_status_msg",
                                           action_kwargs={"msg": format_message(Config.manager_fake_name, survey_msg),
                                                          "process_uuid": interaction.uuid},
-                                          from_state="room_voting_booth",
+                                          from_state="can_vote",
                                           volatile=True),
                 *[self.__send_or_disconnect(_guest,
                                             action_name="get_status_msg",
