@@ -1,0 +1,266 @@
+{
+    "machine": {
+        "role": "hotel_manager",
+        "initial_state": "init",
+        "msg": "Welcome to the Turing Hotel &#127976;, we always need more managers, happy to have you here!",
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
+        }
+    },
+    "states": {
+        "init": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        },
+        "discovery_complete": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "checked_in": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "ready_for_news": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        },
+        "hotel_updated": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "votes_processed": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        }
+    },
+    "transitions": {
+        "init": [
+            {
+                "on": {
+                    "action": "discover_floor_managers",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "discovery_complete"
+            }
+        ],
+        "discovery_complete": [
+            {
+                "on": {
+                    "action": "guest_back_to_hall",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "discovery_complete"
+            },
+            {
+                "on": {
+                    "action": "check_in",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "checked_in"
+            }
+        ],
+        "checked_in": [
+            {
+                "on": {
+                    "action": "send_to_floor",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "ready_for_news"
+            }
+        ],
+        "ready_for_news": [
+            {
+                "on": {
+                    "action": "update_hotel",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "hotel_updated"
+            },
+            {
+                "on": {
+                    "action": "get_votes",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "votes_processed"
+            }
+        ],
+        "hotel_updated": [
+            {
+                "on": {
+                    "action": "get_votes",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "votes_processed"
+            }
+        ],
+        "votes_processed": [
+            {
+                "on": {
+                    "action": "send_violations",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "init"
+            }
+        ]
+    },
+    "teleports": {
+        "init": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "discovery_complete"
+            }
+        ],
+        "discovery_complete": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "ready_for_news"
+            }
+        ],
+        "checked_in": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "ready_for_news"
+            }
+        ],
+        "ready_for_news": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "init"
+            }
+        ],
+        "votes_processed": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "init"
+            }
+        ],
+        "hotel_updated": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "votes_processed"
+            }
+        ]
+    }
+}
