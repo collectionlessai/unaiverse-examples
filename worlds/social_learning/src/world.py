@@ -233,7 +233,7 @@ class WWorld(World):
                     'score': value,
                     'badge_type': "completed",
                     'badge_description': "World champion, MNIST classification #ImageClassification #MNIST",
-                    'agent_token': self._node_conn.get_last_token(peer_id)
+                    'agent_token': self.node_conn.get_last_token(peer_id)
                     }
                 self.add_badge(**badge)
 

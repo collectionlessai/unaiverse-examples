@@ -90,8 +90,8 @@ class WAgent(Agent):
                         ((not self.is_human()) and
                          (self.proc is not None and not isinstance(self.proc.module, MultiIdentity))) and
                         ((self.get_name().lower() in msg.lower().strip()) or
-                         (self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT |
-                                                        self.ROLE_STR_TO_BITS["user"]) == 2) or
+                         (self.node_conn.count_by_role(Agent.ROLE_WORLD_AGENT |
+                                                       self.ROLE_STR_TO_BITS["user"]) == 2) or
                          (my_rand < talk_probability))):
 
                     augmented_msg = (
@@ -112,7 +112,7 @@ class WAgent(Agent):
             if ((not self.is_human()) and
                     (self.proc is not None and not isinstance(self.proc.module, MultiIdentity)) and
                     ((tm.time() - self._last_msg_time) > max_silence_seconds) and
-                    self._node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) > 1):
+                    self.node_conn.count_by_role(Agent.ROLE_WORLD_AGENT | self.ROLE_STR_TO_BITS["user"]) > 1):
 
                 promote_prompt = (f"The conversation in a chatroom is simply silent, nobody is talking. "
                                   f"Generate a nice message to trigger the conversation of a topic that is "

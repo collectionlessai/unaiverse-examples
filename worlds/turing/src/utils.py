@@ -1,6 +1,8 @@
 import re
 import random
 import atexit
+import sys
+
 from rich import box
 from .config import Config
 from rich.text import Text
@@ -702,10 +704,33 @@ def print_live(structure, status_msg: str):
     # Group table and message together
     screen = Group(table, Text(text=f"\n{status_msg}", style="blue"))
 
+    def kill_active_live():
+        """Tear down whatever "Live" currently owns the terminal. Call BEFORE constructing a new one."""
+        live = getattr(sys, "_active_live_session", None)
+        if live is not None:
+            if live is None:
+                return
+            try:
+                live: Live
+                live.stop()
+            except Exception:
+                pass
+            try:
+                atexit.unregister(live.stop)
+            except Exception:
+                pass
+            _active_live = None
+
+    def set_active_live(live):
+        """Install a new "Live" as the terminal owner. Call AFTER constructing and starting it."""
+        setattr(sys, "_active_live_session", live)
+        atexit.register(live.stop)
+
     # Rendering
     if structure.live is None:
+        kill_active_live()
         structure.live = Live(screen, screen=False, auto_refresh=False)  # Lazy init
         structure.live.start()
-        atexit.register(structure.live.stop)
+        set_active_live(structure.live)
     else:
         structure.live.update(screen, refresh=True)  # Update
