@@ -35,7 +35,7 @@ class WAgent(Agent):
         """Locate the local processor output stream (used by check_messages to read back our own
         self-generated messages, and forwarded to the broadcaster by generate_and_send), then connect to
         the broadcaster (async)."""
-        self._user_stream = self.get_stream("processor", data_type="text")
+        self._user_stream = self.get_stream("processor", data_type="text", peer_id=self.get_peer_id())
         if self._user_stream is None:
             log.error("Cannot find own processor output stream")
             return False
