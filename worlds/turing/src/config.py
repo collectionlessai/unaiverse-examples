@@ -20,10 +20,11 @@ import textwrap
 class Config:
     use_letter_names = False
     test_duration = 300  # Seconds (int)
-    survey_reply_time = 300  # Seconds
+    survey_reply_time = 240  # Seconds (WARNING: do not get too close to 300, since all interactions expire at 300!)
     time_in_voting_booth_before_activating_vote = 3  # Seconds
     moving_time = 10  # Time to move from the floor entrance to the chat table or from the chat table to the voting both
-    max_time_in_every_state = max([test_duration, survey_reply_time, moving_time]) + moving_time + 5  # Add a gap
+    max_time_in_every_state = (max([test_duration, survey_reply_time, moving_time]) +
+                               moving_time + time_in_voting_booth_before_activating_vote + 5)  # Add a gap
     max_guests_per_room = 4
     max_overbooked_guests = 1
     rooms_per_floor = 10
@@ -62,6 +63,7 @@ class Config:
                         f"'{exit_trigger_message}' "
                         f"at any time "
                         f"to immediately leave the room and provide your vote!")
+    reminder_message_vote = f"[GEN_MSG] You still have <TIME_LEFT> seconds to send your vote..."
     survey_message = (f"[VOTE_REQ_MSG] Dear **<YOUR_NAME>**, you have interacted with **<OTHER_NAMES>**. "
                       f"Each was either a human or an AI. It could also be they were all humans or all AIs. "
                       f"<br/><br/><strong>PLEASE LIST THE ONES YOU THINK WERE HUMANS</strong> "

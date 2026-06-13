@@ -122,21 +122,6 @@
                     "delay": 0.0
                 },
                 "goto": "request_sent_to_available_providers"
-            },
-            {
-                "on": {
-                    "action": "all_sent_completed",
-                    "action_kwargs": {
-                        "action_name": "process"
-                    },
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "ready"
             }
         ]
     },
@@ -157,6 +142,21 @@
             }
         ],
         "request_sent_to_available_providers": [
+            {
+                "on": {
+                    "action": "all_sent_completed",
+                    "action_kwargs": {
+                        "action_name": "process"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 2.0
+                },
+                "goto": "ready"
+            },
             {
                 "on": {
                     "action": "nop",

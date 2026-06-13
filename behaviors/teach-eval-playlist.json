@@ -100,8 +100,8 @@
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
+                    "max_duration": "<learn_time>",
+                    "retry_timeout": "<learn_time>",
                     "delay": 0.0
                 },
                 "goto": "student_finished_following"
@@ -128,7 +128,9 @@
                     "action": "send",
                     "action_kwargs": {
                         "action_name": "process",
-                        "streams": ["<agent>:eval"],
+                        "streams": [
+                            "<agent>:eval"
+                        ],
                         "num_steps": "<eval_steps>",
                         "timeout": "<exam_time>",
                         "wait_completion": true
@@ -136,8 +138,8 @@
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
+                    "max_duration": "<exam_time>",
+                    "retry_timeout": "<exam_time>",
                     "delay": 0.0
                 },
                 "goto": "student_finished_exam"

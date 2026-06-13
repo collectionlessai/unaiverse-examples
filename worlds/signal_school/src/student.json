@@ -66,19 +66,6 @@
                     "delay": 0.0
                 },
                 "goto": "finished_exam"
-            },
-            {
-                "on": {
-                    "action": "disengage",
-                    "action_kwargs": {},
-                    "msg": "&#128640; Disengage",
-                    "ready": false,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "init"
             }
         ],
         "finished_learning": [

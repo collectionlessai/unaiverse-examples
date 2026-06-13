@@ -294,13 +294,14 @@
                             ]
                         },
                         "num_steps": 1000,
+                        "timeout": 0,
                         "wait_completion": true
                     },
                     "msg": "&#128640; Send",
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 60.0,
+                    "retry_timeout": 0.0,
                     "delay": 0.0
                 },
                 "goto": "student_finished_following"
@@ -363,13 +364,14 @@
                             "<playlist>"
                         ],
                         "num_steps": 1000,
+                        "timeout": 0,
                         "wait_completion": true
                     },
                     "msg": "&#128640; Send",
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 5.0,
+                    "retry_timeout": 0.0,
                     "delay": 0.0
                 },
                 "goto": "student_finished_exam"

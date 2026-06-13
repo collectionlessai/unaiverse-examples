@@ -141,7 +141,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "delay": 0.0
+                    "delay": 2.0
                 },
                 "goto": "ready"
             }

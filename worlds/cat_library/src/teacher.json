@@ -106,7 +106,7 @@
             },
             "msg": "&#128205; Eval time",
             "blocking": false,
-            "time_to_wait_before_acting": 0.0
+            "time_to_wait_before_acting": 3
         },
         "good": {
             "action": null,
@@ -276,13 +276,14 @@
                             ]
                         },
                         "num_steps": 998,
+                        "timeout": 120,
                         "wait_completion": true
                     },
                     "msg": "&#128640; Send",
                     "ready": true,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 60.0,
+                    "max_duration": 120.0,
+                    "retry_timeout": 120.0,
                     "delay": 0.0
                 },
                 "goto": "student_finished_following"
@@ -345,13 +346,14 @@
                             "<agent>:recorded1"
                         ],
                         "num_steps": 998,
+                        "timeout": 120,
                         "wait_completion": true
                     },
                     "msg": "&#128640; Send",
                     "ready": true,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 5.0,
+                    "max_duration": 120.0,
+                    "retry_timeout": 120.0,
                     "delay": 0.0
                 },
                 "goto": "student_finished_exam"

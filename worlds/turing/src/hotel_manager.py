@@ -12,6 +12,7 @@
                  Code Repositories:  https://github.com/collectionlessai/
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
+import sys
 import copy
 import json
 import asyncio
@@ -24,7 +25,10 @@ from unaiverse.agent import Agent, action
 from concurrent.futures import ThreadPoolExecutor
 from unaiverse.networking.node.profile import NodeProfile
 from .utils import parse_vote_msg, compute_check_in_proposals
-asyncio.get_event_loop().set_default_executor(ThreadPoolExecutor(max_workers=128))
+if not getattr(sys, "_turing_executor", None):
+    _turing_executor = ThreadPoolExecutor(max_workers=128)
+    asyncio.get_event_loop().set_default_executor(_turing_executor)
+    sys._turing_executor = _turing_executor
 
 
 class WAgent(Agent):
@@ -122,12 +126,12 @@ class WAgent(Agent):
         # noinspection PyUnresolvedReferences
         results = await asyncio.gather(*[
             self.send(action_name="connect_to_floor_manager",
-                      action_kwargs={"floor_manager": self.hotel.get_floor(pc["floor_id"]).floor_manager},
+                      action_kwargs={"floor_manager": floor.floor_manager},
                       from_state="hall",
-                      id="FLOOR",  # There can be only one interaction about connecting to floor manager
+                      id=f"FLOOR-{guest}",  # There can be only one interaction about connecting to floor manager
                       target=guest,
                       volatile=True)
-            for guest, pc in items
+            for guest, pc in items if (floor := self.hotel.get_floor(pc["floor_id"])) is not None
         ], return_exceptions=True)
 
         at_least_one_sent = False
@@ -287,15 +291,20 @@ class WAgent(Agent):
 
             # Getting all samples stored in such a stream (all UUIDs)
             updates = floor_stream.get("update_hotel", all_uuids=True)
+            floor_stream.clear_all_data()  # Nuking
             assert isinstance(updates, list)
+
+            # Sorting for increasing data tags
+            updates.sort(key=lambda x: x[1])
 
             # For each update packet (one per UUID)...
             for (update_str, update_tag, update_time) in updates:
-                assert isinstance(update_str, str)
 
                 # Filtering out empty packets
                 if update_str is None:
                     continue
+
+                assert isinstance(update_str, str)
 
                 # Building dict (and checking format)
                 update_dict = _build_update_dict_and_check_format(update_str)
@@ -306,6 +315,7 @@ class WAgent(Agent):
 
                 # Checking tags (for already known floors only)
                 floor_id = update_dict["floor_id"]
+                skip_re_creation = False
                 if floor_id in self._floor_update_tags:
 
                     # If a tag is older that the last received one, we skip it
@@ -323,26 +333,28 @@ class WAgent(Agent):
                                   f"something was missed, resetting floor")
                         _create_or_recreate_floor(floor_manager, update_dict, update_tag,
                                                   _consider_guest_updates=True, _fill_floor=True)
+                        skip_re_creation = True
 
                 # Is this a new floor or not?
-                if floor_manager not in self.hotel.get_floor_managers():
+                if not skip_re_creation:
+                    if floor_manager not in self.hotel.get_floor_managers():
 
-                    # When we get the first update from a floor manager that is not in the hotel object,
-                    # then we create the floor and its rooms, inserting dummy guests
-                    _create_or_recreate_floor(floor_manager, update_dict, update_tag,
-                                              _consider_guest_updates=True, _fill_floor=True)
-                else:
-
-                    # Handling new insertion/ejections of guests
-                    if not _update_floor(floor_id, update_dict):
-
-                        # Some issue were found while trying to update the floor, let's kill it
+                        # When we get the first update from a floor manager that is not in the hotel object,
+                        # then we create the floor and its rooms, inserting dummy guests
                         _create_or_recreate_floor(floor_manager, update_dict, update_tag,
                                                   _consider_guest_updates=True, _fill_floor=True)
                     else:
 
-                        # Saving update tag
-                        self._floor_update_tags[update_dict["floor_id"]] = update_tag
+                        # Handling new insertion/ejections of guests
+                        if not _update_floor(floor_id, update_dict):
+
+                            # Some issue were found while trying to update the floor, let's kill it
+                            _create_or_recreate_floor(floor_manager, update_dict, update_tag,
+                                                      _consider_guest_updates=True, _fill_floor=True)
+                        else:
+
+                            # Saving update tag
+                            self._floor_update_tags[update_dict["floor_id"]] = update_tag
 
                 # Checking issues after update
                 floor = self.hotel.get_floor(floor_id)
@@ -383,7 +395,9 @@ class WAgent(Agent):
             assert world_peer_id is not None
             assert self.stats is not None
 
-            # Referring to stats.py: CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA
+            # Referring to stats.py: CUSTOM_WORLD_STATS_DYNAMIC_SCHEMA (hotel_n_*) and
+            # CUSTOM_WORLD_STATS_STATIC_SCHEMA (n_total_agents). These are ungrouped world
+            # stats: group_key is ignored by the framework, passed only because the API requires it.
             self.stats.store_stat("hotel_n_floors_active", len(self.hotel.get_floors()),
                                   group_key=world_peer_id, timestamp=int_timestamp)
             self.stats.store_stat("hotel_n_rooms_active", self.hotel.count_not_empty_rooms(),
@@ -435,9 +449,10 @@ class WAgent(Agent):
                 self.send(action_name="apply_violations",
                           from_state="votes_sent",
                           action_kwargs={"guests": guests},
-                          target=self.hotel.get_floor(floor_id).floor_manager,
+                          target=floor.floor_manager,
                           volatile=True)
                 for floor_id, guests in violations.items()
+                if (floor := self.hotel.get_floor(floor_id)) is not None
             ], return_exceptions=True)
         return True
 
@@ -566,11 +581,12 @@ class WAgent(Agent):
             assert isinstance(votes, list)
 
             for vote_str, _, _ in votes:
-                assert isinstance(vote_str, str)
 
                 # Filtering out empty packets
                 if vote_str is None:
                     continue
+
+                assert isinstance(vote_str, str)
 
                 # Building dict (and checking format)
                 list_of_vote_dicts = _build_vote_dicts_and_check_format(vote_str)

@@ -126,7 +126,7 @@
             },
             "msg": "&#128205; Eval time",
             "blocking": false,
-            "time_to_wait_before_acting": 0.0
+            "time_to_wait_before_acting": 3
         },
         "good": {
             "action": "suggest_badges_to_world",
@@ -158,6 +158,13 @@
             "action": null,
             "action_kwargs": {},
             "msg": "&#128205; Habilitate",
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        },
+        "goodbye": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128205; Goodbye",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         }
@@ -379,13 +386,14 @@
                             ]
                         },
                         "num_steps": 40,
+                        "timeout": 160,
                         "wait_completion": true
                     },
                     "msg": "&#128640; Send",
                     "ready": true,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 60.0,
+                    "max_duration": 160.0,
+                    "retry_timeout": 160.0,
                     "delay": 0.0
                 },
                 "goto": "student_finished_following"
@@ -448,13 +456,14 @@
                             "<agent>:recorded1"
                         ],
                         "num_steps": 30,
+                        "timeout": 120,
                         "wait_completion": true
                     },
                     "msg": "&#128640; Send",
                     "ready": true,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 5.0,
+                    "max_duration": 120.0,
+                    "retry_timeout": 120.0,
                     "delay": 0.0
                 },
                 "goto": "student_finished_exam"
@@ -522,6 +531,21 @@
                     "delay": 0.0
                 },
                 "goto": "promote"
+            }
+        ],
+        "bad": [
+            {
+                "on": {
+                    "action": "send_disengage",
+                    "action_kwargs": {},
+                    "msg": "&#128640; Send disengage",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "goodbye"
             }
         ],
         "promote": [

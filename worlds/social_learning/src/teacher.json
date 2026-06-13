@@ -286,8 +286,8 @@
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
+                    "max_duration": 30.0,
+                    "retry_timeout": 30.0,
                     "delay": 0.0
                 },
                 "goto": "student_finished_following"
@@ -324,8 +324,8 @@
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
+                    "max_duration": 30.0,
+                    "retry_timeout": 30.0,
                     "delay": 0.0
                 },
                 "goto": "student_finished_exam"
@@ -556,7 +556,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "delay": 9.9
+                    "delay": 60.0
                 },
                 "goto": "change_lecture"
             }

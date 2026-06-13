@@ -23,7 +23,7 @@
             "action": null,
             "action_kwargs": {},
             "msg": "&#128276; Ready for the lecture",
-            "blocking": false,
+            "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "finished_learning": {
@@ -90,11 +90,11 @@
                 "on": {
                     "action": "teach",
                     "action_kwargs": {},
-                    "msg": null,
+                    "msg": "&#128213; Teaching...",
                     "ready": false,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
+                    "max_duration": 30.0,
+                    "retry_timeout": 9.9,
                     "delay": 0.0
                 },
                 "goto": "teacher_engaged"

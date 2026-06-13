@@ -557,18 +557,21 @@ def compute_check_in_proposals(structure, guests_to_check_in: list):
 
             # Filtering: rooms with only 1 guest (critical rooms)
             critical_rooms = [r for r in rooms
-                              if r.count_guests(count_temp_too=True) == 1]
+                              if r.count_guests(count_temp_too=True) == 1 and
+                              not r.are_fake_names_clashing()]
 
             # Filtering: rooms with that can still accept guests (ordinary rooms)
             ordinary_rooms = [r for r in rooms
-                              if (1 < r.count_guests(count_temp_too=True) < Config.max_guests_per_room)]
+                              if (1 < r.count_guests(count_temp_too=True) < Config.max_guests_per_room) and
+                              not r.are_fake_names_clashing()]
 
             # Ops, no free spots in rooms with somebody already there: go overbooking!
             # (of course, there are no critical rooms in this case)
             if len(critical_rooms) + len(ordinary_rooms) == 0:
                 ordinary_rooms = [r for r in rooms
                                   if (1 < r.count_guests(count_temp_too=True) < (Config.max_guests_per_room +
-                                                                                 Config.max_overbooked_guests))]
+                                                                                 Config.max_overbooked_guests) and
+                                      not r.are_fake_names_clashing())]
 
             # Ops (x2), overbooking did not help! Let's consider empty rooms, one by one
             if len(critical_rooms) + len(ordinary_rooms) == 0:
@@ -719,7 +722,6 @@ def print_live(structure, status_msg: str):
                 atexit.unregister(live.stop)
             except Exception:
                 pass
-            _active_live = None
 
     def set_active_live(live):
         """Install a new "Live" as the terminal owner. Call AFTER constructing and starting it."""

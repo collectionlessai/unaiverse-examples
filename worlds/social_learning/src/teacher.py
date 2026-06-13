@@ -38,7 +38,6 @@ class WAgent(Agent):
         self._round_datasets = []  # All dataset streams that get shuffled per round (eval + teach_n + unlabeled)
         self._seed = 1234
         self._agent_folder_name = os.path.join(prepare_app_dir(), "social_learning")
-        self._actual_best_student = None
 
         # Peers asked by social_round still owing a completion (callback driven by on_asked_done;
         # gated by all_asks_done). teach_round and exam_round are gone — the HSM uses
@@ -81,7 +80,7 @@ class WAgent(Agent):
             for cls in range(c):
                 cls_indices = np.where(targets == cls)[0]
                 start = offset + grp * n_per_class
-                end = offset + start + n_per_class
+                end = start + n_per_class
                 cls_indices = cls_indices[start:end]
                 indices.extend(cls_indices.tolist())
             random.shuffle(indices)
@@ -124,20 +123,14 @@ class WAgent(Agent):
     @action
     async def social_round(self) -> bool:
         """The best student labels the teacher's unlabeled data while the other (non-isolated) students learn
-        from it. Single phase with no wait, mirroring the deprecated ask_best_to_gen_ask_others_to_learn:
-        subscribe + ask-to-learn + ask-to-label happen back-to-back so the best publishes while everyone is
-        actively engaged (the gossip sub mesh is live).
-
-        The other students learn via the dedicated 'learn_from_student' action, which receives the best student's
-        stream as a kwarg net hash (like the deprecated do_learn's u_hashes) and binds it at action time — so
-        registration never has to resolve/match a just-subscribed remote pubsub input. The best student labels
+        from it. The other students learn via the dedicated 'learn_from_student' action. The best student labels
         the unlabeled data via 'teach' and publishes under the other students' learn UUID (relay_uuid).
         """
         if self._valid_cmp_agents is None or len(self._valid_cmp_agents) == 0:
             log.error("There is no best student to ask for the next lecture")
             return False
 
-        await self.find_agents("student")
+        await self.find_agents("student", handshake_completed=True)
         all_students = copy.deepcopy(self._engaged_agents)
         not_isolated_students = copy.deepcopy(self._found_agents)
         teacher = self.get_peer_id()
@@ -152,19 +145,6 @@ class WAgent(Agent):
         if other_not_isolated_students is None or len(other_not_isolated_students) == 0:
             return False
 
-        # Considering not-isolated students (different from the best one)
-        await self.set_engaged_partner(other_not_isolated_students)
-
-        # Locating the pubsub stream that the best student will fill (its full net hash is unambiguous)
-        net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
-        best_stream_hash = next(iter(net_hash_to_stream_dict.keys()), None)
-
-        # Telling the other students to subscribe to that pubsub stream (still-current action)
-        if best_stream_hash is None or not (await self.send_subscribe(stream_hashes=[best_stream_hash])):
-            log.error("Unable to tell students to listen to what the best student is going to say")
-            self._engaged_agents = all_students
-            return False
-
         self._pending_asks = set()
 
         # Asking the other (non-isolated) students to learn from the best student's stream (passed as a kwarg
@@ -172,6 +152,7 @@ class WAgent(Agent):
         # action name so the next lecture's 'learn' cannot fire this transition).
         learn_interaction = await self._send(action_name="learn_from_student",
                                              target=list(other_not_isolated_students),
+                                             from_state="listening_to_best_student",
                                              streams={"stdin": [f"{best_student}:images"],
                                                       "stdtar": [f"{best_student}:labels"]},
                                              num_steps=self.get_unlabeled_steps(), callback="on_asked_done")
@@ -189,6 +170,7 @@ class WAgent(Agent):
         # best_student_stream under 'relay_uuid' (an independent interaction, so no UUID collision).
         gen_interaction = await self._send(action_name="teach", target=best_student,
                                            action_kwargs={"relay_uuid": relay_uuid},
+                                           from_state="teacher_engaged",
                                            streams={"stdin": [f"{teacher}:images@unlabeled"]},
                                            num_steps=self.get_unlabeled_steps(), callback="on_asked_done")
         if gen_interaction is None:
@@ -260,22 +242,50 @@ class WAgent(Agent):
 
             # self.evaluate() populates self._eval_results[peer_id] = eval_result
             # self._valid_cmp_agents is a set of peer_ids
-            best_student_peer_id = next(iter(self._valid_cmp_agents))  # This has length 1
+            best_student = next(iter(self._valid_cmp_agents))  # This has length 1
             badge_type = "intermediate"
             badge_description = "Best student of a class, MNIST classification #ImageClassification #MNIST"
-            best_student_result = self._eval_results[best_student_peer_id]
+            best_student_result = self._eval_results[best_student]
 
             if best_student_result >= 0:
                 _t = self.clock.get_time_ms()
-                log.user(f"The best student is {best_student_peer_id} with this result: {best_student_result})")
+                log.user(f"The best student is {best_student} with this result: {best_student_result})")
 
                 # The agent stores and then sends the stat to the world with the peer_id of the best student
-                self.stats.store_stat("best_exam_err_history", best_student_result, group_key=best_student_peer_id,
+                self.stats.store_stat("best_exam_err_history", best_student_result, group_key=best_student,
                                       timestamp=_t)
-                return await super().suggest_badges_to_world(agent=best_student_peer_id,
-                                                             score=best_student_result,
-                                                             badge_type=badge_type,
-                                                             badge_description=badge_description)
+                await super().suggest_badges_to_world(agent=best_student,
+                                                      score=best_student_result,
+                                                      badge_type=badge_type,
+                                                      badge_description=badge_description)
+
+                if self._valid_cmp_agents is None or len(self._valid_cmp_agents) == 0:
+                    log.error("There is no best student to ask for the next lecture")
+                    return False
+
+                await self.find_agents("student", handshake_completed=True)
+                all_students = copy.deepcopy(self._engaged_agents)
+                not_isolated_students = copy.deepcopy(self._found_agents)
+                other_not_isolated_students = not_isolated_students - {best_student}
+
+                log.user("===================== Best student and Other Not Isolated Students =========================")
+                log.user(f"- Best Student: {best_student}")
+                log.user(f"- Other Not Isolated Students: {other_not_isolated_students}")
+                log.user("============================================================================================")
+
+                if other_not_isolated_students is None or len(other_not_isolated_students) == 0:
+                    return False
+
+                # Locating the pubsub stream that the best student will fill (its full net hash is unambiguous)
+                net_hash_to_stream_dict = self.find_streams(best_student, "best_student_stream")
+                best_stream_hash = next(iter(net_hash_to_stream_dict.keys()), None)
+
+                # Telling the other students to subscribe to that pubsub stream (still-current action)
+                if best_stream_hash is None or not (await self.send_subscribe(other_not_isolated_students,
+                                                                              stream_hashes=[best_stream_hash])):
+                    log.error("Unable to tell students to listen to what the best student is going to say")
+                    return False
+                return True
             else:
                 return True
         else:

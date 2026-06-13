@@ -81,6 +81,8 @@ class WWorld(World):
 
         # Wildcards used by the template (single-class: learn_steps == eval_steps == 998)
         behav.add_wildcards({"<learn_steps>": 998, "<eval_steps>": 998, "<cmp_thres>": 0.2})
+        behav.add_wildcards({"<learn_time>": 120})
+        behav.add_wildcards({"<exam_time>": 120})
         behav.apply_wildcards()
 
         # Data tags are not reliable at evaluation time for the text stream: force the tag of the
@@ -88,6 +90,7 @@ class WWorld(World):
         assert behav.states["eval_time"].action is not None
         behav.states["eval_time"].action.args['re_offset'] = True
         behav.states["eval_time"].action.args_with_wildcards['re_offset'] = True
+        behav.states["eval_time"].waiting_time = 3  # Wait to ensure all the data is received
 
         # Adding default messages
         behav.generate_auto_messages()

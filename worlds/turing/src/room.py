@@ -1,5 +1,6 @@
 import time
 import string
+import random
 from .config import Config
 from unaiverse.agent import Agent
 from unaiverse.utils.misc import build_unaid
@@ -24,8 +25,9 @@ class Room:
         self.artificial_guests: dict[str, NodeProfile] = {}  # peer ID -> profile (ARTIFICIAL guests only)
         self.temp_guests: set[str] = set()
 
-        self.fake_names = Room.make_fake_names(letters=Config.use_letter_names)  # Generate names such as 'A', 'B' ...
+        self.fake_names = Room.make_fake_names(letters=Config.use_letter_names, randomize=True)  # Generate fake names
         self.next_fake_name_index = 0
+        self.fake_names_clashing = False
         self.guest2fake: dict[str, str] = {}  # peer ID -> fake name
         self.fake2cached_info: dict[str, tuple[str, bool, str]] = {}  # fake name -> (peer ID, is a human?, unaid)
         self.guest2insert_time: dict[str, float] = {}
@@ -36,6 +38,9 @@ class Room:
         self.msgs_recv_by_fake_from_fake: dict[str, dict[str, int]] = {}  # peer ID, peer ID -> number of exchanges
 
         assert len(self.fake_names) >= (Config.max_guests_per_room + Config.max_overbooked_guests)
+
+    def are_fake_names_clashing(self):
+        return self.fake_names_clashing
 
     def get_guests(self):
         return self.guests
@@ -123,11 +128,13 @@ class Room:
             fake_name = self.fake_names[self.next_fake_name_index]
             self.next_fake_name_index = (self.next_fake_name_index + 1) % len(self.fake_names)
             if fake_name == oldest_fake_name:
+                self.fake_names_clashing = True
                 return False  # Clash
             while fake_name in self.fake2cached_info and self.is_in_room(self.fake2cached_info[fake_name][0]):
                 fake_name = self.fake_names[self.next_fake_name_index]
                 self.next_fake_name_index = (self.next_fake_name_index + 1) % len(self.fake_names)
                 if fake_name == oldest_fake_name:
+                    self.fake_names_clashing = True
                     return False  # Clash
 
             self.guest2fake[guest] = fake_name
@@ -175,6 +182,7 @@ class Room:
             if self.count_guests() == 0:
                 self.next_fake_name_index = 0
                 self.fake2cached_info.clear()
+            self.fake_names_clashing = False
 
     def fake_name_of(self, guest: str):
         if guest in self.guest2fake:
@@ -226,13 +234,15 @@ class Room:
         return self.fake_names
 
     @staticmethod
-    def make_fake_names(letters: bool) -> list[str]:
+    def make_fake_names(letters: bool, randomize: bool = False) -> list[str]:
         if not letters:
-            return [
-                "Ada", "Ben", "Cal", "Dax", "Eli", "Fin", "Gus", "Hal", "Ivy", "Jai",
-                "Kit", "Leo", "Mae", "Nia", "Oli", "Pia", "Rio", "Sid", "Tai", "Uma",
-                "Vic", "Wes", "Yun", "Zed", "Bex", "Lio", "Nox", "Rye", "Tov", "Zia",
-            ]
+            names = ['Roy', 'Pax', 'Ivy', 'Yun', 'Pia', 'Rye', 'Sky', 'Cal', 'Uri', 'Val', 'Jan', 'Yaz', 'Eck', 'Lio',
+                     'Wes', 'Fin', 'Fay', 'Ty', 'Jai', 'Nia', 'Emy', 'Rex', 'Von', 'Zac', 'Tov', 'Dot', 'Art', 'Uma',
+                     'Zed', 'Zia', 'Syd', 'Bay', 'Flo', 'Kai', 'Ula', 'Kit', 'Cas', 'Bob', 'Sid', 'Cid', 'Asa', 'Oli',
+                     'Zev', 'Hal', 'Zeb', 'Ian', 'Coy', 'Dax', 'Eli', 'Yel', 'Dan', 'Ada', 'Van', 'Eva', 'Joy', 'Ami',
+                     'Ace', 'Gus', 'Ono', 'Teo', 'Vic', 'Sam', 'Fox', 'Zoe', 'Sol', 'Rio', 'Tad', 'Mae', 'Xan', 'Nox',
+                     'Vim', 'Ira', 'Gia', 'Leo', 'Bex', 'Zon', 'Ash', 'Wyn', 'Liv', 'Pip', 'Tom', 'Lex', 'Ben', 'Axe',
+                     'Max', 'Kip', 'Ned', 'Ray', 'Tai', 'Dev']
         else:
             alphabet = string.ascii_uppercase
             max_names = 26
@@ -241,4 +251,6 @@ class Room:
                 letter = alphabet[i % len(alphabet)]
                 suffix = (i // len(alphabet)) + 1 if max_names > len(alphabet) else 0
                 names.append(letter if suffix == 0 else f"{letter}{suffix}")
-            return names
+        if randomize:
+            random.shuffle(names)
+        return names

@@ -74,7 +74,7 @@ class WWorld(World):
                           args={"action_name": "process",
                                 "streams": ["<agent>:squLfLa"],
                                 "num_steps": 1000,
-                                "wait_completion": True})
+                                "wait_completion": True}, ready=True)
         behav.add_transit("hard_exam_in_progress", "eval_time_again", action="nop")
         behav.add_state("eval_time_again", action="evaluate",
                         args={"stream_hash": "<agent>:squLfLa", "how": "mse", "steps": 1000, "re_offset": True})
@@ -84,6 +84,8 @@ class WWorld(World):
 
         # Wildcards used by the template
         behav.add_wildcards({"<learn_steps>": 1000, "<eval_steps>": 1000, "<cmp_thres>": 0.2})
+        behav.add_wildcards({"<learn_time>": 0})
+        behav.add_wildcards({"<exam_time>": 0})
         behav.apply_wildcards()
 
         assert behav.states["eval_time"].action is not None
@@ -108,9 +110,6 @@ class WWorld(World):
         # Plug the modern listening_to_teacher_new template at 'init' (its initial state is 'teacher_engaged')
         behav.add_transit("init", listening_json, action="engage",
                           args={"acceptable_role": "teacher"})
-
-        # When the teacher will send the student back home
-        behav.add_transit("teacher_engaged", "init", action="disengage")
 
         # Adding default messages
         behav.generate_auto_messages()

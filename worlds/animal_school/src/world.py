@@ -131,9 +131,15 @@ class WWorld(World):
 
         # Freeing students
         behav.add_transit("promote", "habilitate", action="send_disengage")
+        behav.add_transit("bad", "goodbye", action="send_disengage")
+
+        # Wait a bit
+        behav.states["eval_time"].waiting_time = 3
 
         # Wildcards used by the templates above
         behav.add_wildcards({"<learn_steps>": 40, "<eval_steps>": 30, "<cmp_thres>": 0.65})
+        behav.add_wildcards({"<learn_time>": 160})
+        behav.add_wildcards({"<exam_time>": 120})
         behav.apply_wildcards()
 
         # Adding default messages

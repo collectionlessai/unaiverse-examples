@@ -252,6 +252,7 @@ class WAgent(Agent):
             streams={"stdin": [f"{prv_id}:images@teach_{cls}"],
                      "stdtar": [f"{prv_id}:labels@teach_{cls}"],
                      "stdext": []},
+            timeout=60,
             num_steps=self.TEACH_PER_CLASS,
         )
         if not ok:
@@ -321,6 +322,7 @@ class WAgent(Agent):
         """Score every student once the exam fan-out has completed, then clear the exam state."""
         if self._current_exam is None:
             return False
+        int_timestamp = self.clock.get_time_ms(monotonic=True)
         ground_truth = self._ground_truth_for(self._current_exam["seen_classes"])
         for student, predictions in self._current_exam["predictions_by_student"].items():
             if not predictions:
@@ -328,7 +330,12 @@ class WAgent(Agent):
             gt = ground_truth[:len(predictions)]
             result = self._compute_accuracy(predictions, gt)
             self._current_exam["scores"][student] = result
-            self._students[student]["evaluations"].append({"exam_id": self._current_exam["id"], **result})
+            if student in self._students:
+                self._students[student]["evaluations"].append({"exam_id": self._current_exam["id"], **result})
+
+            # Ship 'accuracy' + 'peer_acc_per_class_*' to the world, grouped by the student
+            for stat_name, stat_value in result.items():
+                self.stats.store_stat(stat_name, float(stat_value), group_key=student, timestamp=int_timestamp)
 
         log.user(f"\n{WAgent._format_exam_table(self._current_exam)}")
         self._current_exam = None

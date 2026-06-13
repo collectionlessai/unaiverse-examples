@@ -110,23 +110,19 @@ class WWorld(World):
         # Telling the best student to teach and the others to learn from the best student (single phase,
         # mirroring the deprecated ask_best_to_gen_ask_others_to_learn). social_round subscribes the others,
         # asks them to learn (via 'learn_from_student'), and asks the best to label (via 'teach'), all
-        # back-to-back. Completion is tracked by on_asked_done, so best_teaching waits on all_asked_finished
-        # (or the retry_timeout teleport).
+        # back-to-back.
         behav.transitions["best_found"] = {}  # Clearing existing transitions, loaded from the template
         behav.add_transit("best_found", "best_teaching", action="social_round")
         behav.add_transit("best_found", "change_lecture", action="nop", args={})
         behav.add_transit("best_teaching", "change_lecture", action="all_asks_done")
         behav.add_teleport("best_teaching", "change_lecture", action="nop",
-                           args={"delay": "<others_learn_exam_timeout>"}, msg="⏰ Timeout!")
+                           delay="<others_learn_exam_timeout>", msg="⏰ Timeout!")
         behav.states["best_teaching"].set_blocking(False)
 
         # Last wildcard from the loaded machine
         behav.add_wildcards({"<learn_time>": student_learn_time})
-        behav.add_wildcards({"<learn_timeout>": student_learn_time / 3.0})
         behav.add_wildcards({"<exam_time>": student_exam_time})
-        behav.add_wildcards({"<exam_timeout>": student_exam_time / 2.0})
-        behav.add_wildcards({"<others_learn_exam_timeout>": min(student_learn_time,
-                                                                student_exam_time) * 0.33})
+        behav.add_wildcards({"<others_learn_exam_timeout>": student_learn_time * 2.0})
 
         # Providing a badge to all the agents that were the best of the world
         behav.add_state("finished_teaching")
@@ -168,8 +164,9 @@ class WWorld(World):
         behav.add_transit("teacher_engaged", "listening_to_best_student", action="subscribe")
         # Best-student self-loop: 'teach' labels the teacher's unlabeled data and publishes the result on
         # best_student_stream (the exam below uses the plain 'process' action instead).
-        behav.add_transit("teacher_engaged", "teacher_engaged", action="teach")
-        behav.add_state("teacher_engaged", blocking=False, msg="🔔 Ready for the lecture")
+        behav.add_transit("teacher_engaged", "teacher_engaged", action="teach", msg="📕 Teaching...",
+                          total_time=student_learn_time, timeout=min(student_learn_time, student_exam_time) * 0.33)
+        behav.add_state("teacher_engaged", blocking=True, msg="🔔 Ready for the lecture")
         behav.add_transit("finished_learning", "teacher_engaged", action="process",
                           msg="✏️ Taking the exam...", total_time=student_exam_time,
                           timeout=student_exam_time / 2.0)
@@ -180,7 +177,7 @@ class WWorld(World):
                         msg="👍 Ready to listen to the best student of the class")
         behav.add_global_teleport("init", action="disengage")
         behav.add_global_teleport("init", action="disconnected")
-        behav.add_global_teleport("init", action="nop", args={"delay": 30.0})
+        behav.add_global_teleport("init", action="nop", delay=30.0)
 
         # Saving to file
         behav.save(os.path.join(self.world_folder, 'student.json'), only_if_changed=dummy_agent)

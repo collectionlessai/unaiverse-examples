@@ -12,6 +12,7 @@
                  Code Repositories:  https://github.com/collectionlessai/
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
+import sys
 import json
 import time
 import uuid
@@ -27,7 +28,10 @@ from unaiverse.interaction import Interaction
 from unaiverse.streams.dataprops import DataProps
 from concurrent.futures import ThreadPoolExecutor
 from .utils import compute_check_in_proposals, format_message
-asyncio.get_event_loop().set_default_executor(ThreadPoolExecutor(max_workers=128))
+if not getattr(sys, "_turing_executor", None):
+    _turing_executor = ThreadPoolExecutor(max_workers=128)
+    asyncio.get_event_loop().set_default_executor(_turing_executor)
+    sys._turing_executor = _turing_executor
 
 
 # The floor manager keeps an internal estimate of the status of each guest, accordingly to the following possible states
@@ -151,6 +155,7 @@ class WAgent(Agent):
             room = self.floor.get_room_of(guest)
             if room is not None:  # Safety: this is supposed to be not None
                 room.set_status(guest, GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH)
+                self._guest2reminder_time[guest] = time.perf_counter()  # Started counting for remind-messages purpose
         return True
 
     @action
@@ -160,13 +165,16 @@ class WAgent(Agent):
         # Let's distinguish if we are in the context of a callback from a vote-process-operation-completed,
         # or if we are just calling the method somewhere else
         callback_from_process_vote = False
+        _guest = guest # TODO
         if guest is None:
             assert interaction is not None
             guest = interaction.target[0]
             callback_from_process_vote = True
+        log.user(f"==> GUEST BACK TO HALL, guest={_guest}, callback_from_process_vote={callback_from_process_vote}")
 
         # Safety
         if not self.floor.is_in_a_room(guest):
+            log.user(f"NOT IN A ROOM! Return True - not expected")
             return True  # Return true to complete the action and hence burn the interaction
 
         # Getting info
@@ -273,6 +281,8 @@ class WAgent(Agent):
         # must stay sequential because Room.insert mutates room state (fake-name allocation)
         ready = []  # list of (guest, room) that were accepted by the floor
         for guest, proposed_check_in in self._proposed_check_ins.items():
+            if guest not in self._sponsored_guests:
+                continue
             hotel_manager = self._sponsored_guests[guest]
             room = self.floor.get_room(proposed_check_in['room_id'])
 
@@ -336,10 +346,27 @@ class WAgent(Agent):
             return True
 
         # Too much time in voting booth: GET OUT OF THE ROOM!
-        if (room.get_status(guest) == GuestStatus.IN_VOTING_BOOTH and
-                room.get_time_in_current_status(guest) > Config.survey_reply_time):
-            await self.guest_back_to_hall(guest)
-            return True
+        if room.get_status(guest) == GuestStatus.IN_VOTING_BOOTH:
+            if room.get_time_in_current_status(guest) > Config.survey_reply_time:
+                await self.guest_back_to_hall(guest)
+                return True
+            elif (time.perf_counter() - self._guest2reminder_time[guest]) > Config.send_reminder_every:
+                time_left = Config.survey_reply_time - room.get_time_in_current_status(guest)
+                sent = False
+                if time_left > 0:
+                    reminder_message = (Config.reminder_message_vote.replace("<TIME_LEFT>", str(time_left)).
+                                        replace("<YOUR_NAME>", room.fake_name_of(guest)))
+                    if not await self.send(action_name="get_status_msg",
+                                           action_kwargs={"msg": format_message(Config.manager_fake_name,
+                                                                                reminder_message)},
+                                           from_state="can_vote",
+                                           target=guest,
+                                           volatile=True):
+                        await self.disconnect(guest)
+                    else:
+                        sent = True
+                self._guest2reminder_time[guest] = time.perf_counter()  # Remember the last time a reminder was sent
+                return sent
 
         # Too much time to join the room we told you: GET OUT OF MY FLOOR!
         if (room.get_status(guest) == GuestStatus.TOLD_TO_JOIN_ROOM and
@@ -526,7 +553,8 @@ class WAgent(Agent):
         # Setting data on the pubsub stream
         floor_updates_stream = self.get_stream("floor_updates")
         assert floor_updates_stream is not None
-        floor_updates_stream.set(data=json.dumps(update), data_tag=self._floor_update_tag)
+        floor_updates_stream.set(data=json.dumps(update), data_tag=self._floor_update_tag,
+                                 uuid=f"FLOOR_UPDATE-{self.floor.id}-{self._floor_update_tag}")
         self._floor_update_tag += 1
 
         # Saving the floor status for future comparisons

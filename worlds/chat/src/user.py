@@ -26,7 +26,6 @@ class WAgent(Agent):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._broadcaster_peer_id = None
-        self._broadcaster_stream = None
         self._user_stream = None  # Own processor output stream (read by check_messages to log self-gens)
         self._last_msg_time = None
         self._last_turns = []
@@ -41,7 +40,7 @@ class WAgent(Agent):
             log.error("Cannot find own processor output stream")
             return False
 
-        if await self.connect_by_role(role):
+        if await self.connect_by_role(role, accept_already_connected=True):
             self._broadcaster_peer_id = next(iter(self._found_agents))  # Takes the first broadcaster
             self._last_msg_time = tm.time()
             return True
@@ -58,25 +57,31 @@ class WAgent(Agent):
         assert self.behav is not None
         self.behav.get_state().msg = None
 
-        if self._broadcaster_stream is None and self._broadcaster_peer_id is not None:
-            self._broadcaster_stream = self.get_stream("processor",
-                                                       peer_id=self._broadcaster_peer_id,
-                                                       data_type="text")
+        broadcaster_stream = None
+        if self._broadcaster_peer_id is not None:
+            broadcaster_stream = self.get_stream("processor",
+                                                 peer_id=self._broadcaster_peer_id,
+                                                 data_type="text")
 
         # Collecting my own self-generated messages (so they show in the local history)
         msgs = self._user_stream.get("check_messages", all_uuids=True)
+        duplicates = set()
         if msgs is not None and len(msgs) > 0:
             for msg, _, _ in msgs:
-                self._last_msg_time = tm.time()
-                self._last_turns.append(msg)
-                self._last_turns = self._last_turns[-history_len:]
+
+                # Since we got with "all_uuids", and we used "copy_sys", the same message appears twice (filtering)
+                if msg not in duplicates:
+                    self._last_msg_time = tm.time()
+                    self._last_turns.append(msg)
+                    self._last_turns = self._last_turns[-history_len:]
+                    duplicates.add(msg)
 
         # Collecting/handling messages broadcast by the broadcaster
-        if self._broadcaster_stream is None:
+        if broadcaster_stream is None:
             log.error("Cannot find the processor stream of the broadcaster")
             return False
 
-        msgs = self._broadcaster_stream.get("check_messages", all_uuids=True)
+        msgs = broadcaster_stream.get("check_messages", all_uuids=True)
         if msgs is not None and isinstance(msgs, Iterable) and len(msgs) > 0:
             replied = False
             for msg, _, _ in msgs:

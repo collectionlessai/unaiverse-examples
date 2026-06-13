@@ -17,8 +17,8 @@ import torch
 from unaiverse.agent import Agent, action
 from unaiverse.streams import Stream, DataProps
 from unaiverse.utils.misc import prepare_app_dir
-from unaiverse.modules.utils import error_rate_mnist_test_set
 from unaiverse.interaction import Interaction, CompletionReason
+from unaiverse.modules.utils import error_rate_mnist_test_set, ModuleWrapper
 
 
 class WAgent(Agent):
@@ -91,7 +91,6 @@ class WAgent(Agent):
         assert images_stream is not None and labels_stream is not None
         images_stream.set(image, uuid=relay_uuid)
         labels_stream.set(prediction, uuid=relay_uuid)
-
         return True
 
     @action
@@ -101,6 +100,7 @@ class WAgent(Agent):
 
         # We overload this so that each student, after class, takes the full mnist test set and evaluates itself
         assert self.proc is not None
+        assert isinstance(self.proc, ModuleWrapper)
         assert isinstance(self.proc.module, torch.nn.Module)
         error_rate = error_rate_mnist_test_set(network=self.proc.module,
                                                mnist_data_save_path=os.path.join(self._agent_folder_name, "mnist_data"))

@@ -87,13 +87,14 @@
                             ]
                         },
                         "num_steps": "<learn_steps>",
+                        "timeout": "<learn_time>",
                         "wait_completion": true
                     },
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 60.0,
+                    "max_duration": "<learn_time>",
+                    "retry_timeout": "<learn_time>",
                     "delay": 0.0
                 },
                 "goto": "student_finished_following"
@@ -156,13 +157,14 @@
                             "<exam_data_ref>"
                         ],
                         "num_steps": "<eval_steps>",
+                        "timeout": "<exam_time>",
                         "wait_completion": true
                     },
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 5.0,
+                    "max_duration": "<exam_time>",
+                    "retry_timeout": "<exam_time>",
                     "delay": 0.0
                 },
                 "goto": "student_finished_exam"

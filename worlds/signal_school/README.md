@@ -43,7 +43,7 @@ Why this example is special:
 3. Engagement. The teacher recruits the student (`engage_by_role`, `<roles_to_engage>` = `student`);
    the student waits in `teacher_engaged` (the `listening_to_teacher` template).
 4. Lectures (a 7-signal playlist, `repeat=4`). For each signal the teacher sends a `learn` request
-   (the signal serves as both input and target). The student updates its model online for up to 10000
+   (the signal serves as both input and target). The student updates its model online for up to 1000
    samples per lecture. Because of `repeat=4`, rounds 1 to 3 are pure teaching and only the 4th (last)
    round triggers exams, so each signal is taught 3 times and examined once. The teach-versus-exam
    split is decided by `check_pref_stream("not_last_round")` versus `("last_round")`.
@@ -147,7 +147,7 @@ python run_2.py     # node "Test2": student (CTBE state-space model plus HL)
 
 Or from the repo root: `python run_asynch.py signal_school`. Nodes run at 100 Hz, `hidden=True`.
 
-What to expect: teaching of each of the 7 signals 3 times (10000-sample `learn` requests), per-signal
+What to expect: teaching of each of the 7 signals 3 times (1000-sample `learn` requests), per-signal
 `process` plus `evaluate` exams (MSE at most 0.2), and finally the held-out `squLfLa` exam ending in
 `very_good` (amplitude generalized) or `not_good`.
 

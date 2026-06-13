@@ -116,7 +116,7 @@ class WStats(Stats):
     CUSTOM_WORLD_STATS_DYNAMIC_SCHEMA = {k: (int, 0) for k in _HOTEL_OPS_STATS}
     
     CUSTOM_WORLD_STATS_STATIC_SCHEMA = {
-        # World-population stats written by the world.
+        # World-population stats stored by the world, sent by the hotel manager.
         "n_total_agents":  (int, 0),
         }
 

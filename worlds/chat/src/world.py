@@ -28,7 +28,7 @@ class WWorld(World):
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         if is_world_master:
-            if len(self.world_masters) <= 1:
+            if len(self.world_masters) < 1:
                 return "broadcaster"
             else:
                 return "user"
@@ -64,8 +64,9 @@ class WWorld(World):
                           msg="🔗 Connecting to the room...")
         behav.add_transit("waiting_handshake", "ready",
                           action="connected", args={"handshake_completed": True})
-        behav.add_transit("waiting_handshake", "init", action="disconnected", args={"delay": 5.0})
-        behav.add_transit("ready", "init", action="disconnected", args={"delay": 5.0})
+        behav.add_transit("waiting_handshake", "init", action="disconnected", delay=5.0)
+        behav.add_transit("waiting_handshake", "init", action="nop", delay=15.0, teleport=True)
+        behav.add_transit("ready", "init", action="disconnected", delay=5.0)
         behav.add_transit("ready", "message_sent",
                           action="generate_and_send", args={"samples": 1},
                           ready=True, avoid_changing_ready=True)

@@ -18,7 +18,7 @@ agent = Agent(proc=net,
               buffer_generated_by_others="none")
 
 # Node hosting agent
-node = Node(agent, node_name="DigitClassifier3", hidden=True, clock_delta=1. / 15.)
+node = Node(agent, node_name="DigitClassifier3x", hidden=True, clock_delta=1. / 15.)
 
 # Running node
-node.run(join_world="DigitSocialLearning", resume_from_checkpoint=True)
+node.run(join_world="DigitSocialLearningx", resume_from_checkpoint=True)

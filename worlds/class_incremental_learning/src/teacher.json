@@ -18,8 +18,6 @@
             "time_to_wait_before_acting": 0.0
         },
         "wait_for_students": {
-            "action": "welcoming",
-            "action_kwargs": {},
             "msg": "⏳ Waiting for students...",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
@@ -32,8 +30,6 @@
             "time_to_wait_before_acting": 0.0
         },
         "lesson": {
-            "action": "init_lesson",
-            "action_kwargs": {},
             "msg": "📖 Sending lesson to students...",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
@@ -46,8 +42,6 @@
             "time_to_wait_before_acting": 0.0
         },
         "exam": {
-            "action": "send_exam",
-            "action_kwargs": {},
             "msg": "📋 Sending exam to students...",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
@@ -60,8 +54,6 @@
             "time_to_wait_before_acting": 0.0
         },
         "scoring": {
-            "action": "score_exam",
-            "action_kwargs": {},
             "msg": "✅ Scoring exam results...",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
@@ -86,7 +78,7 @@
         "wait_for_students": [
             {
                 "on": {
-                    "action": "nop",
+                    "action": "welcoming",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
@@ -129,7 +121,7 @@
         "lesson": [
             {
                 "on": {
-                    "action": "nop",
+                    "action": "init_lesson",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
@@ -159,7 +151,7 @@
         "exam": [
             {
                 "on": {
-                    "action": "nop",
+                    "action": "send_exam",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
@@ -202,7 +194,7 @@
         "scoring": [
             {
                 "on": {
-                    "action": "nop",
+                    "action": "score_exam",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,

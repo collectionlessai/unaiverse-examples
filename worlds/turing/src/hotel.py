@@ -116,6 +116,8 @@ class Hotel:
         floor = self.get_expected_floor_of(guest)
         if floor is not None:
             floor.remove_expected_guest(guest)
+        if guest in self.guest2hotel_manager_expected_floor:
+            del self.guest2hotel_manager_expected_floor[guest]
 
     def insert(self, guest: str, floor_id: str, room_id: str, hotel_manager_who_handled_the_guest: str):
         if floor_id in self.floors and room_id in self.rooms:

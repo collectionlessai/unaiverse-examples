@@ -115,6 +115,7 @@ class WStats(Stats):
     # 1. Define custom stats schemas
 
     per_class_accuracy_schema = {f"peer_acc_per_class_{cls}": (float, -1.0) for cls in range(10)}
+
     # We want the teacher to track the best student (outer)
     CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA = {
         'accuracy': (float, -1.0),
@@ -124,6 +125,7 @@ class WStats(Stats):
     # Finally, we want the world to track the best exam error across all agents
     CUSTOM_WORLD_STATS_STATIC_SCHEMA = {
         'overall_best_student': (str, None),  # set by the world
+        'overall_best_accuracy': (float, -1.0),  # set by the world
     }
 
     # 2. The __init__ will be called automatically by the framework.
@@ -146,7 +148,7 @@ class WStats(Stats):
             self._static_db_buffer = []
             log.user("Loaded static stats snapshot from DB.")
         except Exception as e:
-            log.err(f"Failed to load static stats from DB: {e}")
+            log.error(f"Failed to load static stats from DB: {e}")
     
     def plot(self, since_timestamp: int = 0) -> str | None:
         """

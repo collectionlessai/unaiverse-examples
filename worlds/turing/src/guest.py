@@ -222,7 +222,7 @@ class WAgent(Agent):
             # Getting our fake name from the start message
             pos = msg_no_tag_with_wildcards.find("<YOUR_NAME>")
             sub = msg_no_tag_with_wildcards[0:pos]
-            self._fake_name = msg_no_tag[msg_no_tag.find(sub) + len(sub):].split(" ")[0]
+            self._fake_name = msg_no_tag[msg_no_tag.find(sub) + len(sub):].split(" ")[0].strip("*")
 
             # Getting other guests' names
             pos_o = msg_no_tag_with_wildcards.find("<OTHER_NAMES>")
@@ -230,7 +230,7 @@ class WAgent(Agent):
                 other_fake_names = ""
             else:
                 sub = msg_no_tag_with_wildcards[pos + len("<YOUR_NAME>"):pos_o]
-                other_fake_names = msg_no_tag[msg_no_tag.find(sub) + len(sub):].split(".")[0]
+                other_fake_names = msg_no_tag[msg_no_tag.find(sub) + len(sub):].split(".")[0].strip("*").strip(".")
 
             # Preparing the incipit part of the history
             self._history_guests = {x.strip() for x in other_fake_names.split(",")}

@@ -21,7 +21,6 @@ class WAgent(Agent):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._broadcaster_sender = None
 
     @action
     async def broadcast_message(self, interaction: Interaction | None = None) -> bool:
@@ -42,11 +41,19 @@ class WAgent(Agent):
         requester = interaction.requester
         assert requester is not None
         my_peer_id = self.get_peer_id()
-        self._broadcaster_sender = self.all_agents[requester].get_static_profile()['node_name']
+        broadcaster_sender = self.all_agents[requester].get_static_profile()['node_name']
 
         log.misc(f"Broadcaster received a message from {requester} "
-                 f"(agent named {self._broadcaster_sender}); "
+                 f"(agent named {broadcaster_sender}); "
                  f"world agents: {list(self.world_agents.keys())}, broadcaster peer ID: {my_peer_id}")
+
+        # Fan out to every other user (excluding the original requester and self)
+        other_users = list(set(self.world_agents.keys()) - {requester, my_peer_id})
+        log.misc(f"Broadcaster relays the message of {broadcaster_sender} to {other_users}")
+
+        if len(other_users) == 0:
+            log.error("Broadcaster is skipping the relay: no recipients available")
+            return True
 
         # Read the text written by the requester (the user's processor output forwarded under interaction.uuid)
         input_data = self.stdin.get(uuid=interaction.uuid, requested_by="broadcast_message")
@@ -55,17 +62,9 @@ class WAgent(Agent):
         msg = input_data[0] if isinstance(input_data, (tuple, list)) else input_data
         if not isinstance(msg, str):
             log.error(f"Broadcaster expected a string in stdin, got {type(msg).__name__}")
-            return False
+            return True
 
-        prefixed_msg = f"**{self._broadcaster_sender}:** {msg}"
-
-        # Fan out to every other user (excluding the original requester and self)
-        other_users = list(set(self.world_agents.keys()) - {requester, my_peer_id})
-        log.misc(f"Broadcaster relays the message of {self._broadcaster_sender} to {other_users}")
-
-        if len(other_users) == 0:
-            log.error("Broadcaster is skipping the relay: no recipients available")
-            return False
+        prefixed_msg = f"**{broadcaster_sender}:** {msg}"
 
         # action_name=None: this is a pure data push, the recipient just stores 'proc_output_0' in its
         # known copy of our processor output stream — no HSM transition required on the receiver.
