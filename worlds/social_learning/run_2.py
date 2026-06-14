@@ -35,11 +35,11 @@ agent = Agent(proc=net,
               buffer_generated_by_others="none")
 
 # Node hosting agent
-node = Node(agent, node_name="DigitClassifier2x", hidden=True, clock_delta=1. / 15.,
+node = Node(agent, node_name="DigitClassifier2", hidden=True, clock_delta=1. / 15.,
             run_hook=my_wandb_logger)
 
 # Init W&B
 # wandb.init(project="social_learning_new_example", name="DigitClassifierNew2")
 
 # Running node
-node.run(join_world="DigitSocialLearningx", resume_from_checkpoint=True)
+node.run(join_world="DigitSocialLearning", resume_from_checkpoint=True)

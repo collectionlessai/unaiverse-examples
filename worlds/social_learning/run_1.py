@@ -5,7 +5,7 @@ from unaiverse.networking.node.node import Node
 agent = Agent(proc=None, buffer_generated_by_others="one")
 
 # Node hosting agent
-node = Node(agent, node_name="DigitClassifier1x", hidden=True, clock_delta=1. / 15.)
+node = Node(agent, node_name="DigitClassifier1", hidden=True, clock_delta=1. / 15.)
 
 # Running node
-node.run(join_world="DigitSocialLearningx")
+node.run(join_world="DigitSocialLearning")

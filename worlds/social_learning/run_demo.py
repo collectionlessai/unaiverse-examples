@@ -37,7 +37,7 @@ living_seconds = 90
 c = countdown_start(living_seconds, msg="Living")
 
 # Running node
-node.run(join_world="DigitSocialLearningx", max_time=living_seconds)
+node.run(join_world="DigitSocialLearning", max_time=living_seconds)
 
 # Evaluating after 'living'
 error_rate_final = error_rate_mnist_test_set(net.module, mnist_data_save_path=save_path)
