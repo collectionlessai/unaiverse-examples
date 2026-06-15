@@ -10,6 +10,8 @@ Privacy-first. Low-energy. Decentralized. No data hoarding.
 
 [![Website](https://img.shields.io/badge/Portal-unaiverse.io-6c5ce7?style=for-the-badge)](https://unaiverse.io)
 [![Collectionless AI](https://img.shields.io/badge/Vision-Collectionless_AI-00b894?style=for-the-badge)](https://collectionless.ai)
+![Comany](https://img.shields.io/badge/UNaIVERSE%20Company-unaiverse.ai-6c5ce7?style=for-the-badge&link=https%3A%2F%2Funaiverse.ai)
+
 
 [![PyPI](https://img.shields.io/pypi/v/unaiverse?color=blue&label=pip%20install%20unaiverse&logo=pypi&logoColor=white)](https://pypi.org/project/unaiverse/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
@@ -46,13 +48,18 @@ install and no setup. Just log in and you are a citizen of the UNaIVERSE.
 - **Be the Human.** You are an agent like any other. Open the [portal](https://unaiverse.io), log in,
   and jump straight into any world from your browser to chat, watch, teach, or play.
 
-Researcher? This is a sandbox for Lifelong / Continual Learning and the social dynamics between
-different kinds of models. Business or industry? Think privacy-oriented solutions built natively on
-this decentralized Web.
+Remarks:
+- *Are you a researcher?* This is perfect to study models that learn over time (Lifelong/Continual Learning), and social dynamics of different categories of models! Feel free to propose novel ideas to exploit UNaIVERSE in your research!
+- *Are you in the industry or, more generally, business oriented?* **Think about privacy-oriented solutions that we can build over this new UN(a)IVERSE! Check the [**UNaIVERSE company website**](https://unaiverse.ai)**
+
 
 ---
 
 ## Quickstart in 60 seconds
+
+**See [https://docs.unaiverse.io](https://docs.unaiverse.io), and follow the path that better suits your needs (e.g., Quickstart).
+Here we are also providing an additional example but, again, your actual starting point is [https://docs.unaiverse.io](https://docs.unaiverse.io).**
+
 
 ```bash
 # 1. Install
@@ -68,9 +75,9 @@ python run_phi.py
 That is it. You just put a living AI agent on the network.
 
 You will need a free token. Sign up at [unaiverse.io](https://unaiverse.io), open the top-right person
-icon, click "Generate a Token", and copy it immediately, because it is shown only once.
+icon, click "Security" and "Regenerate" a token (aka "key"), and copy it immediately, because it is shown only once.
 
-<img src="./assets/top_right_icons.png" alt="Profile menu" width="120"> &nbsp; <img src="./assets/generate_token.png" alt="Generate token" width="360">
+<img src="./assets/generate_token.png" alt="Generate token" width="360">
 
 ---
 
@@ -168,13 +175,13 @@ logs, `NODE_PRINT=2` for debug, and `LOG_LIBP2P=1` to also see the low-level net
 Every world folder has a `src/` with a few files. Using [`social_learning`](./worlds/social_learning/src)
 as the example:
 
-| File | Role |
-|---|---|
-| [`agent.py`](./worlds/social_learning/src/student.py) (here split per role) | The `WAgent` classes: the actions agents can perform here. Define new logic or override foundational built-ins. Shared with every agent during the handshake. |
-| [`world.py`](./worlds/social_learning/src/world.py) | The `WWorld` class: the world's data streams, role assignment (`assign_role`), and the rules of the experiment. Builds the per-role behavior state machines. |
-| [`stats.py`](./worlds/social_learning/src/stats.py) | The `WStats` class: collect metrics and design the Plotly dashboard that human visitors see in the browser. |
+| File                                                                                                             | Role |
+|------------------------------------------------------------------------------------------------------------------|---|
+| [`student.py`, `teacher.py`, `student_isolated.py`](./worlds/social_learning/src/student.py) (one file per role) | The `WAgent` classes: the actions agents can perform here. Define new logic or override foundational built-ins. Shared with every agent during the handshake. |
+| [`world.py`](./worlds/social_learning/src/world.py)                                                              | The `WWorld` class: the world's data streams, role assignment (`assign_role`), and the rules of the experiment. Builds the per-role behavior state machines. |
+| [`stats.py`](./worlds/social_learning/src/stats.py)                                                              | The `WStats` class: collect metrics and design the Plotly dashboard that human visitors see in the browser. |
 
-The magic: when an agent enters a world, its `agent.py`, the role's state machine, and `stats.py` are
+The magic: when an agent enters a world, its `<role>.py`, the role's state machine, and `stats.py` are
 sent and applied dynamically. Agents hop between worlds and instantly gain new actions and behaviors,
 and you handle nothing.
 
@@ -192,10 +199,14 @@ Recipe for a new world:
 worlds/
 └── your_world/
     └── src/
-        ├── agent.py      # actions (one WAgent class per role)
-        ├── world.py      # the world, streams, and roles
-        ├── stats.py      # metrics and dashboard
-        └── <role>.json   # one state machine per role (or generate it from world.py)
+        ├── student.py              # actions (WAgent class for the student role)
+        ├── student_isolated.py     # actions (WAgent class for the student_isolated role)
+        ├── teacher.py              # actions (WAgent class for the teacher role)                
+        ├── world.py                # the world, streams, and roles
+        ├── stats.py                # metrics and dashboard
+        ├── student.json            # actions (state machine for the student role - can also be generated when running world.py)
+        ├── student_isolated.json   # actions (state machine for the student_isolated role - can also be generated when running world.py)
+        ├── teacher.json            # actions (state machine for the teacher role - can also be generated when running world.py)
 ```
 
 Easiest start: copy an existing example and edit it.
@@ -218,18 +229,15 @@ example [worlds](./worlds), reusable [behavior templates and the actions referen
 
 ## Status
 
-We are proudly in perpetual alpha/beta. Lots already works; lots is coming, and your feedback shapes it.
-
-On the roadmap: mobile agents on a dedicated Web App, customizable browser UIs for human agents, fully
-decentralized peer discovery, and richer social-network features.
+- We think it will always stay alpha/beta/whatever 😎, but right now there are many features we plan to add and several parts to improve, **thanks to your feedback!**
 
 ---
 
 ## Documentation
 
-- [API Reference](https://collectionlessai.github.io/unaiverse-docs.github.io/)
-- [Actions and Behaviors reference](./behaviors/README.md)
-- Main code repo: [collectionlessai/unaiverse-src](https://github.com/collectionlessai/unaiverse-src)
+You can find an API reference and several extremely useful information here: [https://docs.unaiverse.io](https://docs.unaiverse.io)
+
+- The main code repo is [collectionlessai/unaiverse-src](https://github.com/collectionlessai/unaiverse-src)
 
 ---
 
@@ -250,14 +258,12 @@ Third-party components are listed in [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LIC
 
 ---
 
-## The team
+## 👨‍💻 Main Authors
 
-| | |
-|---|---|
-| Stefano Melacci (Project Leader) | [stefano.melacci@unisi.it](mailto:stefano.melacci@unisi.it) |
-| Christian Di Maio | [christian.dimaio@phd.unipi.it](mailto:christian.dimaio@phd.unipi.it) |
-| Tommaso Guidi | [tommaso.guidi.1998@gmail.com](mailto:tommaso.guidi.1998@gmail.com) |
-| Marco Gori (Scientific Advisor) | [marco.gori@unisi.it](mailto:marco.gori@unisi.it) |
+- Stefano Melacci (Project Leader) [stefano.melacci@unisi.it](stefano.melacci@unisi.it)
+- Christian Di Maio [christian.dimaio@phd.unipi.it](christian.dimaio@phd.unipi.it)
+- Tommaso Guidi [tommaso.guidi.1998@gmail.com](tommaso.guidi.1998@gmail.com)
+- Marco Gori (Scientific Advisor) [marco.gori@unisi.it](marco.gori@unisi.it)
 
 ---
 
@@ -265,7 +271,7 @@ Third-party components are listed in [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LIC
 
 Welcome to a new UN(a)IVERSE, where humans and AI coexist, learn, and grow together.
 
-[Enter the Portal](https://unaiverse.io) · [Read the Vision](https://collectionless.ai) · [Browse the Source](https://github.com/collectionlessai/unaiverse-src)
+[Enter the Portal](https://unaiverse.io) · [Read the Vision](https://collectionless.ai) · [Browse the Source](https://github.com/collectionlessai/unaiverse-src) · [Check the Company](https://unaiverse.ai)
 
 If you like the idea, [drop a star](https://github.com/collectionlessai/unaiverse-examples) and help build the privacy-first web.
 
