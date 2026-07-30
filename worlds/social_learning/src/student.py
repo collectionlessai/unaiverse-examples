@@ -18,7 +18,7 @@ from unaiverse.agent import Agent, action
 from unaiverse.streams import Stream, DataProps
 from unaiverse.utils.misc import prepare_app_dir
 from unaiverse.interaction import Interaction, CompletionReason
-from unaiverse.modules.utils import error_rate_mnist_test_set, ModuleWrapper
+from unaiverse.modules.utils import error_rate_mnist_test_set_steps, ModuleWrapper
 
 
 class WAgent(Agent):
@@ -95,17 +95,29 @@ class WAgent(Agent):
 
     @action
     async def disengage(self, disconnect_too: bool = False, interaction: Interaction | None = None) -> bool:
-        if not (await super().disengage(disconnect_too, interaction)):
-            return False
+        # Cheap reject first (mirrors the base checks) so a request from a peer we are not
+        # engaged to does not cost a full evaluation; once the evaluation started (mark set)
+        # we never divert, the stepwise poll must run to completion or discard.
+        if interaction is not None and interaction.get_mark() is None \
+                and interaction.requester not in self._engaged_agents:
+            return await super().disengage(disconnect_too, interaction)
 
-        # We overload this so that each student, after class, takes the full mnist test set and evaluates itself
+        # After class, each student grades itself on the full mnist test set BEFORE actually
+        # disengaging: the evaluation is spread one batch per tick (stepwise), so the node loop
+        # keeps pumping, and the base disengage (engaged-set release, GOAWAY) runs only once,
+        # at the end, when the student is genuinely ready for the next lesson.
         assert self.proc is not None
         assert isinstance(self.proc, ModuleWrapper)
         assert isinstance(self.proc.module, torch.nn.Module)
-        error_rate = error_rate_mnist_test_set(network=self.proc.module,
-                                               mnist_data_save_path=os.path.join(self._agent_folder_name, "mnist_data"))
+        done, error_rate = self.stepwise(
+            interaction, error_rate_mnist_test_set_steps,
+            network=self.proc.module,
+            mnist_data_save_path=os.path.join(self._agent_folder_name, "mnist_data"))
+        if not done:
+            return False
+
         _t = self.clock.get_time_ms()
         _, _peer_id = self.get_peer_ids()
         assert self.stats is not None
         self.stats.store_stat("full_test_err", error_rate, group_key=_peer_id, timestamp=_t)
-        return True
+        return await super().disengage(disconnect_too, interaction)

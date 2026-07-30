@@ -127,14 +127,19 @@ class WWorld(World):
         # Providing a badge to all the agents that were the best of the world
         behav.add_state("finished_teaching")
 
-        # Send disengagement and wait a bit before going ahead (where it will disconnect, making others remove this
-        # agent from their pools and possibly discard the disengagement message)
+        # Send disengagement, then wait until every student completed it: each student grades
+        # itself on the full test set BEFORE actually disengaging, so re-engaging earlier would
+        # land the next round's engage while a student is still evaluating, and the end-of-
+        # disengage purge would discard it. A delayed nop caps the wait, so a dead student
+        # cannot stall the class forever.
         behav.add_transit("finished_teaching", "wait_for_disengagement",
                           action="send_disengage", args={"send_disconnection_too": True})
         behav.add_state("wait_for_disengagement", waiting_time=3.0, blocking=True)
 
         # Back to the beginning
-        behav.add_transit("wait_for_disengagement", "init", action="nop")
+        behav.add_transit("wait_for_disengagement", "init", action="all_sent_completed",
+                          args={"action_name": "disengage"})
+        behav.add_transit("wait_for_disengagement", "init", action="nop", delay=60.0)
 
         # Applying wildcards
         behav.apply_wildcards()

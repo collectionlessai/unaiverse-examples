@@ -391,7 +391,11 @@ class WAgent(Agent):
 
         if is_head_of_hotel_managers:
             int_timestamp = self.clock.get_time_ms(monotonic=True)
-            world_peer_id = self.get_connection_pool_manager().get_world_peer_id()
+            pm = self.get_connection_pool_manager()
+            if hasattr(pm, "get_world_node_peer_id"):
+                world_peer_id = pm.get_world_node_peer_id()
+            else:
+                world_peer_id = pm.get_world_peer_id()
             assert world_peer_id is not None
             assert self.stats is not None
 

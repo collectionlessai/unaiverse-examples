@@ -487,6 +487,21 @@
         "wait_for_disengagement": [
             {
                 "on": {
+                    "action": "all_sent_completed",
+                    "action_kwargs": {
+                        "action_name": "disengage"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "init"
+            },
+            {
+                "on": {
                     "action": "nop",
                     "action_kwargs": {},
                     "msg": null,
@@ -494,7 +509,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "delay": 0.0
+                    "delay": 60.0
                 },
                 "goto": "init"
             }
