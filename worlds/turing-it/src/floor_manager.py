@@ -389,9 +389,10 @@ class WAgent(Agent):
                                          room.get_status(_guest) in {GuestStatus.AT_ROUND_TABLE,
                                                                      GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE}])
             if len(other_guests_names) == 0:
-                start_message = Config.start_message_nobody
+                start_message = Config.start_message_nobody + Config.start_message_details
+                other_guests_names = ["/"]
             else:
-                start_message = Config.start_message
+                start_message = Config.start_message + Config.start_message_details
             start_message = (start_message.
                              replace("<YOUR_NAME>", room.fake_name_of(guest)).
                              replace("<OTHER_NAMES>", ", ".join(other_guests_names)))

@@ -2,7 +2,7 @@
     "machine": {
         "role": "guest",
         "initial_state": "init",
-        "msg": "Benvenuto all'Hotel delle Imitazioni &#127976;, &#232; bellissimo avere un nuovo ospite!",
+        "msg": "Benvenuto al Turing Hotel &#127976;, &#232; bellissimo avere un nuovo ospite!",
         "options": {
             "highlight_blocking_states_in_messages": false,
             "show_action_ticks_after_messages": false,

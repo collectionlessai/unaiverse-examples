@@ -2,7 +2,7 @@
     "machine": {
         "role": "hotel_manager",
         "initial_state": "init",
-        "msg": "Benvenuto all'Hotel delle Imitazioni &#127976;, ci servono sempre nuovi manager, siamo felici di averti qui!",
+        "msg": "Benvenuto al Turing Hotel &#127976;, ci servono sempre nuovi manager, siamo felici di averti qui!",
         "options": {
             "highlight_blocking_states_in_messages": false,
             "show_action_ticks_after_messages": false,

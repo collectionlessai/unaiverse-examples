@@ -1,5 +1,5 @@
 """
-Hotel delle Imitazioni Leaderboard - Premium Dashboard Template
+Turing Hotel Italy Leaderboard - Premium Dashboard Template
 =====================================================
 
 Responsive, theme-aware (dark/light) HTML dashboard with Material Design

@@ -18,7 +18,6 @@ from .config import Config
 from unaiverse.custom import Custom
 from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
-from unaiverse.streams.streams import Stream
 from unaiverse.interaction import Interaction
 from unaiverse.networking.node.profile import NodeProfile
 
@@ -235,7 +234,8 @@ class WAgent(Agent):
             # it) and we start listening. The push itself triggers the opening "process" turn, so that the
             # processor can proactively open the conversation without waiting for other guests' messages
             self._ignore_messages = False
-            self.__push_to_processor(msg)
+            msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
+            self.__push_to_processor(msg_no_tag)
 
         elif self._ignore_messages:
             return True  # Consume the interaction
@@ -244,15 +244,20 @@ class WAgent(Agent):
 
             # Vote request: pushed ALONE, under the UUID communicated by sending this status message, so
             # that the "process" action parked on that UUID fires and the processor answers with its vote
-            self.__push_to_processor(msg, process_uuid=process_uuid)
+            msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
+            self.__push_to_processor(msg_no_tag, process_uuid=process_uuid)
 
         elif msg.startswith("[JOINED_MSG]") or msg.startswith("[LEFT_MSG]") or msg.startswith("[GEN_MSG]"):
 
             # Roster changes and reminders: forwarded raw, the processor decides what to do with them
-            self.__push_to_processor(msg)
+            msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
+            self.__push_to_processor(msg_no_tag)
 
         elif msg.startswith("[DISCO_MSG]"):
-            pass  # We are being told about a disconnection: nothing to forward, just print it below
+
+            # We are being told about a disconnection, the processor decides what to do with them
+            msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
+            self.__push_to_processor(msg_no_tag)
 
         else:
             return True  # Consume the interaction (unknown status messages are neither printed nor forwarded)
@@ -313,6 +318,14 @@ class WAgent(Agent):
             await self.disconnect(self.__floor_manager)
         return True  # Don't stop the transition
 
+    @action
+    def process(self, interaction: Interaction | None = None) -> bool:
+        """This is just an override to clear the push buffer when it gets consumed by the processor."""
+        ret = super().process(interaction)
+        if ret:
+            self._pending_events = []
+        return ret
+
     def __push_to_processor(self, msg: str | None,
                             process_uuid: str | None = Custom.SYSTEM_INTERACTION_UUID) -> None:
         if msg is None:
@@ -326,33 +339,10 @@ class WAgent(Agent):
         input_stream = self.get_stream("processor_in", data_type="text")
         assert input_stream is not None
 
-        if process_uuid == Custom.SYSTEM_INTERACTION_UUID:
-
-            # A plain Stream keeps a single sample per UUID: a new "set" before the processor consumed the
-            # previous sample would overwrite it. So we batch all the not-yet-consumed events in a single
-            # sample (one event per line); in the common case this degenerates to the last message only.
-            # The timestamp comparison below is exact because pushes never share a clock cycle with a
-            # successful "process" get: pushes happen only in get_msgs/get_status_msg, and a successful
-            # "process" chains into send_msg (which must never push) before the HSM pass ends on a
-            # blocking state — keep it that way
-            if self.__processor_consumed(input_stream, process_uuid):
-                self._pending_events = []
-            self._pending_events.append(msg)
-            payload = "\n".join(self._pending_events)
-        else:
-            payload = msg  # Vote requests travel alone, under the UUID of the vote interaction
+        self._pending_events.append(msg)
+        payload = "\n".join(self._pending_events)
 
         # Setting the event(s) to our processor's default input (given UUID), so that it will be considered
         # in the next "process" action that is bound to the given UUID (for humans this stream is disabled,
         # so this is a no-op: humans read the room through the printed messages)
         input_stream.set(payload, uuid=process_uuid)
-
-    @staticmethod
-    def __processor_consumed(input_stream: Stream, process_uuid: str | None) -> bool:
-
-        # Mirrors the per-requester dedup logic of Stream.get: a sample was consumed by the processor when
-        # the "process" action got it after the last "set" (no public predicate for this in the framework)
-        data_struct = input_stream.data_by_uuid.get(process_uuid, None)
-        if data_struct is None or data_struct.data is None:
-            return True  # Nothing was ever set (or it was cleared): nothing is pending
-        return data_struct.data_timestamp_when_got_by.get("process", None) == data_struct.data_timestamp

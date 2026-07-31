@@ -87,7 +87,7 @@ class WWorld(World):
         dummy_agent = WAgent(proc=None)
         behav = HybridStateMachine(dummy_agent)
         behav.set_role("hotel_manager")
-        behav.set_welcome_message("Benvenuto all'Hotel delle Imitazioni 🏨, ci servono sempre nuovi manager, "
+        behav.set_welcome_message("Benvenuto al Turing Hotel 🏨, ci servono sempre nuovi manager, "
                                   "siamo felici di averti qui!")
 
         behav.add_state("init", blocking=True)
@@ -120,7 +120,7 @@ class WWorld(World):
         dummy_agent = WAgent(proc=None)
         behav = HybridStateMachine(dummy_agent)
         behav.set_role("floor_manager")
-        behav.set_welcome_message("Benvenuto all'Hotel delle Imitazioni 🏨, ci servono sempre nuovi piani, "
+        behav.set_welcome_message("Benvenuto al Turing Hotel 🏨, ci servono sempre nuovi piani, "
                                   "siamo felici di averti qui!")
 
         behav.add_state("init", blocking=True)
@@ -160,7 +160,7 @@ class WWorld(World):
         dummy_agent = WAgent(proc=None)
         behav = HybridStateMachine(dummy_agent)
         behav.set_role("guest")
-        behav.set_welcome_message("Benvenuto all'Hotel delle Imitazioni 🏨, è bellissimo avere un nuovo ospite!")
+        behav.set_welcome_message("Benvenuto al Turing Hotel 🏨, è bellissimo avere un nuovo ospite!")
 
         behav.add_state("init", action="init", blocking=False)
         behav.add_state("ready", blocking=True, msg="🔗 Connessione a un hotel manager scelto a caso")
