@@ -1,0 +1,4 @@
+hotel,jedtore96@gmail.com/HotelManager-TuringHotelItaly
+floor,jedtore96@gmail.com/FloorManager-TuringHotelItaly
+hotel,stefano.melacci@unisi.it/HotelManager-TuringHotelItaly
+floor,stefano.melacci@unisi.it/FloorManager-TuringHotelItaly
