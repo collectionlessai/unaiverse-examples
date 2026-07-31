@@ -1,0 +1,358 @@
+"""
+       █████  █████ ██████   █████           █████ █████   █████ ██████████ ███████████    █████████  ██████████
+      ░░███  ░░███ ░░██████ ░░███           ░░███ ░░███   ░░███ ░░███░░░░░█░░███░░░░░███  ███░░░░░███░░███░░░░░█
+       ░███   ░███  ░███░███ ░███   ██████   ░███  ░███    ░███  ░███  █ ░  ░███    ░███ ░███    ░░░  ░███  █ ░
+       ░███   ░███  ░███░░███░███  ░░░░░███  ░███  ░███    ░███  ░██████    ░██████████  ░░█████████  ░██████
+       ░███   ░███  ░███ ░░██████   ███████  ░███  ░░███   ███   ░███░░█    ░███░░░░░███  ░░░░░░░░███ ░███░░█
+       ░███   ░███  ░███  ░░█████  ███░░███  ░███   ░░░█████░    ░███ ░   █ ░███    ░███  ███    ░███ ░███ ░   █
+       ░░████████   █████  ░░█████░░████████ █████    ░░███      ██████████ █████   █████░░█████████  ██████████
+        ░░░░░░░░   ░░░░░    ░░░░░  ░░░░░░░░ ░░░░░      ░░░      ░░░░░░░░░░ ░░░░░   ░░░░░  ░░░░░░░░░  ░░░░░░░░░░
+                 A Collectionless AI Project (https://collectionless.ai)
+                 Registration/Login: https://unaiverse.io
+                 Code Repositories:  https://github.com/collectionlessai/
+                 Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
+"""
+import re
+import random
+from .config import Config
+from unaiverse.custom import Custom
+from unaiverse.utils.logger import log
+from unaiverse.agent import Agent, action
+from unaiverse.streams.streams import Stream
+from unaiverse.interaction import Interaction
+from unaiverse.networking.node.profile import NodeProfile
+
+
+class WAgent(Agent):
+    """Guest of the Turing Test Hotel.
+
+    Contract between the guest and its processor (READ THIS if you are bringing your own processor):
+    the guest does NOT build prompts and keeps NO conversation history. It only forwards raw events to the
+    processor input stream ("processor_in", text type), and the processor is in charge of collecting the
+    history, tracking the roster, and building whatever prompt it wants. In detail:
+
+    - Each processor input sample contains one or more EVENTS, one per line (newlines inside a single event
+      are replaced by spaces). Multiple lines appear only when events arrive faster than the processor
+      consumes them; in the common case a sample is just the last message.
+    - Chat messages arrive as formatted by the floor manager: "**SENDER:** message text".
+    - Service events arrive with their original tag: "[START_MSG]"/"[START_MSG_NOBODY]" (a new chat session
+      begins: it is the WORLD GUIDE — it explains the game mechanics and carries your fake name and the
+      other guests' names, but deliberately NO behavioral instructions, since behavior and persona are each
+      competitor's own responsibility — and the processor must RESET its own history when receiving it),
+      "[JOINED_MSG]", "[LEFT_MSG]", "[GEN_MSG]" (roster changes and reminders).
+    - "[VOTE_REQ_MSG]" (the request to vote who was human) is always delivered ALONE, as the only line of
+      the sample of a dedicated "process" interaction: the answer to it is collected as the vote.
+    - Every delivered sample triggers one "process" turn. The text returned by the processor is sent to the
+      room as the guest's message; returning an EMPTY string means "stay silent on this turn".
+    - The "[START_MSG]" delivery itself triggers the first turn: the processor is expected to open the
+      conversation (proactively, without waiting for other guests' messages) or return an empty string.
+
+    A reference stateful processor implementing this contract is provided in the world folder
+    (processors.py, next to the run_*.py scripts).
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        # Setting system level options
+        Custom.MAX_INTERACTIONS = 100
+        Custom.MAX_STREAM_DATA_WITHOUT_INTERACTIONS = 10
+        self.im.max_interactions = Custom.MAX_INTERACTIONS
+
+        self._pending_events: list[str] = []  # Events not consumed by the processor yet (re-sent as a batch)
+        self._ignore_messages: bool = True
+        self._init_message_printed: bool = False
+
+        # These variables start with "__" to protect them from the auto-clearing procedure
+        self.__hotel_manager: str | None = None  # The peer ID of the selected hotel manager
+        self.__prev_hotel_manager: str | None = None
+        self.__floor_manager: str | None = None  # The peer ID of the selected floor manager
+
+    async def add_agent(self, peer_id: str, profile: NodeProfile,
+                        add_proc_streams: bool = True, add_env_streams: bool = True,
+                        add_pubsub_streams: bool = True) -> bool:
+
+        # Ignoring all pubsub streams
+        return await super().add_agent(peer_id, profile,
+                                       add_proc_streams=add_proc_streams, add_env_streams=add_env_streams,
+                                       add_pubsub_streams=False)
+
+    async def on_tick(self):
+        assert self.behav is not None
+
+        # Checking if we lost connection to the hotel manager
+        if self.__hotel_manager is not None and await self.disconnected(agent=self.__hotel_manager):
+            log.user("❌ Ops! Lost connection to the hotel manager!")
+            self.__hotel_manager = None  # Clearing
+            await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
+
+            self.reset_status()
+            await self.behav.act_ghost_transition(to_state="wait_for_ready")
+
+        # Checking if we lost connection to the floor manager
+        elif self.__floor_manager is not None and await self.disconnected(agent=self.__floor_manager):
+            log.user("❌ Arg! Lost connection to the floor manager!")
+            self.__floor_manager = None
+            await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
+
+            self.reset_status()
+            await self.behav.act_ghost_transition(to_state="wait_for_ready")
+
+        # Checking time spent in current state
+        state = self.behav.get_state()
+        if ((state is None or state.name != "init") and
+                self.behav.get_time_spent_in_current_state() > Config.max_time_in_every_state):
+            log.user("❌ Uhm! Too much time passed without interactions, better get out of the hotel")
+            await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
+            await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
+
+            self.reset_status()
+            await self.behav.act_ghost_transition(to_state="wait_for_ready")
+
+    def reset_status(self) -> None:
+        self._pending_events = []
+        self._ignore_messages = True
+
+        # Clearing stdin from pending data
+        self.stdin.clear_all_data()
+
+        # De-register all current interactions
+        self.im.unregister_all()
+
+    @action
+    async def init(self):
+        if not self._init_message_printed:
+            init_message = Config.init_message.replace("<YOUR_EMAIL>", self.get_profile().get_static_profile()['email'])
+            log.user(init_message)
+            self._init_message_printed = True
+        return True
+
+    @action
+    async def goto_hall(self):
+        return True
+
+    @action
+    async def skip_confirmation(self):
+        return self.get_profile().get_static_profile()["node_type"] != Agent.HUMAN
+
+    @action
+    async def connect_to_hotel_manager(self):
+
+        # Getting the full list of hotel managers in the world
+        all_hotel_managers = self.get_agents_by_role("hotel_manager", handshake_completed=False)
+
+        # Putting the previous manager to the bottom of the list (if we disconnected from him there must be a reason...)
+        if self.__prev_hotel_manager is not None:
+            all_hotel_managers = [hm for hm in all_hotel_managers if hm != self.__prev_hotel_manager]
+            all_hotel_managers.append(self.__prev_hotel_manager)
+
+        connected = False
+        selected_hotel_manager = None
+
+        # Keep trying all managers!
+        while not connected:
+            if len(all_hotel_managers) == 0:
+                return False
+
+            # Selecting a random hotel manager from the list
+            random_index = random.randrange(len(all_hotel_managers))
+            selected_hotel_manager = all_hotel_managers[random_index]
+
+            # Connecting to the selected manager
+            connected = await self.connect_to(selected_hotel_manager)  # If already connected, it returns False
+
+            # Discarding this manager, in case of failure
+            if not connected:
+                all_hotel_managers.remove(selected_hotel_manager)
+
+        self.__prev_hotel_manager = self.__hotel_manager
+        self.__hotel_manager = selected_hotel_manager
+        return True
+
+    @action
+    async def hotel_manager_ack(self):
+        if self.__hotel_manager is None:
+            return False
+        return await self.connected(self.__hotel_manager, handshake_completed=True)
+
+    @action
+    async def disconnect_hotel_manager(self):
+        if self.__hotel_manager is not None:
+            await self.disconnect(self.__hotel_manager)
+            self.__hotel_manager = None
+        return True
+
+    @action
+    async def connect_to_floor_manager(self, floor_manager: str | None = None):
+        if await self.connect_to(floor_manager):
+            self.__floor_manager = floor_manager
+            self.reset_status()  # Resetting status to be ready for a new chat
+            return True
+        else:
+            return False
+
+    @action
+    async def send_guest_sponsor(self):
+        if not await self.send(action_name="get_guest_sponsor",
+                               action_kwargs={
+                                   "hotel_manager": self.__hotel_manager},
+                               from_state="getting_sponsorships",
+                               target=self.__floor_manager,
+                               volatile=True):
+            await self.disconnect_floor_manager()
+            return False
+        return True
+
+    @action
+    async def floor_manager_ack(self):
+        if self.__floor_manager is None:
+            return False
+        return await self.connected(self.__floor_manager, handshake_completed=True)
+
+    @action
+    async def disconnect_floor_manager(self):
+        if self.__floor_manager is not None:
+            await self.disconnect(self.__floor_manager)
+            self.__floor_manager = None
+        return True
+
+    @action
+    async def goto_room(self):
+        return True
+
+    @action
+    async def goto_voting_booth(self):
+        self.stdin.clear_all_data()
+        self._pending_events = []  # Whatever the processor did not consume in the room will never be processed
+        return True
+
+    @action
+    async def get_status_msg(self, msg: str, process_uuid: str | None = None):
+
+        if msg.startswith("[START_MSG]") or msg.startswith("[START_MSG_NOBODY]"):
+
+            # A new chat session begins: we forward the raw event (the processor resets its own history on
+            # it) and we start listening. The push itself triggers the opening "process" turn, so that the
+            # processor can proactively open the conversation without waiting for other guests' messages
+            self._ignore_messages = False
+            self.__push_to_processor(msg)
+
+        elif self._ignore_messages:
+            return True  # Consume the interaction
+
+        elif msg.startswith("[VOTE_REQ_MSG]"):
+
+            # Vote request: pushed ALONE, under the UUID communicated by sending this status message, so
+            # that the "process" action parked on that UUID fires and the processor answers with its vote
+            self.__push_to_processor(msg, process_uuid=process_uuid)
+
+        elif msg.startswith("[JOINED_MSG]") or msg.startswith("[LEFT_MSG]") or msg.startswith("[GEN_MSG]"):
+
+            # Roster changes and reminders: forwarded raw, the processor decides what to do with them
+            self.__push_to_processor(msg)
+
+        elif msg.startswith("[DISCO_MSG]"):
+            pass  # We are being told about a disconnection: nothing to forward, just print it below
+
+        else:
+            return True  # Consume the interaction (unknown status messages are neither printed nor forwarded)
+
+        # Print every known status message (without the initial [...] tag)
+        log.user(re.sub(r'^\[.*?]\s*', '', msg))
+        return True  # Consume the interaction
+
+    @action
+    async def get_msgs(self, interaction: Interaction | None = None):
+        if interaction is None:
+            return False
+        if interaction.requester != self.__floor_manager or self._ignore_messages:
+            return True  # Consume the interaction
+
+        # Getting messages (one or more) received from the floor managers in the "chat" stream
+        # We can use self.stdin since this action is stimulated by an interaction from the floor manager
+        msgs_tags_times = self.stdin.get("chat", requested_by="get_msgs", all_uuids=True)
+
+        # The self.stdin.get, with all_uuids set to true, will return a list of tuples (msg, tag, timestamp).
+        # It could be empty
+        if len(msgs_tags_times) == 0:
+            return True  # Consume the interaction
+
+        # Forwarding each received message to our processor, that is in charge of collecting the history
+        for msg, tag, timestamp in sorted(msgs_tags_times, key=lambda x: x[2]):
+            self.__push_to_processor(msg)
+
+        return True
+
+    @action
+    async def send_msg(self):
+        if self._ignore_messages:
+            return True  # Don't stop the transition
+
+        # Getting my last self-generated message. We can find this message in the self.stdout of this action.
+        # This is because such self.stdout is the output of the processor, bind to system UUID since
+        # this action will only be triggered by system interactions.
+        # This is exactly where our message is already stored due a previous call to a solid "process".
+        msgs = self.stdout.get(requested_by="send_msgs", data_type="text")
+        if msgs is None or len(msgs) == 0:
+            return True  # Don't stop the transition
+
+        # The call above returns a list with data about all the text streams (they might be more than one)
+        msg = msgs[0]  # We assume the first one is the right one
+
+        # An empty output means the processor chose to stay silent on this turn
+        if msg is None or len(msg.strip()) == 0:
+            return True  # Don't stop the transition
+
+        # Sending my clean message to the floor manager
+        interaction = await self._send(action_name="get_msg_and_broadcast",
+                                       action_kwargs={"msg": msg},
+                                       from_state="collect_msgs",
+                                       target=self.__floor_manager,
+                                       volatile=True)
+        if interaction is None:
+            await self.disconnect(self.__floor_manager)
+        return True  # Don't stop the transition
+
+    def __push_to_processor(self, msg: str | None,
+                            process_uuid: str | None = Custom.SYSTEM_INTERACTION_UUID) -> None:
+        if msg is None:
+            return
+
+        # One event per line: newlines inside a single event would break the line-based batching below
+        msg = msg.replace("\n", " ").strip()
+        if len(msg) == 0:
+            return
+
+        input_stream = self.get_stream("processor_in", data_type="text")
+        assert input_stream is not None
+
+        if process_uuid == Custom.SYSTEM_INTERACTION_UUID:
+
+            # A plain Stream keeps a single sample per UUID: a new "set" before the processor consumed the
+            # previous sample would overwrite it. So we batch all the not-yet-consumed events in a single
+            # sample (one event per line); in the common case this degenerates to the last message only.
+            # The timestamp comparison below is exact because pushes never share a clock cycle with a
+            # successful "process" get: pushes happen only in get_msgs/get_status_msg, and a successful
+            # "process" chains into send_msg (which must never push) before the HSM pass ends on a
+            # blocking state — keep it that way
+            if self.__processor_consumed(input_stream, process_uuid):
+                self._pending_events = []
+            self._pending_events.append(msg)
+            payload = "\n".join(self._pending_events)
+        else:
+            payload = msg  # Vote requests travel alone, under the UUID of the vote interaction
+
+        # Setting the event(s) to our processor's default input (given UUID), so that it will be considered
+        # in the next "process" action that is bound to the given UUID (for humans this stream is disabled,
+        # so this is a no-op: humans read the room through the printed messages)
+        input_stream.set(payload, uuid=process_uuid)
+
+    @staticmethod
+    def __processor_consumed(input_stream: Stream, process_uuid: str | None) -> bool:
+
+        # Mirrors the per-requester dedup logic of Stream.get: a sample was consumed by the processor when
+        # the "process" action got it after the last "set" (no public predicate for this in the framework)
+        data_struct = input_stream.data_by_uuid.get(process_uuid, None)
+        if data_struct is None or data_struct.data is None:
+            return True  # Nothing was ever set (or it was cleared): nothing is pending
+        return data_struct.data_timestamp_when_got_by.get("process", None) == data_struct.data_timestamp

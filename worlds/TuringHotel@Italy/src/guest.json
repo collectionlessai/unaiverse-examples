@@ -1,0 +1,449 @@
+{
+    "machine": {
+        "role": "guest",
+        "initial_state": "init",
+        "msg": "Benvenuto all'Hotel delle Imitazioni &#127976;, &#232; bellissimo avere un nuovo ospite!",
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
+        }
+    },
+    "states": {
+        "init": {
+            "action": "init",
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "ready": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128279; Connessione a un hotel manager scelto a caso",
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        },
+        "wait_for_ready": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#9203; In attesa fuori (resterai fuori per 60 secondi per riprenderti)",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "reached_hotel_manager": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#127970; Entrato nell'hotel (hotel manager contattato)",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "hall": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#127970; In giro per la hall (in attesa di essere mandato a un piano)",
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        },
+        "wait_for_hall": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#9203; In attesa nella hall (decompressione)",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "reached_floor_manager": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#129692; Si sale (floor manager contattato)",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "floor": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#129692; Arrivato al piano giusto (in attesa di essere mandato in una stanza)",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "ready_for_room": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "room_round_table": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        },
+        "msg_prepared": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "room_voting_booth": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128499; Entrato nella cabina di voto (in attesa della richiesta di voto)",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "can_vote": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        },
+        "vote_provided": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#9989; Voto inviato",
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        }
+    },
+    "transitions": {
+        "init": [
+            {
+                "on": {
+                    "action": "process",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "ready"
+            },
+            {
+                "on": {
+                    "action": "skip_confirmation",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "ready"
+            }
+        ],
+        "ready": [
+            {
+                "on": {
+                    "action": "connect_to_hotel_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "reached_hotel_manager"
+            }
+        ],
+        "reached_hotel_manager": [
+            {
+                "on": {
+                    "action": "hotel_manager_ack",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "hall"
+            }
+        ],
+        "hall": [
+            {
+                "on": {
+                    "action": "connect_to_floor_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "reached_floor_manager"
+            }
+        ],
+        "wait_for_ready": [],
+        "reached_floor_manager": [
+            {
+                "on": {
+                    "action": "floor_manager_ack",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "floor"
+            }
+        ],
+        "floor": [
+            {
+                "on": {
+                    "action": "send_guest_sponsor",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "ready_for_room"
+            }
+        ],
+        "wait_for_hall": [],
+        "ready_for_room": [
+            {
+                "on": {
+                    "action": "goto_room",
+                    "action_kwargs": {},
+                    "msg": "&#128172; Entrato nella stanza, seduto al tavolo della chat (in attesa del messaggio di inizio)",
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "room_round_table"
+            }
+        ],
+        "room_round_table": [
+            {
+                "on": {
+                    "action": "process",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": true,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "msg_prepared"
+            },
+            {
+                "on": {
+                    "action": "get_msgs",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "room_round_table"
+            },
+            {
+                "on": {
+                    "action": "get_status_msg",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "room_round_table"
+            },
+            {
+                "on": {
+                    "action": "goto_voting_booth",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "room_voting_booth"
+            }
+        ],
+        "msg_prepared": [
+            {
+                "on": {
+                    "action": "send_msg",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "room_round_table"
+            }
+        ],
+        "room_voting_booth": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 3
+                },
+                "goto": "can_vote"
+            },
+            {
+                "on": {
+                    "action": "get_status_msg",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "room_voting_booth"
+            }
+        ],
+        "can_vote": [
+            {
+                "on": {
+                    "action": "get_status_msg",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "can_vote"
+            },
+            {
+                "on": {
+                    "action": "process",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "vote_provided"
+            },
+            {
+                "on": {
+                    "action": "goto_hall",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "hall"
+            }
+        ],
+        "vote_provided": [
+            {
+                "on": {
+                    "action": "goto_hall",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "hall"
+            }
+        ]
+    },
+    "teleports": {
+        "reached_hotel_manager": [
+            {
+                "on": {
+                    "action": "disconnect_hotel_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 30
+                },
+                "goto": "wait_for_ready"
+            }
+        ],
+        "wait_for_ready": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 60
+                },
+                "goto": "ready"
+            }
+        ],
+        "reached_floor_manager": [
+            {
+                "on": {
+                    "action": "disconnect_floor_manager",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 30
+                },
+                "goto": "wait_for_hall"
+            }
+        ],
+        "wait_for_hall": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 60
+                },
+                "goto": "hall"
+            }
+        ]
+    }
+}
