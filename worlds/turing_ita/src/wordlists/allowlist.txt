@@ -167,6 +167,7 @@ catharse
 cessa
 cesse
 cessi
+cesso
 chastisement
 chastisements
 chiappa
@@ -438,6 +439,8 @@ endorsements
 endothermies
 enfranchisement
 excisemen
+falli
+fallo
 fattone
 fattoni
 fava
