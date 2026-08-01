@@ -73,6 +73,7 @@ class WAgent(Agent):
         self.__floor_manager: str | None = None  # The peer ID of the selected floor manager
         self.__queued_msgs: list[str] = []  # Messages waiting for the anti-flooding cooldown to expire
         self.__last_msg_sent_time: float = -1.  # When the last message was sent to the room (-1: never)
+        self.__flood_warned: bool = False  # Whether the "too fast" notice was already printed in this burst
 
     async def add_agent(self, peer_id: str, profile: NodeProfile,
                         add_proc_streams: bool = True, add_env_streams: bool = True,
@@ -123,6 +124,7 @@ class WAgent(Agent):
         self._ignore_messages = True
         self.__queued_msgs = []  # Whatever was waiting for the cooldown will never be sent
         self.__last_msg_sent_time = -1.  # The cooldown is per-conversation: a new chat starts with no cooldown
+        self.__flood_warned = False
 
         # Clearing stdin from pending data
         self.stdin.clear_all_data()
@@ -236,6 +238,7 @@ class WAgent(Agent):
         self.stdin.clear_all_data()
         self._pending_events = []  # Whatever the processor did not consume in the room will never be processed
         self.__queued_msgs = []  # Same for what was waiting for the cooldown: we are out of the room now
+        self.__flood_warned = False
         return True
 
     @action
@@ -325,14 +328,21 @@ class WAgent(Agent):
         # if it already did). Dropping the oldest queued messages, when too many of them piled up: they are
         # the most out-of-date ones with respect to what is being said in the room
         self.__queued_msgs.append(msg)
+        cooldown_left = self.__cooldown_left()
+
+        # Telling the guest what is going on, once per burst: the notice is LOCAL (it is printed for
+        # whoever is playing, it is never sent to the room, so it cannot give anybody away)
+        if len(self.__queued_msgs) >= Config.max_queued_msgs and not self.__flood_warned:
+            self.__flood_warned = True
+            log.user(f"⚠️ Ho mandato messaggi troppo velocemente, sono in cooldown: posso inviarne uno "
+                     f"ogni {Config.msg_cooldown:g} secondi, i prossimi verranno scartati")
+        elif cooldown_left > 0. and len(self.__queued_msgs) == 1:
+            log.user(f"⏳ Cooldown anti-flooding: il messaggio verrà inviato tra {cooldown_left:.1f} secondi")
+
         if len(self.__queued_msgs) > Config.max_queued_msgs:
             dropped = len(self.__queued_msgs) - Config.max_queued_msgs
             self.__queued_msgs = self.__queued_msgs[dropped:]
             log.user(f"⏳ Stai scrivendo troppo in fretta: {dropped} messaggio/i in coda è/sono stato/i scartato/i")
-
-        cooldown_left = self.__cooldown_left()
-        if cooldown_left > 0.:
-            log.user(f"⏳ Cooldown anti-flooding: il messaggio verrà inviato tra {cooldown_left:.1f} secondi")
 
         await self.__flush_queued_msgs()
         return True  # Don't stop the transition
@@ -362,6 +372,8 @@ class WAgent(Agent):
 
         msg = self.__queued_msgs.pop(0)
         self.__last_msg_sent_time = time.time()
+        if len(self.__queued_msgs) == 0:
+            self.__flood_warned = False  # Burst over: the notice can be printed again on the next one
 
         # Sending my clean message to the floor manager
         interaction = await self._send(action_name="get_msg_and_broadcast",
