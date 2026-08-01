@@ -101,8 +101,18 @@ class MessageFilter:
 # Leetspeak and lookalikes, folded away before matching, so that "c4zz0" and "cazzo" are the same
 # word. This is applied to a copy of the message: the text that gets broadcast is always the original
 # one, with the hits (and only the hits) replaced by a mask.
-_LEET = {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b",
+_LEET = {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "6": "g", "7": "t", "8": "b", "9": "g",
          "@": "a", "$": "s", "€": "e", "£": "e", "!": "i", "|": "i", "*": "a"}
+
+# Cyrillic and Greek letters that look exactly like Latin ones on screen: "сazzo" written with a
+# Cyrillic "с" is a different string for a computer and the same word for a reader. Compatibility
+# decomposition already handles the other lookalike families (fullwidth, maths, circled letters).
+_HOMOGLYPHS = {
+    "а": "a", "в": "b", "с": "c", "е": "e", "ѕ": "s", "і": "i", "ј": "j", "к": "k", "м": "m",
+    "н": "h", "о": "o", "р": "p", "т": "t", "у": "y", "х": "x", "г": "r", "ѵ": "v",
+    "α": "a", "β": "b", "ε": "e", "ι": "i", "κ": "k", "ν": "v", "ο": "o", "ρ": "p", "σ": "s",
+    "τ": "t", "υ": "u", "χ": "x", "γ": "y", "ω": "w",
+}
 
 _RUN = re.compile(r"(.)\1{1,}")
 
@@ -134,7 +144,14 @@ def _normalize(text: str) -> tuple[str, list[int]]:
     pos: list[int] = []
 
     for i, ch in enumerate(text):
-        folded = _LEET.get(ch, ch)
+
+        # Invisible characters are dropped, not turned into a separator: "ca<zero width space>zzo"
+        # is one word written to look like two
+        if unicodedata.category(ch) in ("Cf", "Mn"):
+            continue
+
+        folded = _HOMOGLYPHS.get(ch.lower(), ch)
+        folded = _LEET.get(folded, folded)
         folded = unicodedata.normalize("NFKD", folded)
         folded = "".join(c for c in folded if not unicodedata.combining(c)).lower()
 
@@ -154,22 +171,81 @@ def _tokenize(norm: str) -> list[tuple[str, int, int]]:
     return [(m.group(0), m.start(), m.end()) for m in re.finditer(r"[a-z0-9]+", norm)]
 
 
-def _join_spelled_out(tokens: list[tuple[str, int, int]]) -> list[tuple[str, int, int]]:
-    """Glue back words that were spelled out one letter at a time ("c a z z o", "c-a-z-z-o").
+_MAX_GLUE_WINDOW = 6  # How many pieces at most a chopped up word is looked for in
+_MIN_GLUE_LEN = 4  # Shorter than this, a glued word is more likely a coincidence than an insult
 
-    A run of 4+ single-character tokens is joined into one token (the single letters are kept too,
-    so nothing that used to match still stops matching).
+
+def _glued_tokens(msg: str, pos: list[int], tokens: list[tuple[str, int, int]],
+                  common_words: set[str]) -> list[tuple[str, int, int]]:
+    """Put back together words that were chopped up to walk past the lists.
+
+    Three ways of chopping a word are covered, in growing order of how careful we have to be:
+
+    1. spelling it out one letter at a time ("v a f f a n c u l o"): a run of 4+ single letters is
+       an anomaly by itself, so it is glued whatever its length;
+    2. cutting it with punctuation ("C-og-lio-ne", "c.a.z.z.o"): pieces that are not separated by a
+       space are glued back, again unconditionally, because ordinary writing does not do this;
+    3. cutting it with spaces ("co gli o ne"): this is the delicate one, since every ordinary
+       sentence is made of pieces separated by spaces. Windows of up to `_MAX_GLUE_WINDOW` words are
+       glued, but the result is dropped when every piece is a common Italian word ("con te" must
+       never become "conte") and when it is too short to be anything but a coincidence.
+
+    The glued words are ADDED to the token list, the original words stay: nothing that used to be
+    found stops being found.
+
+    Args:
+        msg: The original message (needed to tell a space apart from any other separator).
+        pos: The position map returned by `_normalize`.
+        tokens: The words of the normalised message.
+        common_words: Ordinary words, used to leave ordinary sentences alone.
+
+    Returns:
+        The list of glued words, as (word, start, end) triples over the normalised text.
     """
-    joined = list(tokens)
+    glued: list[tuple[str, int, int]] = []
+    n = len(tokens)
+
+    def _join(pieces):
+        return "".join(p[0] for p in pieces), pieces[0][1], pieces[-1][2]
+
+    def _spaced(a, b):
+        """True if there is a space between two consecutive words in the ORIGINAL message."""
+        return any(c.isspace() for c in msg[pos[a[2] - 1] + 1:pos[b[1]]])
+
+    # (1) Words spelled out one letter at a time
     i = 0
-    while i < len(tokens):
+    while i < n:
         j = i
-        while j < len(tokens) and len(tokens[j][0]) == 1:
+        while j < n and len(tokens[j][0]) == 1:
             j += 1
         if j - i >= 4:
-            joined.append(("".join(t[0] for t in tokens[i:j]), tokens[i][1], tokens[j - 1][2]))
+            glued.append(_join(tokens[i:j]))
         i = j + 1 if j == i else j
-    return joined
+
+    # (2) Words cut with punctuation only
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and not _spaced(tokens[j], tokens[j + 1]):
+            j += 1
+        if j > i:
+            glued.append(_join(tokens[i:j + 1]))
+        i = j + 1
+
+    # (3) Words cut with spaces
+    for i in range(n):
+        for size in range(2, _MAX_GLUE_WINDOW + 1):
+            if i + size > n:
+                break
+            pieces = tokens[i:i + size]
+            word = "".join(p[0] for p in pieces)
+            if len(word) < _MIN_GLUE_LEN:
+                continue
+            if all(p[0] in common_words for p in pieces):
+                continue
+            glued.append(_join(pieces))
+
+    return glued
 
 
 # --------------------------------------------------------------------------------- word lists
@@ -203,11 +279,13 @@ class Lexicon:
     def __len__(self) -> int:
         return len(self.exact) + len(self.prefixes) + sum(len(v) for v in self.phrases.values())
 
+    def has_exact(self, word: str) -> bool:
+        """True if this exact word is in the list (also when stretched, e.g. "cazzoooo")."""
+        return word in self.exact or (_has_long_run(word) and _squeeze(word) in self.squeezed)
+
     def has_word(self, word: str) -> bool:
-        """True if this single word is in the list (also when stretched, e.g. "cazzoooo")."""
-        if word in self.exact:
-            return True
-        if _has_long_run(word) and _squeeze(word) in self.squeezed:
+        """Like `has_exact`, but the entries ending with "*" match by prefix too."""
+        if self.has_exact(word):
             return True
         for prefix in self.prefixes:
             if len(word) > len(prefix) and word.startswith(prefix):
@@ -322,9 +400,12 @@ def valid_ip(text: str) -> bool:
 class RuleBasedFilter(MessageFilter):
     """Wordlists plus regular expressions, no dependencies, no model, no network.
 
-    Two things it does well: it never disagrees with itself (same message, same verdict, forever),
-    and on structured personal data it is essentially exact, because every hit is confirmed by the
-    checksum the data itself carries (IBAN, credit card, "codice fiscale", VAT number).
+    Three things it does well: it never disagrees with itself (same message, same verdict, forever);
+    on structured personal data it is essentially exact, because every hit is confirmed by the
+    checksum the data itself carries (IBAN, credit card, "codice fiscale", VAT number); and it is
+    hard to walk past, because the message is folded (accents, leetspeak, lookalike letters,
+    invisible characters, stretching) and the words somebody chopped up are glued back together
+    before anything is looked up. See `_normalize` and `_glued_tokens`.
 
     Two things it cannot do, and a model-based filter would: recognise personal data written in
     plain words ("mi chiamo Mario Bianchi e abito a Rovezzano"), and recognise an insult built out
@@ -335,6 +416,7 @@ class RuleBasedFilter(MessageFilter):
     # before links (an e-mail contains a domain) and IBANs before plain numbers.
     def __init__(self, use_pii: bool = True) -> None:
         self.allow = Lexicon(load_wordlist("allowlist.txt"))
+        self.common_words = set(load_wordlist("common_it.txt"))
         self.lexicons = [
             (self.SLUR, Lexicon(load_wordlist("slurs_it.txt") + load_wordlist("slurs_en.txt"))),
             (self.PROFANITY, Lexicon(load_wordlist("profanity_it.txt") + load_wordlist("profanity_en.txt"))),
@@ -382,7 +464,7 @@ class RuleBasedFilter(MessageFilter):
 
         # Bad words, looked for in the normalised text
         norm, pos = _normalize(msg)
-        tokens = _join_spelled_out(_tokenize(norm))
+        tokens = _tokenize(norm)
 
         skip_until = 0
         for i, (word, start, end) in enumerate(tokens):
@@ -422,6 +504,20 @@ class RuleBasedFilter(MessageFilter):
                 if lexicon.has_word(word):
                     spans.append((pos[start], pos[end - 1] + 1, category, msg[pos[start]:pos[end - 1] + 1]))
                     break
+
+        # Second pass, on the words that somebody chopped up to walk past the first one. Only exact
+        # entries count here: prefixes and phrases on a glued word are guesswork on top of guesswork
+        for word, start, end in _glued_tokens(msg, pos, tokens, self.common_words):
+            if word in allowed or self.allow.has_exact(word):
+                continue
+            category = _AMBIGUOUS.get(word)  # Bothering to hide it is intent enough, no context needed
+            if category is None:
+                for candidate, lexicon in self.lexicons:
+                    if lexicon.has_exact(word):
+                        category = candidate
+                        break
+            if category is not None:
+                spans.append((pos[start], pos[end - 1] + 1, category, msg[pos[start]:pos[end - 1] + 1]))
 
         return FilterResult(*self.__mask(msg, spans))
 
@@ -493,13 +589,29 @@ def test_rule_based_filter() -> None:
     assert r.clean_msg == "ma che *** dici, sei un ***", r.clean_msg
     assert len(r.hits) == 2 and not r.severe, r
 
-    # Obfuscation: leetspeak, stretching, letters spelled out one by one, accents
-    for msg, expected in [("ma che c4zz0 dici", "ma che *** dici"),
-                          ("ma che caaaazzzo dici", "ma che *** dici"),
-                          ("ma che c-a-z-z-o dici", "ma che *** dici"),
-                          ("ma che CAZZO dici", "ma che *** dici")]:
+    # Obfuscation. Every one of these is somebody trying to walk past the lists
+    for msg, expected in [("ma che c4zz0 dici", "ma che *** dici"),               # Leetspeak
+                          ("ma che caaaazzzo dici", "ma che *** dici"),           # Stretched
+                          ("ma che CAZZO dici", "ma che *** dici"),               # Shouted
+                          ("ma che CaZzO dici", "ma che *** dici"),               # Alternating case
+                          ("ma che c-a-z-z-o dici", "ma che *** dici"),           # Cut, one letter
+                          ("ma che c.a.z.z.o dici", "ma che *** dici"),           # Cut, dots
+                          ("ma che c a z z o dici", "ma che *** dici"),           # Spelled out
+                          ("ma che C-og-lio-ne sei", "ma che *** sei"),           # Cut in pieces
+                          ("ma che co gli o ne sei", "ma che *** sei"),           # Pieces and spaces
+                          ("ma che cazz o dici", "ma che *** dici"),              # One letter adrift
+                          ("ti mando a vaffan culo", "ti mando a ***"),           # Cut in two
+                          ("ma che ca\u200bzzo dici", "ma che *** dici"),          # Zero width space
+                          ("ma che \u0441azzo dici", "ma che *** dici"),           # Cyrillic lookalike
+                          ("ma che ｃａｚｚｏ dici", "ma che *** dici")]:            # Fullwidth
         r = check(msg)
         assert r.clean_msg == expected, f"{msg!r} -> {r.clean_msg!r}"
+
+    # ...and glueing words back together must not invent insults in ordinary sentences
+    for msg in ["con te non ci parlo piu'", "in fondo a destra c'e' il bar",
+                "se ci penso mi viene da ridere", "la mia amica e' andata via",
+                "ho fatto un salto in centro a fare la spesa"]:
+        assert not check(msg).hits, f"false positive on {msg!r}: {check(msg)}"
 
     # Hate speech: masked AND severe (it is what feeds the strikes)
     r = check("sei un frocio di merda")
