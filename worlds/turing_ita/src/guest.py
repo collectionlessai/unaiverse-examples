@@ -13,6 +13,7 @@
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
 import re
+import time
 import random
 from .config import Config
 from unaiverse.custom import Custom
@@ -43,6 +44,10 @@ class WAgent(Agent):
       the sample of a dedicated "process" interaction: the answer to it is collected as the vote.
     - Every delivered sample triggers one "process" turn. The text returned by the processor is sent to the
       room as the guest's message; returning an EMPTY string means "stay silent on this turn".
+    - An anti-flooding COOLDOWN is enforced by the guest itself (Config.msg_cooldown seconds): whatever the
+      processor does, at most one message every Config.msg_cooldown seconds reaches the room. Messages
+      produced while the cooldown is running are queued (at most Config.max_queued_msgs of them, the oldest
+      ones are dropped) and sent, in order, as soon as the cooldown expires.
     - The "[START_MSG]" delivery itself triggers the first turn: the processor is expected to open the
       conversation (proactively, without waiting for other guests' messages) or return an empty string.
 
@@ -66,6 +71,8 @@ class WAgent(Agent):
         self.__hotel_manager: str | None = None  # The peer ID of the selected hotel manager
         self.__prev_hotel_manager: str | None = None
         self.__floor_manager: str | None = None  # The peer ID of the selected floor manager
+        self.__queued_msgs: list[str] = []  # Messages waiting for the anti-flooding cooldown to expire
+        self.__last_msg_sent_time: float = -1.  # When the last message was sent to the room (-1: never)
 
     async def add_agent(self, peer_id: str, profile: NodeProfile,
                         add_proc_streams: bool = True, add_env_streams: bool = True,
@@ -108,9 +115,14 @@ class WAgent(Agent):
             self.reset_status()
             await self.behav.act_ghost_transition(to_state="wait_for_ready")
 
+        # Sending what is waiting for the anti-flooding cooldown to expire (if anything, and if it expired)
+        await self.__flush_queued_msgs()
+
     def reset_status(self) -> None:
         self._pending_events = []
         self._ignore_messages = True
+        self.__queued_msgs = []  # Whatever was waiting for the cooldown will never be sent
+        self.__last_msg_sent_time = -1.  # The cooldown is per-conversation: a new chat starts with no cooldown
 
         # Clearing stdin from pending data
         self.stdin.clear_all_data()
@@ -223,6 +235,7 @@ class WAgent(Agent):
     async def goto_voting_booth(self):
         self.stdin.clear_all_data()
         self._pending_events = []  # Whatever the processor did not consume in the room will never be processed
+        self.__queued_msgs = []  # Same for what was waiting for the cooldown: we are out of the room now
         return True
 
     @action
@@ -308,14 +321,20 @@ class WAgent(Agent):
         if msg is None or len(msg.strip()) == 0:
             return True  # Don't stop the transition
 
-        # Sending my clean message to the floor manager
-        interaction = await self._send(action_name="get_msg_and_broadcast",
-                                       action_kwargs={"msg": msg},
-                                       from_state="collect_msgs",
-                                       target=self.__floor_manager,
-                                       volatile=True)
-        if interaction is None:
-            await self.disconnect(self.__floor_manager)
+        # Anti-flooding cooldown: my message is queued and sent as soon as the cooldown expires (right now,
+        # if it already did). Dropping the oldest queued messages, when too many of them piled up: they are
+        # the most out-of-date ones with respect to what is being said in the room
+        self.__queued_msgs.append(msg)
+        if len(self.__queued_msgs) > Config.max_queued_msgs:
+            dropped = len(self.__queued_msgs) - Config.max_queued_msgs
+            self.__queued_msgs = self.__queued_msgs[dropped:]
+            log.user(f"⏳ Stai scrivendo troppo in fretta: {dropped} messaggio/i in coda è/sono stato/i scartato/i")
+
+        cooldown_left = self.__cooldown_left()
+        if cooldown_left > 0.:
+            log.user(f"⏳ Cooldown anti-flooding: il messaggio verrà inviato tra {cooldown_left:.1f} secondi")
+
+        await self.__flush_queued_msgs()
         return True  # Don't stop the transition
 
     @action
@@ -325,6 +344,33 @@ class WAgent(Agent):
         if ret:
             self._pending_events = []
         return ret
+
+    def __cooldown_left(self) -> float:
+        """Seconds still to wait before another message can be sent to the room (<= 0 means: send it now)."""
+        if Config.msg_cooldown <= 0. or self.__last_msg_sent_time < 0.:
+            return 0.
+        return Config.msg_cooldown - (time.time() - self.__last_msg_sent_time)
+
+    async def __flush_queued_msgs(self) -> None:
+        """Send the oldest message waiting in the anti-flooding queue, if the cooldown expired (async)."""
+        if len(self.__queued_msgs) == 0 or self.__floor_manager is None or self._ignore_messages:
+            return
+
+        # Still cooling down: the queued messages stay there, a following tick will take care of them
+        if self.__cooldown_left() > 0.:
+            return
+
+        msg = self.__queued_msgs.pop(0)
+        self.__last_msg_sent_time = time.time()
+
+        # Sending my clean message to the floor manager
+        interaction = await self._send(action_name="get_msg_and_broadcast",
+                                       action_kwargs={"msg": msg},
+                                       from_state="collect_msgs",
+                                       target=self.__floor_manager,
+                                       volatile=True)
+        if interaction is None:
+            await self.disconnect(self.__floor_manager)
 
     def __push_to_processor(self, msg: str | None,
                             process_uuid: str | None = Custom.SYSTEM_INTERACTION_UUID) -> None:

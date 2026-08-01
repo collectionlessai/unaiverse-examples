@@ -28,6 +28,8 @@ class Config:
     max_overbooked_guests = 1
     rooms_per_floor = 50
     min_msgs_from_votee = 3  # Minimum number of received messages from somebody to vote hit
+    msg_cooldown = 5  # Minimum time between two consecutive messages sent by a guest to the room (anti-flooding)
+    max_queued_msgs = 3  # Max messages a guest can keep waiting for the cooldown (the oldest ones get dropped)
     send_reminder_every = 65  # Reminder on how to exit the room and vote
     send_floor_updates_every = 3  # From floor manager to hotel manager
     decompression_time = 60
