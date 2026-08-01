@@ -28,6 +28,9 @@ class Config:
     max_overbooked_guests = 1
     rooms_per_floor = 50
     min_msgs_from_votee = 3  # Minimum number of received messages from somebody to vote hit
+    msg_filter = True  # Mask bad words (and personal data) in the messages broadcast in the rooms
+    msg_filter_pii = True  # Also mask e-mails, phone numbers, IBANs, fiscal codes, addresses, links
+    msg_filter_max_severe = 5  # Hate speech messages a guest can send before being pushed off the floor
     send_reminder_every = 65  # Reminder on how to exit the room and vote
     send_floor_updates_every = 3  # From floor manager to hotel manager
     decompression_time = 60
@@ -92,6 +95,13 @@ class Config:
                              f"Scrivi un messaggio qualsiasi per continuare (hai {survey_reply_time} secondi).")
     violation_message = ("[GEN_MSG] Il tuo ingresso è stato segnalato dal direttore dell'hotel, mi dispiace ma "
                          "devo disconnetterti")
+    # Messages sent to the AUTHOR of a filtered message (the other guests only see the masked text)
+    filter_mask_message = ("[GEN_MSG] Ho oscurato una parte del tuo messaggio prima di mostrarlo agli altri "
+                           "ospiti (<WHAT>): il resto è arrivato nella stanza.")
+    filter_severe_message = ("[GEN_MSG] Il tuo messaggio conteneva un'offesa grave e l'ho oscurata. Questo è il "
+                             "richiamo <N> di <MAX>: al <MAX>° dovrò allontanarti dal piano.")
+    filter_eject_message = ("[GEN_MSG] Hai raggiunto <MAX> richiami per offese gravi, mi dispiace ma devo "
+                            "allontanarti dal piano.")
     start_message_details = f"""
 Ecco le linee guida dettagliate da seguire durante l'intera conversazione.
 

@@ -1,0 +1,209 @@
+# English hate speech: ethnic and homophobic slurs (masked + strike)
+#
+# Wordlist used by src/filter.py (Turing Hotel Italia message filter).
+#
+# Syntax: one entry per line, "#" starts a comment. Entries are matched on WHOLE, normalised words
+# (accents, leetspeak, repeated letters and separators are folded away before matching), so "arsenale"
+# never matches "arse". An entry made of several words is matched as a sequence of whole words.
+# A trailing "*" makes the entry a prefix ("stronz*" matches "stronzata"). Editing this file is enough:
+# nothing else has to be touched, the filter reloads it at start-up.
+#
+# Sources (see THIRD_PARTY_LICENSES.md): dsojevic/profanity-list (MIT), tags 'racial'/'lgbtq'
+# Identity terms (enby, cishet, transbian, twink...) were removed: they are how people describe
+# themselves, not slurs, and must never be filtered.
+anal assassin
+anal astronaut
+arse bandit
+ass bandit
+batty boi
+batty boy
+battyboi
+battyboy
+bean flicker
+bean queen
+beaner
+beaners
+beanflicker
+bone smuggler
+bonesmuggler
+booty buffer
+brown piper
+brownie king
+brownie queen
+brownpiper
+buddha head
+buddhahead
+bufter
+bufty
+bulldyke
+bum boy
+bum chum
+bum driller
+bum pilot
+bum pirate
+bum rider
+bum robber
+bum rustler
+bumboy
+bumchum
+bumdriller
+bumhole engineer
+bumrider
+bumrobber
+butt boy
+butt pilot
+butt pirate
+butt rider
+butt robber
+butt rustler
+buttboy
+butthole engineer
+buttrider
+buttrobber
+camel jockey
+camel jockies
+cameljockey
+cameljockies
+carpet muncher
+carpetmuncher
+cheese eating surrender monkey
+chi chi man
+chicken queen
+china man
+china men
+chinaman
+chinamen
+ching chong
+chink
+chinks
+chinky
+cissie
+cockpipe cosmonaut
+cockstruction worker
+coon
+coons
+crafty butcher
+cunt boy
+cuntboy
+curry muncher
+currymuncher
+darkey
+darkie
+darkies
+darky
+dick girl
+dickgirl
+donut muncher
+donut puncher
+doon coon
+dooncoon
+dune coon
+dyke
+eye tie
+eyetie
+fag bomb
+fagbomb
+fagot
+frog eater
+frogeater
+fudge packer
+fudgepacker
+gin jockey
+gin jocky
+golliwog
+gollywog
+gook
+gook eye
+gookie
+gooks
+gooky
+gray queen
+greaseball
+grey queen
+gymbunny
+hadji
+haji
+heimie
+hermie
+honkey
+honkeys
+honkies
+honky
+hymie
+jap
+jig aboo
+jig gerboo
+jungle bunny
+junglebunny
+ki ke
+kitty puncher
+kittypuncher
+kraut
+krauts
+lady boy
+ladyboy
+lesbo
+lezzie
+lezzies
+light in the fedora
+light in the loafers
+light in the pants
+limp wristed
+mayonnaise monkey
+mayonnaise monkies
+meat masseuse
+muff diver
+muffdiver
+nig nog
+nignog
+oklahomo
+paki
+peter puffer
+peterpuffer
+petrol sniffer
+petrolsniffer
+pikey
+pikeys
+piss pig
+pisspig
+poof
+potato queen
+pussy puncher
+pussypuncher
+rag head
+rag heads
+raghead
+ragheads
+rice queen
+ring raider
+ringraider
+she male
+sheep shagger
+sheepshagger
+shemale
+sissy
+slant eye
+slanteye
+spearchucker
+spic
+spick
+spicks
+spics
+swamp guinea
+tgirl
+towel head
+towelhead
+trannie
+tranny
+wagon burner
+wet back
+wetback
+whigger
+white power
+whitepower
+wigga
+wigger
+wog
+wogs
+zipper head
+zipperhead
