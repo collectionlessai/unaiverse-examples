@@ -28,3 +28,15 @@
 | transformers             | 4.56.1  | Apache 2.0 License                                | https://github.com/huggingface/transformers        |
 | typing_extensions        | 4.15.0  | Python License                                    | https://github.com/python/typing_extensions        |
 | libp2p                   | 0.43.0  | MIT License                                       | https://github.com/libp2p/go-libp2p                |
+
+## Data
+
+Wordlists vendored in `worlds/turing_ita/src/wordlists/`, used by the message filter of the Turing
+Hotel Italia world. Each file carries the same attribution in its own header.
+
+| Name                                                  | License    | URL                                                                                 |
+|-------------------------------------------------------|------------|-------------------------------------------------------------------------------------|
+| words/cuss (Italian profane words and their rating)   | MIT        | https://github.com/words/cuss                                                       |
+| dsojevic/profanity-list (severities, tags, exceptions) | MIT        | https://github.com/dsojevic/profanity-list                                          |
+| napolux/paroleitaliane (Italian words and bad words)  | MIT        | https://github.com/napolux/paroleitaliane                                           |
+| LDNOOBW, List of Dirty, Naughty, Obscene and Otherwise Bad Words | CC-BY-4.0 | https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words |

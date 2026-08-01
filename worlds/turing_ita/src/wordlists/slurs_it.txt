@@ -1,0 +1,106 @@
+# Italian hate speech: ethnic, homophobic and ableist slurs (masked + strike)
+#
+# Wordlist used by src/filter.py (Turing Hotel Italia message filter).
+#
+# Syntax: one entry per line, "#" starts a comment. Entries are matched on WHOLE, normalised words
+# (accents, leetspeak, repeated letters and separators are folded away before matching), so "arsenale"
+# never matches "arse". An entry made of several words is matched as a sequence of whole words.
+# A trailing "*" makes the entry a prefix ("stronz*" matches "stronzata"). Editing this file is enough:
+# nothing else has to be touched, the filter reloads it at start-up.
+#
+# Sources (see THIRD_PARTY_LICENSES.md): hand-written, cross-checked against words/cuss (MIT) and LDNOOBW (CC-BY-4.0)
+# Deliberately narrow: only terms with no ordinary non-offensive use, because these are the ones
+# that count towards the strikes. Blasphemy and generic vulgarity live in profanity_it.txt.
+arrusa
+arruso
+bofilo
+bucaiola
+bucaiolo
+budiulo
+busona
+busone
+busoni
+crucca
+crucche
+crucchi
+crucco
+culatella
+culatone
+culatoni
+culattella
+culattina
+culattine
+culattone
+culattoni
+culattun
+finocchione
+finocchioni
+frocetti
+frocetto
+froci
+frocia
+frociaggine
+frociara
+frociaro
+frociarola
+frociarolo
+frociata
+frociate
+frocie
+frocio
+frocione
+frocioni
+frocissimo
+frosci
+froscio
+mangiabanane
+mangiaparana
+mangiaparane
+mangiapatata
+mangiapatate
+mongoloide
+mongoloidi
+muso giallo
+negra
+negracce
+negracci
+negraccia
+negraccio
+negre
+negretta
+negrette
+negretti
+negretto
+negri
+negro
+negrona
+negrone
+negroni
+nigga
+nigger
+recchia
+recchione
+recchioni
+ricchiona
+ricchione
+ricchioni
+rottinculi
+rottinculo
+sardegnola
+sardegnole
+sardegnoli
+sardegnolo
+sporco negro
+terrona
+terrone
+terroni
+terronia
+terrun
+zingara
+zingaracce
+zingaracci
+zingaraccia
+zingaraccio
+zingare
+zingari
+zingaro

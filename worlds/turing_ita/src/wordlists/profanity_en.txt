@@ -1,0 +1,590 @@
+# English profanity and sexual content (masked, no strike)
+#
+# Wordlist used by src/filter.py (Turing Hotel Italia message filter).
+#
+# Syntax: one entry per line, "#" starts a comment. Entries are matched on WHOLE, normalised words
+# (accents, leetspeak, repeated letters and separators are folded away before matching), so "arsenale"
+# never matches "arse". An entry made of several words is matched as a sequence of whole words.
+# A trailing "*" makes the entry a prefix ("stronz*" matches "stronzata"). Editing this file is enough:
+# nothing else has to be touched, the filter reloads it at start-up.
+#
+# Sources (see THIRD_PARTY_LICENSES.md): dsojevic/profanity-list (MIT, severity >= 2), LDNOOBW (CC-BY-4.0)
+# words/cuss and google-profanity-words were deliberately NOT used: they flag ordinary words
+# (dope, fool, spit, pawn...) and this chat has to stay natural. Entries that are also valid
+# Italian words or first names were removed, they would fire on normal Italian conversation.
+1m1j
+1man1jar
+2g1c
+2girls1cup
+acrotomophile
+acrotomophilia
+alabama hot pocket
+alabama tuna melt
+alaskan pipeline
+algophile
+algophilia
+anilingus
+ape shit
+apeshit
+apotemnophile
+apotemnophilia
+arseho le
+arsehole
+ass ho le
+asshole
+assmunch
+auto erotic
+autoerotic
+ba sta rd
+babeland
+baby batter
+baby gravy
+baby juice
+ball batter
+ball gag
+ball gravy
+ball kicking
+ball licking
+ball sack
+ball sucking
+ballcuzi
+ballgag
+bang bros
+bang bus
+bangbros
+bangbus
+bareback
+barely legal
+barenaked
+bastard
+bastinado
+bbw
+bdsm
+beastiality
+beaver cleaver
+beaver lips
+beestiality
+bell end
+bellesa
+bestiality
+bi tch
+bi tches
+big black
+big boobs
+big breasts
+big cock
+big knockers
+big tits
+bimbos
+birdlock
+bitch
+bitches
+black cock
+blonde action
+blonde on blonde action
+blow job
+blow your load
+blowjob
+blue waffle
+bluewaffle
+blumpkin
+bollocks
+bondage
+boner
+booty call
+boston george
+brown shower
+brown showers
+brunette action
+bukkake
+bull shit
+bullet vibe
+bullet vibrator
+bullshit
+bung hole
+bunghole
+busty
+buttcheeks
+butthole
+camel toe
+camgirl
+camslut
+camwhore
+canadian porch swing
+chocolate rosebud
+chocolate rosebuds
+cholerophile
+cholerophilia
+cialis
+circle jerk
+circlejerk
+claustrophile
+claustrophilia
+cleveland accordion
+cleveland hot waffle
+cleveland steamer
+clit
+clitoris
+clover clamp
+clover clamps
+clu nge
+cluster fuck
+clusterfuck
+cock
+coimetrophile
+coimetrophilia
+collared
+collaring
+coprolagnia
+coprophile
+coprophilia
+cornhole
+cream pie
+creampie
+cum
+cum shot
+cum shots
+cumming
+cumshot
+cumshots
+cunnilingus
+cunt
+cunts
+date rape
+daterape
+ddlg
+deep throat
+deepthroat
+dendrophile
+dendrophilia
+di ck
+dick
+dildo
+dildos
+dingleberries
+dingleberry
+dipsea
+dirty pillows
+dirty sanchez
+dishabiliophile
+dishabiliophilia
+dog shit
+dog style
+doggie style
+doggiestyle
+doggy style
+doggystyle
+dogshit
+dolcett
+domination
+dominatrix
+domme
+dommes
+donkey punch
+double dong
+double penetration
+dp action
+dry hump
+dutch rudder
+dvda
+dystychiphile
+dystychiphilia
+eat my ass
+ecchi
+edge play
+edgeplay
+ejaculate
+ejaculated
+ejaculating
+ejaculation
+electro play
+electroplay
+emetophile
+emetophilia
+erotic
+erotism
+escort
+eskimo trebuchet
+eunuch
+fag
+faggot
+fecal
+felch
+felching
+fellating
+feltch
+female squirting
+femdom
+figging
+finger bang
+fingerbang
+fingerbanging
+fingered
+fingering
+finoccio
+finochio
+fisted
+fisting
+foot fetish
+foot job
+footjob
+french rudder
+frolic me
+frolicme
+frottage
+frotting
+fu ckers
+fuck
+fuck buttons
+fuck wit
+fuckhead
+fuckheads
+fuckin
+fucking
+fucks
+fucktard
+fucktards
+fuckwad
+fuckwads
+fuckwhit
+fuckwit
+fuckwits
+gang bang
+gangbang
+gay sex
+genitorture
+gerontophile
+gerontophilia
+giant cock
+girl on
+girl on top
+girls gone wild
+go kun
+goatcx
+goatse
+god damn
+god damned
+goddamn
+goddamned
+gokkun
+golden shower
+golden showers
+goo girl
+goodpoop
+goregasm
+grope
+group sex
+guro
+hand job
+handjob
+hard core
+hardcore
+hentai
+hickory switch
+hippophile
+hippophilia
+homoerotic
+hooker
+horny
+horse shit
+horseshit
+hot carl
+hot chick
+hot richard
+how to kill
+how to murder
+huge cock
+huge fat
+humping
+impact play
+incest
+intercourse
+jack off
+jail bait
+jailbait
+jelly donut
+jerk mate
+jerk off
+jerkmate
+jigaboo
+jiggaboo
+jiggerboo
+jizz
+juggs
+kennebunkport surprise
+kentucky klondike
+kentucky tractor puller
+kike
+kinbaku
+kinkster
+kinky
+knobbing
+ku nt
+kunts
+kynophile
+kynophilia
+leather restraint
+leather straight jacket
+lemon party
+lemonparty
+leningrad steamer
+literotica
+livesex
+lovemaking
+ma stu rb8
+ma stu rbate
+make me come
+male squirting
+massive cock
+masterb8
+masterbate
+masturbating
+masturbation
+mdlb
+meat spin
+meatspin
+menophile
+menophilia
+mexican pancake
+milf
+milwaukee blizzard
+missionary position
+mississippi birdbath
+motherfucker
+mound of venus
+mr hands
+mrhands
+muff diving
+muffdiving
+mvtube
+nambla
+nawashi
+necrophile
+necrophilia
+neo nazi
+neonazi
+nigerian hurricane
+nigga
+nigger
+nimpho
+nimphomania
+nimphomaniac
+nipple
+nipple clamp
+nipple clamps
+nsfw
+nsfw images
+nudity
+nutten
+nympho
+nymphomania
+nymphomaniac
+octopussy
+omorashi
+one cup two girls
+one guy one jar
+one jar one man
+one man one jar
+only fans
+onlyfans
+orgasm
+orgasmic
+orgasms
+orgy
+paedo bear
+paedobear
+paedophile
+paedophilia
+pain slut
+painslut
+panamanian petting zoo
+panties
+panty
+parthenophile
+parthenophilia
+pedo bear
+pedobear
+pedophile
+pedophilia
+pegging
+phagophile
+phagophilia
+phone sex
+pi ss ed off
+pi ss off
+piece of shit
+pieces of shit
+pissing
+playboy
+pleasure chest
+pnigerophile
+pnigerophilia
+pnigophile
+pnigophilia
+poinephile
+poinephilia
+pole smoker
+pony boy
+pony girl
+pony play
+ponyboy
+ponygirl
+ponyplay
+poon
+poontang
+poop chute
+poopchute
+porn
+porn hub
+pornhub
+porno
+pornographic
+pornos
+prince albert piercing
+proctophile
+proctophilia
+pthc
+pu na ni
+punany
+pussy
+queaf
+queef
+quim
+raging boner
+ramen yarmulke
+raping
+rapist
+retard
+retarded
+reverse cowgirl
+rhabdophile
+rhabdophilia
+rhypophile
+rhypophilia
+rimjob
+rimming
+rosy palm
+rusty trombone
+sadism
+santorum
+scat
+scatophile
+scatophilia
+schlong
+scissoring
+seplophile
+seplophilia
+sexcam
+sexo
+sexuality
+sexually
+shaved beaver
+shaved pussy
+shibari
+shit
+shit head
+shitblimp
+shithead
+shitty
+shlong
+shota
+shrimping
+skeet
+skittle harvest
+skittles harvest
+slut
+smut
+snatch
+snowballing
+sodomise
+sodomist
+sodomize
+sodomy
+spastic
+spicy gringo
+splooge
+splooge moose
+spooge
+spread legs
+spunk
+strap on
+strapon
+strappado
+strip club
+style doggy
+suastika
+suicide girls
+sultry women
+svastika
+swastika
+swinger
+tainted love
+taphephile
+taphephilia
+taste my
+tea bagged
+tea bagging
+thanatophile
+thanatophilia
+threesome
+throating
+throbbing boner
+throbbing cock
+thumbzilla
+tied up
+tight white
+titt ies
+titties
+titty
+tosser
+traumatophile
+traumatophilia
+tribadism
+tribbing
+tub girl
+tubgirl
+tushy
+twat
+two girls one cup
+undressing
+upskirt
+urethra play
+urophile
+urophilia
+venus mound
+viagra
+vibrator
+violet wand
+vorarephile
+vorarephilia
+voyeur
+voyeurweb
+voyuer
+vulva
+wa nk
+wa nker
+wank
+wax play
+wet dream
+who re
+whore
+wiitwd
+wolfbagging
+worldsex
+wrapping men
+wrinkled starfish
+xhamster
+xnxx
+xtube
+xvideos
+xxx
+xyrophile
+xyrophilia
+yaoi
+yellow shower
+yellow showers
+yiffy
+zippo cat
+zippocat
+zoophile
+zoophilia

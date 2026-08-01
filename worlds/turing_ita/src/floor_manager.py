@@ -27,6 +27,7 @@ from unaiverse.agent import Agent, action
 from unaiverse.interaction import Interaction
 from unaiverse.streams.dataprops import DataProps
 from concurrent.futures import ThreadPoolExecutor
+from .filter import RuleBasedFilter
 from .utils import compute_check_in_proposals, format_message
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
@@ -74,6 +75,11 @@ class WAgent(Agent):
         self._guest2vote_info = {}  # Guest who got the survey message -> [UUID of the request message, vote dict]
         self._guest2reminder_time = {}  # Guest who got the survey message -> last reminder message time
         self._wants_to_exit = set()  # Guest who wants to leave
+        self._severe_strikes = {}  # Guest -> how many times he said something we consider hate speech
+
+        # The filter every message goes through before being broadcast. This is the right place for
+        # it: guests run their own copy of guest.py, the floor manager is run by the world owners
+        self.msg_filter = RuleBasedFilter(use_pii=Config.msg_filter_pii) if Config.msg_filter else None
 
     def accept_new_role(self, role: int):
         super().accept_new_role(role)
@@ -666,12 +672,20 @@ class WAgent(Agent):
 
         if self.floor.is_in_a_room(guest) and (msg is not None and len(msg) > 0):
             fake_name = self.floor.get_room_of(guest).fake_name_of(guest)
-            altered_msg = format_message(fake_name, msg)
             room = self.floor.get_room_of(guest)
 
             if msg.strip().lower() == Config.exit_trigger_message.lower():
                 self._wants_to_exit.add(guest)
                 return True
+
+            # Bad words and personal data are masked here, before anything else sees the message:
+            # what is broadcast (and what will end up in the stored conversations) is the masked text
+            if self.msg_filter is not None:
+                msg = await self.__filter_and_warn(guest, msg, room)
+                if msg is None:
+                    return True  # The guest was thrown out of the floor, nothing left to broadcast
+
+            altered_msg = format_message(fake_name, msg)
 
             async def _broadcast_to(_guest):
                 _fake_name = room.fake_name_of(_guest)
@@ -688,6 +702,59 @@ class WAgent(Agent):
             await asyncio.gather(*[_broadcast_to(g) for g in room.get_guests()])
 
         return True
+
+    async def __filter_and_warn(self, guest, msg: str, room) -> str | None:
+        """Mask what a guest is not allowed to say, tell him about it, count his severe hits (async).
+
+        The sender is always told what happened: a message that silently changes (or disappears) on
+        its way to the room is far more confusing than a moderated one, and a human guest who does
+        not understand why nobody answers stops behaving like a human.
+
+        Args:
+            guest: The peer ID of the guest who wrote the message.
+            msg: The raw text he wrote.
+            room: The room he is sitting in (its fake names are never filtered).
+
+        Returns:
+            The text to broadcast, or None if the guest has just been thrown out of the floor.
+        """
+        result = await self.msg_filter.check(msg, allowed_names=set(room.get_fake_names()))
+        if not result:
+            return msg
+
+        log.user(f"🚫 Messaggio filtrato ({room.fake_name_of(guest)}): {result}")
+
+        if len(result.severe) > 0:
+            self._severe_strikes[guest] = self._severe_strikes.get(guest, 0) + 1
+            strikes = self._severe_strikes[guest]
+
+            # Too many: same treatment as the guests reported by the hotel director
+            if strikes >= Config.msg_filter_max_severe:
+                await self.send(action_name="get_status_msg",
+                                action_kwargs={"msg": format_message(
+                                    Config.manager_fake_name,
+                                    Config.filter_eject_message.replace("<MAX>",
+                                                                        str(Config.msg_filter_max_severe)))},
+                                target=guest,
+                                volatile=True)
+                await self.disconnect(guest)  # Triggers remove_agent, that pushes him out of the floor
+                return None
+
+            notice = (Config.filter_severe_message
+                      .replace("<N>", str(strikes))
+                      .replace("<MAX>", str(Config.msg_filter_max_severe)))
+        else:
+            notice = Config.filter_mask_message.replace(
+                "<WHAT>", ", ".join(sorted({category.lower() for category, _ in result.hits})))
+
+        if not await self.send(action_name="get_status_msg",
+                               action_kwargs={"msg": format_message(Config.manager_fake_name, notice)},
+                               from_state="room_round_table",
+                               target=guest,
+                               volatile=True):
+            await self.disconnect(guest)
+
+        return result.clean_msg
 
     def __eject_and_clear_guest(self, guest):
         """Send a guest of the floor/room, without clearing his vote-related info (they might be needed to get his vote
