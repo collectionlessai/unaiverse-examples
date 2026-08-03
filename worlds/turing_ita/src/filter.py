@@ -314,9 +314,33 @@ _INSULT_TRIGGERS = {"sei", "siete", "sembri", "sembrate", "sembra", "brutto", "b
 _INSULT_WINDOW = 3  # How many words before/after are looked at, when deciding on an ambiguous word
 
 
+def _wordlists_dir() -> str:
+    """Locate the shipped ``wordlists/`` directory.
+
+    This module is routinely loaded dynamically by the framework (to build the
+    role dummy agents and the running manager agents), and in that context it is
+    executed from an in-memory source with no real location, so ``__file__`` is
+    undefined. We therefore try ``__file__`` first (normal import), and otherwise
+    resolve the directory relative to the process working directory, which is the
+    world folder when a world is hosted or a manager is run from this repo.
+    """
+    candidates: list[str] = []
+    try:
+        candidates.append(os.path.dirname(os.path.abspath(__file__)))
+    except NameError:
+        pass
+    cwd = os.getcwd()
+    candidates += [os.path.join(cwd, "src"), cwd]
+    for base in candidates:
+        directory = os.path.join(base, "wordlists")
+        if os.path.isdir(directory):
+            return directory
+    raise FileNotFoundError(f"Could not locate the turing_ita 'wordlists' directory (tried: {candidates})")
+
+
 def load_wordlist(name: str) -> list[str]:
-    """Read one of the wordlists shipped next to this file, dropping comments and blank lines."""
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wordlists", name)
+    """Read one of the shipped wordlists, dropping comments and blank lines."""
+    path = os.path.join(_wordlists_dir(), name)
     with open(path, encoding="utf-8") as f:
         return [ln.strip().lower() for ln in f if ln.strip() and not ln.lstrip().startswith("#")]
 
