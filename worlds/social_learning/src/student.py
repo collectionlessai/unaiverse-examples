@@ -104,8 +104,8 @@ class WAgent(Agent):
 
         # After class, each student grades itself on the full mnist test set BEFORE actually
         # disengaging: the evaluation is spread one batch per tick (stepwise), so the node loop
-        # keeps pumping, and the base disengage (engaged-set release, GOAWAY) runs only once,
-        # at the end, when the student is genuinely ready for the next lesson.
+        # keeps pumping, and the base disengage (engaged-set release, optional disconnect) runs
+        # only once, at the end, when the student is genuinely ready for the next lesson.
         assert self.proc is not None
         assert isinstance(self.proc, ModuleWrapper)
         assert isinstance(self.proc.module, torch.nn.Module)
