@@ -1,3 +1,12 @@
 {
-   "signedContributors": []
+  "signedContributors": [
+    {
+      "name": "EdoardoCaproni",
+      "id": 156699669,
+      "comment_id": 5188603608,
+      "created_at": "2026-08-05T06:59:54Z",
+      "repoId": 1045183545,
+      "pullRequestNo": 4
+    }
+  ]
 }
