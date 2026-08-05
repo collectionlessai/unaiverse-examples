@@ -391,7 +391,12 @@ class WAgent(Agent):
 
         if is_head_of_hotel_managers:
             int_timestamp = self.clock.get_time_ms(monotonic=True)
-            world_peer_id = self.get_connection_pool_manager().get_world_node_peer_id()
+            # Compat: the framework accessor was renamed get_world_peer_id ->
+            # get_world_node_peer_id in an unreleased version. Fall back so this
+            # also runs on the published unaiverse (0.1.23), which has the old name.
+            _cpm = self.get_connection_pool_manager()
+            _get_world_peer_id = getattr(_cpm, "get_world_node_peer_id", None) or _cpm.get_world_peer_id
+            world_peer_id = _get_world_peer_id()
             assert world_peer_id is not None
             assert self.stats is not None
 
