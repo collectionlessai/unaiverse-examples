@@ -14,6 +14,7 @@
 """
 import os
 import re
+import sys
 import unicodedata
 
 
@@ -314,28 +315,67 @@ _INSULT_TRIGGERS = {"sei", "siete", "sembri", "sembrate", "sembra", "brutto", "b
 _INSULT_WINDOW = 3  # How many words before/after are looked at, when deciding on an ambiguous word
 
 
-def _wordlists_dir() -> str:
-    """Locate the shipped ``wordlists/`` directory.
+# The lists loaded by RuleBasedFilter below. They double as the signature of a valid "wordlists"
+# folder: a candidate directory is taken only if it holds all of them, so a same-named folder that
+# happens to sit somewhere on sys.path cannot be mistaken for ours. Keep in sync with __init__.
+_WORDLISTS = ("allowlist.txt", "common_it.txt", "slurs_it.txt", "slurs_en.txt",
+              "profanity_it.txt", "profanity_en.txt")
 
-    This module is routinely loaded dynamically by the framework (to build the
-    role dummy agents and the running manager agents), and in that context it is
-    executed from an in-memory source with no real location, so ``__file__`` is
-    undefined. We therefore try ``__file__`` first (normal import), and otherwise
-    resolve the directory relative to the process working directory, which is the
-    world folder when a world is hosted or a manager is run from this repo.
+_WORDLISTS_ENV = "TURING_ITA_WORDLISTS"  # Escape hatch: point it at the folder and skip the search
+
+_wordlists_dir_found: str | None = None  # Resolved once, the answer cannot change within a process
+
+
+def _holds_wordlists(directory: str) -> bool:
+    """True if `directory` is a wordlists folder, i.e. it holds every list we are going to read."""
+    return all(os.path.isfile(os.path.join(directory, name)) for name in _WORDLISTS)
+
+
+def _wordlists_dir() -> str:
+    """Locate the "wordlists" directory on the local filesystem.
+
+    Only .py files travel to the other nodes, so these lists are never part of the world bundle: they
+    have to be found on disk, in a checkout of this world. Two things make that awkward. This module
+    is routinely loaded from an in-memory source (the framework builds both the role dummy agents and
+    the running manager agents that way), and there __file__ is not defined at all, because the
+    in-memory loader gives its modules a virtual origin and no location; and the working directory is
+    whatever the launcher happened to be started from, which is not necessarily the world folder. We
+    therefore try, in this order: the environment variable, the directory of this module (plain import
+    from disk), every sys.path entry and finally the working directory, looking at each base both
+    directly and through a "src" subfolder. sys.path is the one that carries us home when the world is
+    hosted from elsewhere: running "uv run .../turing_ita/run_w.py" from the repository root puts the
+    world folder in sys.path[0] whatever the working directory is, and the framework itself appends
+    the world folder to sys.path before building the behaviors.
     """
-    candidates: list[str] = []
-    try:
-        candidates.append(os.path.dirname(os.path.abspath(__file__)))
-    except NameError:
-        pass
-    cwd = os.getcwd()
-    candidates += [os.path.join(cwd, "src"), cwd]
-    for base in candidates:
+    global _wordlists_dir_found
+    if _wordlists_dir_found is not None:
+        return _wordlists_dir_found
+
+    env_dir = os.environ.get(_WORDLISTS_ENV)
+    if env_dir:
+        if not _holds_wordlists(env_dir):
+            raise FileNotFoundError(f"{_WORDLISTS_ENV} is set to '{env_dir}', but that directory does not hold "
+                                    f"the expected lists: {', '.join(_WORDLISTS)}")
+        _wordlists_dir_found = env_dir
+        return env_dir
+
+    bases: list[str] = []
+    module_file = globals().get("__file__")  # Undefined when this module is loaded from memory
+    if module_file:
+        bases.append(os.path.dirname(os.path.abspath(module_file)))
+    for entry in list(sys.path) + [os.getcwd()]:
+        base = os.path.abspath(entry) if entry else os.getcwd()
+        bases += [base, os.path.join(base, "src")]
+
+    for base in bases:
         directory = os.path.join(base, "wordlists")
-        if os.path.isdir(directory):
+        if _holds_wordlists(directory):
+            _wordlists_dir_found = directory
             return directory
-    raise FileNotFoundError(f"Could not locate the turing_ita 'wordlists' directory (tried: {candidates})")
+    next_to = f"next to '{module_file}', " if module_file else ""
+    raise FileNotFoundError(f"Could not locate the turing_ita 'wordlists' directory: looked {next_to}under every "
+                            f"sys.path entry and under '{os.getcwd()}'. Run from a checkout of this world, or set "
+                            f"{_WORDLISTS_ENV} to the directory holding {', '.join(_WORDLISTS)}")
 
 
 def load_wordlist(name: str) -> list[str]:
