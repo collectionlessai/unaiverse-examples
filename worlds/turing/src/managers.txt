@@ -4,3 +4,9 @@ hotel,stefano.melacci@unisi.it/_TuringHotelManager
 floor,stefano.melacci@unisi.it/_TuringFloorManager
 hotel,stefano.melacci@unisi.it/TuringHotelManagerx
 floor,stefano.melacci@unisi.it/TuringFloorManagerx
+hotel,jolly-mayer/TuringHotelManager
+floor,jolly-mayer/TuringFloorManager
+hotel,jolly-mayer/_TuringHotelManager
+floor,jolly-mayer/_TuringFloorManager
+hotel,jolly-mayer/TuringHotelManagerx
+floor,jolly-mayer/TuringFloorManagerx
