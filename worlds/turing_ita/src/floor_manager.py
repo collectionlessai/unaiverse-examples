@@ -699,7 +699,8 @@ class WAgent(Agent):
                         room.inc_message_exchanges(fake_name_from=fake_name, fake_name_to=_fake_name)
 
             # Try to broadcast in "parallel"
-            await asyncio.gather(*[_broadcast_to(g) for g in room.get_guests()])
+            if Config.broadcast_when_no_humans or room.count_human_guests() > 0:
+                await asyncio.gather(*[_broadcast_to(g) for g in room.get_guests()])
 
         return True
 
