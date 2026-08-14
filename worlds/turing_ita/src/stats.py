@@ -8,7 +8,7 @@ Schema overview
 OUTER dynamic (peer_id = group key):
 
   turing_vote       - one record per validated A-judges-B classification.
-                      peer_id = votee real <unaid> (nodeOwner@email/nodeName)
+                      peer_id = votee real <unaid> (nodeOwner@nickname/nodeName)
                       Value shape:
                         {
                           "voter":            "<unaid>",

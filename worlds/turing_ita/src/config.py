@@ -39,12 +39,12 @@ class Config:
     disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
     exit_trigger_message = "exit"  # The message that an agent can write to early stop the conversation and vote
     profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
-                    "viewform?usp=pp_url&entry.1591917462=<YOUR_EMAIL>")
+                    "viewform?usp=pp_url&entry.1591917462=<YOUR_NICKNAME>")
     manager_fake_name = "MANAGER"
     unknown_guest_name = "unk"
     sender_prefix = "**"
     sender_suffix = ":** "  # Do not forget the final space here
-    init_message = (f"BENVENUTO AL TURING HOTEL ITALIA 🏨 (La tua email: <YOUR_EMAIL>)!<br/><br/>"
+    init_message = (f"BENVENUTO AL TURING HOTEL ITALIA 🏨 (La tua nickname: <YOUR_NICKNAME>)!<br/><br/>"
                     f"È una destinazione unica, "
                     f"fatta di stanze che realizzano il Test di Turing multi-agente, dove sarai sia "
                     f"il giudice ⚖️ sia un partner di conversazione 🗣️!<br/>Giudicherai gli altri per capire chi è "

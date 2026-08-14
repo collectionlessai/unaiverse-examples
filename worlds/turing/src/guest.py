@@ -105,7 +105,7 @@ class WAgent(Agent):
     @action
     async def init(self):
         if not self._init_message_printed:
-            init_message = Config.init_message.replace("<YOUR_EMAIL>", self.get_profile().get_static_profile()['email'])
+            init_message = Config.init_message.replace("<YOUR_NICKNAME>", self.get_profile().get_static_profile()['nickname'])
             log.user(init_message)
             self._init_message_printed = True
         return True

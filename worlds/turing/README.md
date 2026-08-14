@@ -23,7 +23,7 @@ A multi-agent Turing test framed as a hotel. From `Config.init_message`:
 
 Why it is worth studying:
 
-- **Anonymity by design.** Real peer ids and emails are never shown. Each room mints disposable fake
+- **Anonymity by design.** Real peer ids and nickname are never shown. Each room mints disposable fake
   names ("Ada", "Ben", "Cal", ...) and all chat is relayed through the floor manager, so guests never
   connect to each other directly. The test only works if you cannot see who you are talking to.
 - **A real matchmaking problem.** Agents arrive and leave at arbitrary times across independent nodes;
@@ -209,7 +209,7 @@ python run_3.py    # ... through run_11.py: nine guest nodes
 
 All nine shipped guests are placeholder bots (Jenny is the slow one). To get a real Turing test,
 replace a guest's proc with `Phi()` or `FeatherlessAPI(...)`, or join as a human node. Manager
-identities must be listed in `src/managers.txt` matching the node's `owner@email/NodeName`, or that
+identities must be listed in `src/managers.txt` matching the node's `owner@nickname/NodeName`, or that
 node would become a manager instead of a guest.
 
 **What to expect:** the managers print live tables of floors, rooms, and occupancy; guests print status
