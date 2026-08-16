@@ -356,7 +356,8 @@ class WAgent(Agent):
             if room.get_time_in_current_status(guest) > Config.survey_reply_time:
                 await self.guest_back_to_hall(guest)
                 return True
-            elif (time.perf_counter() - self._guest2reminder_time[guest]) > Config.send_reminder_every:
+            elif ((time.perf_counter() - self._guest2reminder_time[guest]) > Config.send_reminder_every
+                  and Config.broadcast_when_no_humans):
                 time_left = Config.survey_reply_time - room.get_time_in_current_status(guest)
                 sent = False
                 if time_left > 0:
@@ -388,17 +389,16 @@ class WAgent(Agent):
 
         # This guest just confirmed that he entered the room, let's send him the 'start conversation' message,
         # and let's tell the others that he joined
-        if room.get_status(guest) == GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE:
+        if room.get_status(guest) == GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE and Config.broadcast_when_no_humans:
             other_guests_names = sorted([room.fake_name_of(_guest)
                                          for _guest in room.get_guests()
                                          if _guest != guest and
                                          room.get_status(_guest) in {GuestStatus.AT_ROUND_TABLE,
                                                                      GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE}])
             if len(other_guests_names) == 0:
-                start_message = Config.start_message_nobody + Config.start_message_details
-                other_guests_names = ["/"]
+                start_message = Config.start_message_nobody
             else:
-                start_message = Config.start_message + Config.start_message_details
+                start_message = Config.start_message
             start_message = (start_message.
                              replace("<YOUR_NAME>", room.fake_name_of(guest)).
                              replace("<OTHER_NAMES>", ", ".join(other_guests_names)))
@@ -428,7 +428,7 @@ class WAgent(Agent):
 
         # This guest just confirmed that he left the room, let's send him the 'process-survey' request
         # and let's tell the others that he left
-        if room.get_status(guest) == GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH:
+        if room.get_status(guest) == GuestStatus.JUST_ARRIVED_IN_VOTING_BOOTH and Config.broadcast_when_no_humans:
             fake_name = room.fake_name_of(guest)
             other_guests_names = sorted(list(room.get_fake_names_met_by(fake_name)))
 
@@ -470,7 +470,8 @@ class WAgent(Agent):
 
         # From time to time send a reminder
         if (room.get_status(guest) == GuestStatus.AT_ROUND_TABLE and
-                ((time.perf_counter() - self._guest2reminder_time[guest]) > Config.send_reminder_every)):
+                ((time.perf_counter() - self._guest2reminder_time[guest]) > Config.send_reminder_every)
+                and Config.broadcast_when_no_humans):
             time_left = Config.test_duration - room.get_time_in_current_status(guest)
             sent = False
             if time_left > 0:
