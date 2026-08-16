@@ -527,7 +527,7 @@ class WAgent(Agent):
                                 if _v[0] != "human" and _v[0] != "ai":
                                     invalid = True
                                     break
-                                if "@" not in _v[1] or "/" not in _v[1]:
+                                if "/" not in _v[1]:
                                     invalid = True
                                     break
                         if invalid:
