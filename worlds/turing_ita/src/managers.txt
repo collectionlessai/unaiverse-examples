@@ -10,5 +10,5 @@ hotel,edoardo.caproni2@unisi.it/HotelManager-TuringHotelItaly
 floor,edoardo.caproni2@unisi.it/FloorManager-TuringHotelItaly
 hotel,edoardo.caproni@student.unisi.it/HotelManager-TuringHotelItaly
 floor,edoardo.caproni@student.unisi.it/FloorManager-TuringHotelItaly
-hotel,jolly-mayer@unisi.it/HotelManager-TuringHotelItaly
-floor,jolly-mayer@unisi.it/FloorManager-TuringHotelItaly
+hotel,jolly-mayer/HotelManager-TuringHotelItaly
+floor,jolly-mayer/FloorManager-TuringHotelItaly
