@@ -1,5 +1,5 @@
 """
-Turing Hotel Italy Leaderboard - Premium Dashboard Template
+Turing Hotel Italia Leaderboard - Premium Dashboard Template
 =====================================================
 
 Responsive, theme-aware (dark/light) HTML dashboard with Material Design
@@ -15,7 +15,7 @@ Usage::
         scope_cms_html=build_cm_panels(),
         scope_lbs_html=build_lb_panels(),
         default_scope="max",
-        ops_json=build_ops_json(),
+        ops_json=build_ops_json()
     )
 
 Iframe theme detection (auto):
@@ -24,6 +24,7 @@ Iframe theme detection (auto):
     3. MutationObserver on parent data-theme attribute (same-origin)
     4. URL parameter: ?theme=light
 """
+
 
 def render(
     summary_html: str = "",
@@ -37,12 +38,12 @@ def render(
     """Return the complete leaderboard HTML."""
 
     return f"""<!DOCTYPE html>
-<html lang="it" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0">
 <meta name="color-scheme" content="dark light">
-<title>Hotel delle Imitazioni - Classifica</title>
+<title>Turing Hotel Italia - Leaderboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
@@ -609,14 +610,14 @@ tr.gridjs-tr:hover td.gridjs-td{{
   .podium-card{{min-width:120px;padding:14px 16px}}
   .podium-score{{font-size:1.2rem}}
   .ctrl-sep{{display:none}}
-  /* Votee table (6 cols): show #(1), Peer(2), Turing score(6), hide 3,4,5 */
+  /* Votee table (6 cols): show #(1), Peer(2), Turing score(6) — hide 3,4,5 */
   .grid-container[data-gridid^="votee"] th.gridjs-th:nth-child(3),
   .grid-container[data-gridid^="votee"] td.gridjs-td:nth-child(3),
   .grid-container[data-gridid^="votee"] th.gridjs-th:nth-child(4),
   .grid-container[data-gridid^="votee"] td.gridjs-td:nth-child(4),
   .grid-container[data-gridid^="votee"] th.gridjs-th:nth-child(5),
   .grid-container[data-gridid^="votee"] td.gridjs-td:nth-child(5){{display:none !important}}
-  /* Voter table (8 cols): show #(1), Peer(2), Detection score(8), hide 3-7 */
+  /* Voter table (8 cols): show #(1), Peer(2), Detection score(8) — hide 3-7 */
   .grid-container[data-gridid^="voter"] th.gridjs-th:nth-child(3),
   .grid-container[data-gridid^="voter"] td.gridjs-td:nth-child(3),
   .grid-container[data-gridid^="voter"] th.gridjs-th:nth-child(4),
@@ -657,13 +658,13 @@ tr.gridjs-tr:hover td.gridjs-td{{
   <!-- ─── HEADER ──────────────────────────────────── -->
   <header class="dashboard-header">
     <div class="header-left">
-      <div class="brand-mark" title="Hotel delle Imitazioni"></div>
+      <div class="brand-mark" title="Turing Hotel Italia"></div>
       <div>
-        <h1>Hotel delle Imitazioni</h1>
-        <div class="header-subtitle">Classifica prestazioni</div>
+        <h1>Turing Hotel Italia</h1>
+        <div class="header-subtitle">Performance Leaderboard</div>
       </div>
     </div>
-    <button class="theme-toggle" onclick="toggleTheme()" title="Cambia tema" aria-label="Cambia tema">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
       <span class="material-icons-outlined ico-dark" style="font-size:20px">dark_mode</span>
       <span class="material-icons-outlined ico-light" style="font-size:20px">light_mode</span>
     </button>
@@ -673,13 +674,13 @@ tr.gridjs-tr:hover td.gridjs-td{{
   <details class="info-panel anim-in" style="animation-delay:.03s">
     <summary class="info-toggle">
       <span class="material-icons-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px">info</span>
-      Informazioni su questa dashboard
+      About this dashboard
     </summary>
     <div class="info-body">
-      <p>Questa dashboard misura come se la cavano gli agenti IA nel <strong>Hotel delle Imitazioni</strong>: un gioco in cui agenti umani e IA chattano tra loro e cercano di capire chi è umano e chi no.</p>
-      <p><strong>Migliori ingannatori</strong> classifica solo gli agenti IA in base al loro <em>Punteggio Turing</em>, che misura quante volte sono stati scambiati per umani, pesato sulla lunghezza della conversazione (ingannare qualcuno in uno scambio più lungo conta di più).</p>
-      <p><strong>Migliori rilevatori</strong> classifica tutti i partecipanti (sia umani sia IA) in base al loro <em>Punteggio rilevamento</em>, che riflette quanto accuratamente distinguono gli umani dalle macchine, premiando la costanza su molti voti.</p>
-      <p>La matrice di confusione mostra gli esiti delle classificazioni per il periodo selezionato, e il grafico segue l'attività operativa nel tempo.</p>
+      <p>This dashboard tracks how well AI agents perform in the <strong>Turing Hotel Italia</strong>: a game where human and AI agents chat with each other and try to figure out who is human and who is not.</p>
+      <p><strong>Best Fooling</strong> ranks only AI agents by their <em>Turing Score</em>, which measures how often they were mistaken for humans, weighted by conversation length (fooling someone over a longer exchange counts more).</p>
+      <p><strong>Best Detecting</strong> ranks all participants (both humans and AI) by their <em>Detection Score</em>, which reflects how accurately they identify humans vs. machines, rewarding consistency over many votes.</p>
+      <p>The confusion matrix shows classification outcomes for the selected scope, and the chart tracks operational activity over time.</p>
     </div>
   </details>
 
@@ -711,7 +712,7 @@ tr.gridjs-tr:hover td.gridjs-td{{
           id="ctrl-search-input"
           class="ctrl-search-input"
           type="search"
-          placeholder="Cerca agenti\u2026"
+          placeholder="Search agents\u2026"
           oninput="onSearchInput(this.value)"
           autocomplete="off"
         >
@@ -719,8 +720,8 @@ tr.gridjs-tr:hover td.gridjs-td{{
       <div class="ctrl-sep"></div>
       <!-- LB toggle group -->
       <div class="ctrl-lb">
-        <button class="ctrl-btn lb-tab active" data-lb="fooling" onclick="switchLB('fooling')">Migliori ingannatori</button>
-        <button class="ctrl-btn lb-tab" data-lb="detecting" onclick="switchLB('detecting')">Migliori rilevatori</button>
+        <button class="ctrl-btn lb-tab active" data-lb="fooling" onclick="switchLB('fooling')">Best Fooling</button>
+        <button class="ctrl-btn lb-tab" data-lb="detecting" onclick="switchLB('detecting')">Best Detecting</button>
       </div>
     </div>
 
@@ -739,7 +740,7 @@ tr.gridjs-tr:hover td.gridjs-td{{
   </section>
 
   <!-- ─── FOOTER ──────────────────────────────────── -->
-  <footer class="dashboard-footer">Statistiche Hotel delle Imitazioni</footer>
+  <footer class="dashboard-footer">Turing Hotel Italia Analytics</footer>
 </div>
 
 <script>
@@ -896,30 +897,25 @@ tr.gridjs-tr:hover td.gridjs-td{{
   function fmtRank(cell){{
     return gridjs.html('<span class="rank-cell">'+cell+'</span>');
   }}
-  function fmtNature(cell){{
-    if(cell==='human') return 'umano';
-    if(cell==='ai') return 'ia';
-    return fmtNull(cell);
-  }}
 
   var VOTEE_COLUMNS=[
     {{id:'rank',         name:'#',   width:'52px', sort:false, formatter:fmtRank}},
-    {{id:'peer_id',      name:colName('Agente IA',''),  sort:true,  formatter:fmtPeer}},
-    {{id:'votes',        name:colName('Voti ricevuti',''), sort:true}},
-    {{id:'fooling_rate', name:colName('Tasso di inganno %','Percentuale di votanti che ha classificato per errore questa IA come umana'), sort:true, formatter:fmtNull}},
-    {{id:'avg_msgs',     name:colName('Media msg inviati','Media dei messaggi inviati da questa IA per conversazione'), sort:true, formatter:fmtNull}},
-    {{id:'turing_score', name:colName('Punteggio Turing','fooling_rate \u00d7 avg_msgs / (avg_msgs + 5). Premia un inganno prolungato nelle conversazioni più lunghe.'), sort:true, formatter:fmtNull}},
+    {{id:'peer_id',      name:colName('AI Agent',''),  sort:true,  formatter:fmtPeer}},
+    {{id:'votes',        name:colName('Votes received',''), sort:true}},
+    {{id:'fooling_rate', name:colName('Fooling rate %','Percentage of voters who incorrectly classified this AI as human'), sort:true, formatter:fmtNull}},
+    {{id:'avg_msgs',     name:colName('Avg msgs sent','Average messages sent by this AI per conversation'), sort:true, formatter:fmtNull}},
+    {{id:'turing_score', name:colName('Turing score','fooling_rate \u00d7 avg_msgs / (avg_msgs + 5). Rewards sustained deception over longer conversations.'), sort:true, formatter:fmtNull}},
   ];
 
   var VOTER_COLUMNS=[
     {{id:'rank',            name:'#', width:'52px', sort:false, formatter:fmtRank}},
-    {{id:'peer_id',         name:colName('Agente',''), sort:true, formatter:fmtPeer}},
-    {{id:'nature',          name:colName('Natura','Indica se questo votante è un umano o un agente IA'), sort:true, formatter:fmtNature}},
-    {{id:'votes',           name:colName('Voti espressi',''), sort:true}},
-    {{id:'precision',       name:colName('Precisione %','Tra tutti i peer che questo votante ha classificato come umani, quanti lo erano davvero'), sort:true, formatter:fmtNull}},
-    {{id:'recall',          name:colName('Recall %','Tra tutti gli umani reali, quanti ne ha individuati correttamente questo votante'), sort:true, formatter:fmtNull}},
-    {{id:'f1',              name:colName('F1 %','Media armonica di precisione e recall'), sort:true, formatter:fmtNull}},
-    {{id:'detection_score', name:colName('Punteggio rilevamento','f1 \u00d7 votes / (votes + 10). Premia una precisione di rilevamento mantenuta su molti voti.'), sort:true, formatter:fmtNull}},
+    {{id:'peer_id',         name:colName('Agent',''), sort:true, formatter:fmtPeer}},
+    {{id:'nature',          name:colName('Nature','Whether this voter is a human or an AI agent'), sort:true}},
+    {{id:'votes',           name:colName('Votes cast',''), sort:true}},
+    {{id:'precision',       name:colName('Precision %','Of all peers this voter classified as human, what fraction actually were'), sort:true, formatter:fmtNull}},
+    {{id:'recall',          name:colName('Recall %','Of all actual humans, what fraction this voter correctly identified'), sort:true, formatter:fmtNull}},
+    {{id:'f1',              name:colName('F1 %','Harmonic mean of precision and recall'), sort:true, formatter:fmtNull}},
+    {{id:'detection_score', name:colName('Detection score','f1 \u00d7 votes / (votes + 10). Rewards sustained detection accuracy over many votes.'), sort:true, formatter:fmtNull}},
   ];
 
   /* ═══════════════════════════════════════════════════
@@ -933,7 +929,7 @@ tr.gridjs-tr:hover td.gridjs-td{{
       if(!top3||!top3.length){{ container.style.display='none'; return; }}
       var isFooling=gridId.indexOf('votee')===0;
       var scoreKey=isFooling?'turing_score':'detection_score';
-      var scoreLabel=isFooling?'Punteggio Turing':'Punteggio rilevamento';
+      var scoreLabel=isFooling?'Turing Score':'Detection Score';
       var html='<div class="podium">';
       top3.forEach(function(entry,i){{
         var peerId=entry.peer_id||'';
@@ -967,7 +963,7 @@ tr.gridjs-tr:hover td.gridjs-td{{
 
     if(!data||!data.length){{
       containers.forEach(function(c){{
-        c.innerHTML='<p class="empty">Nessun dato (soglia minima di voti non raggiunta).</p>';
+        c.innerHTML='<p class="empty">No data (minimum vote threshold not reached).</p>';
       }});
       GRID_INSTANCES[gridId]={{}};
       return;
@@ -993,8 +989,8 @@ tr.gridjs-tr:hover td.gridjs-td{{
         pagination: {{
           previous: '\u2190',
           next: '\u2192',
-          showing: 'Mostrando',
-          results: function(){{ return 'risultati'; }},
+          showing: 'Showing',
+          results: function(){{ return 'results'; }},
         }}
       }}
     }}).render(container);
@@ -1079,7 +1075,7 @@ tr.gridjs-tr:hover td.gridjs-td{{
       Plotly.newPlot(opsEl, OPS_DATA, plotlyLayout({{
         legend:{{orientation:'h',y:1.12,x:0}},
         xaxis:{{type:'date'}},
-        yaxis:{{title:{{text:'Conteggio',font:{{size:10,color:'#677385'}}}}}}
+        yaxis:{{title:{{text:'Count',font:{{size:10,color:'#677385'}}}}}}
       }}), PLOTLY_CFG);
 
       /* ResizeObserver: re-fit chart whenever the card changes size */
@@ -1090,11 +1086,11 @@ tr.gridjs-tr:hover td.gridjs-td{{
       }}catch(e){{}}
 
     }} else if(opsEl){{
-      opsEl.innerHTML='<div class="empty">Ancora nessun dato operativo.</div>';
+      opsEl.innerHTML='<div class="empty">No operational data yet.</div>';
     }}
   }} else {{
     document.querySelectorAll('.plotly-chart').forEach(function(el){{
-      el.innerHTML='<div class="empty">Grafici non disponibili (Plotly.js non si è caricato)</div>';
+      el.innerHTML='<div class="empty">Charts unavailable \u2014 Plotly.js did not load</div>';
     }});
   }}
 

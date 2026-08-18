@@ -8,19 +8,18 @@ from src.mirror import make_mirror_hook, MirrorMySQLTarget
 world = WWorld()
 
 # Stats mirroring
-MIRROR_ENABLED = True
 MIRROR_PERIOD = 30.
-MIRROR_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src", "config.mirror")
 mirror_hook = None
-if MIRROR_ENABLED:
-    if os.path.exists(MIRROR_CONFIG):
+if MIRROR_PERIOD > 0:
+    config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src", "config.mirror")
+    if os.path.exists(config_file):
         assert world.stats is not None
-        mirror_hook = make_mirror_hook(str(world.stats.db_path), MirrorMySQLTarget(MIRROR_CONFIG),
+        mirror_hook = make_mirror_hook(str(world.stats.db_path), MirrorMySQLTarget(config_file),  # noqa
                                        period=MIRROR_PERIOD)
         log.user(f"[stats-mirror] Active: pushing stats to MySQL every {MIRROR_PERIOD:.0f}s "
-                 f"(config: {MIRROR_CONFIG})")
+                 f"(config: {config_file})")
     else:
-        log.user(f"[stats-mirror] OFF: no {MIRROR_CONFIG} (copy src/config.mirror.example and fill it in)")
+        log.user(f"[stats-mirror] OFF: no {config_file} (copy src/config.mirror.example and fill it in)")
 
 # Node hosting world
 node = Node(node_name="TuringHotelItaly", hosted=world, hidden=True, clock_delta=1./50.,

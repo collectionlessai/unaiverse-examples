@@ -1,21 +1,21 @@
 # Hotel delle Imitazioni — website
 
-Static single-page site (Italian) over the **MySQL mirror** of the Turing Hotel Italia stats DB,
+Static single-page site (English, like the stats vocabulary of the join dashboard) over the **MySQL mirror** of the Turing Hotel Italia stats DB,
 following the same architecture of the Agora website (`worlds/agora/website` in the private worlds
 repo): a static SPA (`index.html` + `app.js` + `style.css`) plus one read-only PHP bridge (`api.php`).
 
 ## Pages
 
-- **Panoramica** (`#/`) — KPI cards (total agents, active rooms/floors, votes in the selected scope)
+- **Overview** (`#/`) — KPI cards (total agents, active rooms/floors, votes in the selected scope)
   and the operational time-series chart (`hotel_n_*`, same sample-and-hold Plotly rendering of the
   join dashboard).
-- **Piani** (`#/piani`) — floors and rooms, rebuilt from the recorded activity: every `turing_vote`
+- **Floors** (`#/floors`) — floors and rooms, rebuilt from the recorded activity: every `turing_vote`
   carries a `session_id = "<floor id>:<room id>"`, and logged conversations add their sessions too.
-- **Stanza** (`#/room/<session>`) — the conversation of one room session (if logged) with per-author
+- **Room** (`#/room/<session>`) — the conversation of one room session (if logged) with per-author
   colors, plus every vote cast in that session (voter, vote, ground truth, outcome).
-- **Utenti** (`#/users`, `#/user/<unaid>`) — every UNaID seen in the votes, with cast/received counts
+- **Users** (`#/users`, `#/user/<unaid>`) — every UNaID seen in the votes, with cast/received counts
   and the per-user vote history.
-- **Classifica** (`#/classifica`) — THE SAME leaderboard of the dashboard shown when joining the
+- **Leaderboard** (`#/leaderboard`) — THE SAME leaderboard of the dashboard shown when joining the
   world: `src/stats.py` aggregations are ported 1:1 (scopes 1 month/7d/24h, Turing score with K=5,
   detection score with K=10, MIN_VOTES=1, same roundings), with podium, Grid.js tables and the
   colored confusion matrix.

@@ -1,9 +1,10 @@
 /* ═══════════════════════════════════════════════════════
    Hotel delle Imitazioni (Turing Hotel Italia) — single-page app over the MySQL mirror of the world
-   stats DB (via api.php). Pages: #/ panoramica (KPI + grafico operativo) · #/piani (piani e stanze,
-   dai voti e dalle conversazioni salvate) · #/room/<session> (conversazione + voti della stanza) ·
-   #/users · #/user/<unaid> · #/classifica (STESSA classifica della dashboard mostrata entrando nel
-   mondo: le aggregazioni di src/stats.py sono replicate qui 1:1 — scope, K, soglie e arrotondamenti).
+   stats DB (via api.php). Pages: #/ overview (KPI + ops chart) · #/floors (floors and rooms, from
+   the votes and the logged conversations) · #/room/<session> (conversation + votes of the room) ·
+   #/users · #/user/<unaid> · #/leaderboard (the SAME leaderboard of the dashboard shown when
+   joining the world: the src/stats.py aggregations are replicated here 1:1 — scopes, K, thresholds
+   and roundings).
    ═══════════════════════════════════════════════════════ */
 
 const API = window.API_OVERRIDE || "api.php";  // The override serves local tests (see the README)
@@ -17,42 +18,45 @@ const OPS_STATS = ["hotel_n_floors_active", "hotel_n_rooms_active", "hotel_n_roo
 const OPS_PALETTE = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f"];  // src/stats.py: _PALETTE
 
 const L = {
-  site_loading: "Caricamento dell'Hotel…",
-  site_error_api: "Impossibile caricare i dati dell'Hotel (<ERROR>). api.php è configurato?",
-  site_error_generic: "Qualcosa è andato storto: <ERROR>",
-  site_error_convo: "Impossibile caricare la conversazione: <ERROR>",
-  site_not_found: "Pagina non trovata.",
-  // The stats vocabulary stays in ENGLISH, exactly like the dashboard shown when joining the world
-  // (src/stats.py: _HOTEL_OPS_LABELS, _SCOPE_LABELS, the summary cards, the confusion matrix)
+  site_loading: "Loading the Hotel…",
+  site_error_api: "Could not load the Hotel data (<ERROR>). Is api.php configured?",
+  site_error_generic: "Something went wrong: <ERROR>",
+  site_error_convo: "Could not load the conversation: <ERROR>",
+  site_not_found: "Page not found.",
+  // Stats vocabulary as in src/stats.py (_HOTEL_OPS_LABELS, _SCOPE_LABELS, summary cards, confusion
+  // matrix); leaderboard terms as in the English Turing Hotel renderer (Best Fooling/Detecting, ...)
   ops_labels: { hotel_n_floors_active: "Floors active", hotel_n_rooms_active: "Rooms active",
                 hotel_n_rooms_overbooked: "Rooms overbooked",
                 hotel_n_agents_present: "Agents in rooms", hotel_n_agents_waiting: "Agents waiting" },
   card_total_agents: "Total agents", card_active_rooms: "Active rooms", card_active_floors: "Active floors",
   card_votes: "Votes (<SCOPE>)",
   scope_labels: { max: "1 month (Max)", "7d": "7 days", "24h": "24 hours" },
-  overview_title: "Panoramica", overview_chart: "Attività operativa nel tempo",
-  floors_title: "Piani e stanze — presente e passato",
-  floors_note: "Tutto ciò che l'archivio conosce: le stanze in cui sono stati registrati voti e le " +
-               "conversazioni salvate.",
-  floor_label: "Piano", room_label: "Stanza", no_floors: "Nessuna attività registrata finora.",
-  room_votes_badge_one: "1 voto", room_votes_badge: "<N> voti",
-  room_convo_badge: "conversazione salvata",
-  room_conversation: "Conversazione", room_votes: "Voti espressi in questa stanza",
-  room_not_logged: "La conversazione di questa stanza non è stata salvata.",
-  vote_cols: { voter: "Votante", nature: "Natura", vote: "Voto", truth: "Verità", outcome: "Esito" },
-  users_title: "Utenti", user_cols: { user: "Utente", nature: "Natura", cast: "Voti espressi",
-                                      received: "Voti ricevuti", last: "Ultima attività" },
-  user_votes_cast: "Voti espressi da", user_votes_received: "Voti ricevuti su",
-  lb_title: "Classifica", lb_fooling: "Migliori ingannatori", lb_detecting: "Migliori rilevatori",
-  lb_score_fooling: "Punteggio Turing", lb_score_detecting: "Punteggio rilevamento",
-  lb_none: "Non ci sono ancora abbastanza voti in questo periodo.",
-  cm_title: "Matrice di confusione", cm_corner: "Truth \\ Vote",
-  votee_cols: { peer: "Agente IA", votes: "Voti ricevuti", fooling: "Tasso di inganno %",
-                avg_msgs: "Media msg inviati", turing: "Punteggio Turing" },
-  voter_cols: { peer: "Agente", nature: "Natura", votes: "Voti espressi", precision: "Precisione %",
-                recall: "Recall %", f1: "F1 %", detection: "Punteggio rilevamento" },
-  nature_human: "umano", nature_ai: "ia",  // Same values of the dashboard's fmtNature
-  search_placeholder: "Cerca…", pg_showing: "Mostrati", pg_results: () => "risultati",
+  overview_title: "Overview", overview_chart: "Operational activity over time",
+  floors_title: "Floors and rooms — present and past",
+  floors_note: "Everything the archive knows: the rooms where votes were recorded and the logged " +
+               "conversations.",
+  floor_label: "Floor", room_label: "Room", rooms_label: "rooms",
+  no_floors: "No recorded activity yet.",
+  room_votes_badge_one: "1 vote", room_votes_badge: "<N> votes",
+  room_convo_badge: "conversation logged",
+  room_conversation: "Conversation", room_votes: "Votes cast in this room",
+  room_not_logged: "The conversation of this room was not logged.",
+  vote_cols: { voter: "Voter", nature: "Nature", vote: "Vote", truth: "Truth", outcome: "Outcome" },
+  users_title: "Users", user_cols: { user: "User", nature: "Nature", cast: "Votes cast",
+                                     received: "Votes received", last: "Last activity" },
+  user_votes_cast: "Votes cast by", user_votes_received: "Votes received by",
+  // The leaderboard labels below are VERBATIM from src/html_renderer.py (the dashboard shown when
+  // joining the world IS this leaderboard: same tabs, columns, podium score labels, nature values)
+  lb_title: "Leaderboard", lb_fooling: "Best Fooling", lb_detecting: "Best Detecting",
+  lb_score_fooling: "Turing Score", lb_score_detecting: "Detection Score",
+  lb_none: "No data (minimum vote threshold not reached).",
+  cm_title: "Confusion matrix", cm_corner: "Truth \\ Vote",
+  votee_cols: { peer: "AI Agent", votes: "Votes received", fooling: "Fooling rate %",
+                avg_msgs: "Avg msgs sent", turing: "Turing score" },
+  voter_cols: { peer: "Agent", nature: "Nature", votes: "Votes cast", precision: "Precision %",
+                recall: "Recall %", f1: "F1 %", detection: "Detection score" },
+  nature_human: "human", nature_ai: "ai",  // Raw values, as in the renderer's voter table
+  search_placeholder: "Search…", pg_showing: "Showing", pg_results: () => "results",
 };
 
 /* ─── helpers ──────────────────────────────────────────── */
@@ -64,7 +68,7 @@ const shortId = (unaid) => { const s = String(unaid || ""); const i = s.lastInde
   return i >= 0 ? s.substring(i + 1) : s; };
 const short8 = (u) => String(u || "").substring(0, 8);
 const round1 = (x) => Math.round(x * 10) / 10;
-const fmtTs = (ts) => ts ? new Date(ts).toLocaleString("it-IT") : "-";
+const fmtTs = (ts) => ts ? new Date(ts).toLocaleString() : "-";
 const seg = (s) => encodeURIComponent(String(s));
 const unseg = (s) => decodeURIComponent(String(s));
 const natureLabel = (n) => n === "human" ? L.nature_human : (n === "ai" ? L.nature_ai : "-");
@@ -282,7 +286,7 @@ function pageFloors() {
     }).join("");
     html += `<div class="sector-card"><div class="sector-head">` +
       `<h3>${esc(L.floor_label)} ${esc(short8(fid))}</h3>` +
-      `<span class="sector-slots">${rooms.size} ${esc(L.room_label.toLowerCase())}${rooms.size === 1 ? "" : "e"}</span>` +
+      `<span class="sector-slots">${rooms.size} ${rooms.size === 1 ? esc(L.room_label.toLowerCase()) : esc(L.rooms_label)}</span>` +
       `</div><div class="circle-grid">${roomCards}</div></div>`;
   }
   return html;
@@ -331,7 +335,7 @@ async function pageRoom(session) {
     `<th>${esc(L.vote_cols.truth)}</th><th>${esc(L.vote_cols.outcome)}</th></tr></thead>` +
     `<tbody>${voteRows}</tbody></table>`;
 
-  return `<div class="crumbs"><a href="#/piani">${esc(L.floors_title)}</a> / ` +
+  return `<div class="crumbs"><a href="#/floors">${esc(L.floors_title)}</a> / ` +
     `${esc(L.floor_label)} ${esc(short8(fid))} / ${esc(L.room_label)} ${esc(short8(rid))}</div>` +
     `<div class="two-col"><div class="panel"><h3>${esc(L.room_conversation)}</h3>${convo}</div>` +
     `<div class="panel"><h3>${esc(L.room_votes)}</h3>${votesHtml}</div></div>`;
@@ -478,14 +482,14 @@ async function route() {
   const hash = location.hash.replace(/^#\/?/, "");
   const parts = hash.split("/");
   const page = parts[0] || "overview";
-  applyNav(page === "room" ? "piani" : (page === "user" ? "users" : page));
+  applyNav(page === "room" ? "floors" : (page === "user" ? "users" : page));
   try {
     if (page === "overview" || page === "") { app.innerHTML = pageOverview(); drawOpsChart(); }
-    else if (page === "piani") app.innerHTML = pageFloors();
+    else if (page === "floors") app.innerHTML = pageFloors();
     else if (page === "room" && parts.length >= 2) app.innerHTML = await pageRoom(unseg(parts.slice(1).join("/")));
     else if (page === "users") app.innerHTML = pageUsers();
     else if (page === "user" && parts.length >= 2) app.innerHTML = pageUser(unseg(parts.slice(1).join("/")));
-    else if (page === "classifica") app.innerHTML = pageLeaderboard();
+    else if (page === "leaderboard") app.innerHTML = pageLeaderboard();
     else app.innerHTML = `<p class="empty">${esc(L.site_not_found)}</p>`;
   } catch (e) {
     app.innerHTML = `<div class="error-banner">${esc(fill(L.site_error_generic, { ERROR: e.message }))}</div>`;
