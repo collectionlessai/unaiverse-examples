@@ -1,0 +1,12 @@
+<?php
+// Copy this file to config.php and fill in the credentials of the MySQL mirror database.
+// config.php must stay OUT of any repository (it holds a password).
+$DB_HOST = "localhost";
+$DB_NAME = "turing_ita";
+$DB_USER = "turing_user";
+$DB_PASS = "CHANGE_ME";
+$DEBUG = true;  // true -> api.php displays PHP errors and puts full exception details in the JSON
+                // replies (shown in the browser by the site's error banners); set to false in production!
+// NOTE: this file has no closing PHP tag ON PURPOSE (PSR-12): anything after such a tag, even a single
+// newline, would be echoed to the browser and corrupt the JSON replies of api.php. (The tag cannot even
+// be written inside these comments: PHP one-line comments END at a closing tag, echoing what follows!)

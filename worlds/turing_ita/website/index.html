@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0">
+<meta name="color-scheme" content="dark light">
+<title>Hotel delle Imitazioni</title>
+<script>
+/* Debug overlay: every JS error, unhandled promise rejection and failed resource load is shown in a
+   panel at the bottom of the page (it only appears when something actually goes wrong). Registered
+   inline BEFORE any other script, so it also catches CDN load failures and app.js syntax errors. */
+(function () {
+  function show(msg) {
+    var box = document.getElementById("js-errors");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "js-errors";
+      box.style.cssText = "position:fixed;left:0;right:0;bottom:0;max-height:40vh;overflow:auto;" +
+        "background:#3a0d0d;color:#ffb3b3;font:12px/1.5 monospace;padding:8px 12px;z-index:9999;" +
+        "white-space:pre-wrap;border-top:2px solid #c33;";
+      (document.body || document.documentElement).appendChild(box);
+    }
+    var line = document.createElement("div");
+    line.textContent = "⚠ " + msg;
+    box.appendChild(line);
+  }
+  window.addEventListener("error", function (e) {
+    if (e.message) {
+      show(e.message + " @ " + (e.filename || "?") + ":" + (e.lineno || "?") +
+           (e.error && e.error.stack ? "\n" + e.error.stack : ""));
+    } else {
+      show("resource failed to load: " +
+           ((e.target && (e.target.src || e.target.href)) || "?"));
+    }
+  }, true);
+  window.addEventListener("unhandledrejection", function (e) {
+    var r = e.reason;
+    show("unhandled rejection: " + ((r && (r.stack || r.message)) || r));
+  });
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+<link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet">
+<script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="dashboard">
+  <header class="dashboard-header">
+    <div class="header-left">
+      <div class="brand-mark" title="Hotel delle Imitazioni"></div>
+      <div>
+        <h1>Hotel delle Imitazioni</h1>
+        <div class="header-subtitle">Turing Hotel Italia</div>
+      </div>
+    </div>
+    <nav class="topnav">
+      <a href="#/" data-nav="overview">Panoramica</a>
+      <a href="#/piani" data-nav="piani">Piani</a>
+      <a href="#/users" data-nav="users">Utenti</a>
+      <a href="#/classifica" data-nav="classifica">Classifica</a>
+    </nav>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Cambia tema" aria-label="Cambia tema">
+      <span class="material-icons-outlined ico-dark" style="font-size:20px">dark_mode</span>
+      <span class="material-icons-outlined ico-light" style="font-size:20px">light_mode</span>
+    </button>
+  </header>
+
+  <main id="app"><p class="empty">Caricamento dell'Hotel…</p></main>
+
+  <footer class="dashboard-footer">Statistiche Hotel delle Imitazioni</footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
