@@ -31,6 +31,8 @@ class Config:
     min_msgs_from_votee = 3  # Minimum number of received messages from somebody to vote hit
     msg_cooldown = 5  # Minimum time between two consecutive messages sent by a guest to the room (anti-flooding)
     max_queued_msgs = 3  # Max messages a guest can keep waiting for the cooldown (the oldest ones get dropped)
+    store_conversations = True  # Store the room conversations in the world stats DB ('conversation_chunk'
+    #                             records, see stats.py: the MASKED text is stored, after msg_filter)
     msg_filter = True  # Mask bad words (and personal data) in the messages broadcast in the rooms
     msg_filter_pii = True  # Also mask e-mails, phone numbers, IBANs, fiscal codes, addresses, links
     msg_filter_max_severe = 5  # Hate speech messages a guest can send before being pushed off the floor

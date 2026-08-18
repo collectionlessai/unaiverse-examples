@@ -74,3 +74,6 @@ stats.json
 **/*.pdf
 
 lonewolves/rag/*
+
+# Stats-mirror credentials (see worlds/turing_ita/run_w.py + src/config.mirror.example)
+**/config.mirror

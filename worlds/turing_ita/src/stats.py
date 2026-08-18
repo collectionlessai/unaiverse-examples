@@ -25,12 +25,14 @@ OUTER dynamic (peer_id = group key):
                       to the Hotel Manager that sent there that peer. Then the Hotel Manager
                       stores the valid vote and sends it to the world.
 
-  conversation_chunk - per-message transcript chunk (debug only).
-                       peer_id = "<room.uuid>:<activation_ts>" session id.
-                       Gated by STORE_CONVERSATIONS; never read by plot() sent by the agent himself.
+  conversation_chunk - per-message transcript chunk (one record per message broadcast in a room).
+                       peer_id = room id (grouping only: consumers join by the session_id INSIDE the
+                       value, which matches the session_id of the turing_vote records).
+                       Written by the floor managers in get_msg_and_broadcast (the MASKED text, after
+                       the room filter), gated by Config.store_conversations; never read by plot().
                        Value shape:
                          {
-                           "session_id":       "<floor.peer_id>:<room.uuid>",
+                           "session_id":       "<floor.id>:<room.id>",
                            "author":           "<unaid>",
                            "author_fake_name": "<str>",
                            "text":             "<str>",
@@ -65,10 +67,10 @@ import copy
 import html
 import json
 import time
-from datetime import datetime, timezone
 from typing import Any
-
 from unaiverse.stats import Stats
+from datetime import datetime, timezone
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -110,7 +112,6 @@ class WStats(Stats):
 
     # ------------------------------------------------------------------ schema
 
-    STORE_CONVERSATIONS: bool = True
     LEADERBOARD_CACHE_TTL_SECONDS: int = 60
 
     CUSTOM_WORLD_STATS_DYNAMIC_SCHEMA = {k: (int, 0) for k in _HOTEL_OPS_STATS}

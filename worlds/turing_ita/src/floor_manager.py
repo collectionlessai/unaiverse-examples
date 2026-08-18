@@ -704,6 +704,20 @@ class WAgent(Agent):
             if Config.broadcast_when_no_humans or room.count_human_guests() > 0:
                 await asyncio.gather(*[_broadcast_to(g) for g in room.get_guests()])
 
+                # Storing the conversation chunk, ONLY for messages that were actually broadcast to
+                # the room (and with the MASKED text, coherently with what the room sees); the
+                # session_id matches the one of the turing_vote records, so votes and transcripts of
+                # the same room session can be joined (e.g. by the website)
+                if Config.store_conversations:
+                    ts = self.clock.get_time_ms(monotonic=True)
+                    self.stats.store_stat("conversation_chunk",
+                                          {"session_id": self.floor.id + ":" + room.id,
+                                           "author": room.get_unaid_of(guest),
+                                           "author_fake_name": fake_name,
+                                           "text": msg,
+                                           "ts": ts},
+                                          group_key=room.id, timestamp=ts)
+
         return True
 
     async def __filter_and_warn(self, guest, msg: str, room) -> str | None:

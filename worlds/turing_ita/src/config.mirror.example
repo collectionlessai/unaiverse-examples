@@ -1,0 +1,8 @@
+{
+    "_comment": "Copy this file to config.mirror and fill in the MySQL mirror credentials (same DB served by website/api.php; create the tables once with website/schema.sql). config.mirror is gitignored: it must stay OUT of any repository.",
+    "host": "localhost",
+    "port": 3306,
+    "database": "turing_ita",
+    "user": "turing_user",
+    "password": "CHANGE_ME"
+}
