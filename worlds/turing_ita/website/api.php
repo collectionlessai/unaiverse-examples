@@ -75,7 +75,9 @@ try {
             // Conversations are grouped by the session_id INSIDE the chunk (see src/stats.py: the DB
             // group key of a chunk is a different string, "<room.uuid>:<activation_ts>")
             $st = $pdo->query("SELECT JSON_UNQUOTE(JSON_EXTRACT(val_json, '$.session_id')) AS session, " .
-                              "COUNT(*) AS n, MIN(ts) AS first_ts, MAX(ts) AS last_ts " .
+                              "COUNT(*) AS n, MIN(ts) AS first_ts, MAX(ts) AS last_ts, " .
+                              "GROUP_CONCAT(DISTINCT JSON_UNQUOTE(JSON_EXTRACT(val_json, '$.author'))) " .
+                              "AS authors " .
                               "FROM dynamic_stats WHERE stat_name = 'conversation_chunk' " .
                               "GROUP BY session ORDER BY last_ts DESC");
             $out = [];
@@ -84,7 +86,8 @@ try {
                     continue;
                 }
                 $out[] = ['session' => $row['session'], 'n' => (int)$row['n'],
-                          'first_ts' => (int)$row['first_ts'], 'last_ts' => (int)$row['last_ts']];
+                          'first_ts' => (int)$row['first_ts'], 'last_ts' => (int)$row['last_ts'],
+                          'authors' => $row['authors'] === null ? [] : explode(',', $row['authors'])];
             }
             echo json_encode($out);
             break;

@@ -59,10 +59,16 @@ def make_mirror_hook(db_path: str, target, period: float = 30., batch: int = 500
     """Build a 'run_hook' mirroring the stats DB at 'db_path' through 'target' (see the module notes)."""
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stats-mirror")
     hook_state = {"last": 0., "future": None}  # Touched by the MAIN loop only
-    job_state = {"conn": None, "watermark": None, "static_digest": None}  # Touched by the mirror thread
+    job_state = {"conn": None, "watermark": None, "static_digest": None,  # Touched by the mirror thread
+                 "reset_requested": False}  # Flipped by _hook.reset() (main loop): consumed at job start
 
     def _job():
         try:
+            if job_state["reset_requested"]:  # The local DB was wiped: re-run the init alignment,
+                job_state["reset_requested"] = False  # which will clear the remote (it is now AHEAD)
+                job_state["watermark"] = None
+                job_state["static_digest"] = None
+                log.user("[stats-mirror] Reset requested: re-aligning with the (wiped) local DB")
             if job_state["conn"] is None:  # Lazy init (single-worker pool: always the same thread)
                 conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
                 conn.execute("PRAGMA busy_timeout=5000")  # Tolerate the writer's commit moments
@@ -115,6 +121,12 @@ def make_mirror_hook(db_path: str, target, period: float = 30., batch: int = 500
         hook_state["last"] = time.monotonic()
         hook_state["future"] = pool.submit(_job)  # noqa
 
+    def _request_reset():
+        """Re-arm the init alignment (call AFTER wiping the local DB): just a flag flip, consumed at
+        the START of the next mirror job — an in-flight cycle can never clobber the re-init."""
+        job_state["reset_requested"] = True
+
+    _hook.reset = _request_reset
     return _hook
 
 

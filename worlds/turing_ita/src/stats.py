@@ -495,11 +495,10 @@ class WStats(Stats):
         vote_cols = ("human", "ai")
 
         def _bg(_p: float) -> str:
-            # white → soft blue-green
-            r = int(255 - _p * 0.8)
-            g = int(255 - _p * 0.5)
-            b = int(255 - _p * 0.1)
-            return f"rgb({r},{g},{b})"
+            # Translucent accent: the intensity rides on the ALPHA channel, so the tint composites
+            # over the theme background and works in BOTH light and dark mode (a fixed white-to-blue
+            # ramp would keep the cells light when the page switches to dark)
+            return f"rgba(26,92,255,{_p / 100 * 0.55:.3f})"
 
         header = (
             "<thead><tr>"
@@ -639,6 +638,26 @@ class WStats(Stats):
             default_scope=default_scope,
             ops_json=ops_json,
         )
+
+    # ========================================================== challenge reset
+
+    def reset_stats(self) -> None:
+        """(World-only) CHALLENGE RESET: wipe ALL the stats — dynamic (votes, conversations, ops
+        history) AND static — like starting from scratch, while the world keeps running: participants
+        do NOT need to leave (the still-connected managers re-store the population/state stats at
+        their next update cycle). Must run on the node main loop (the same loop that runs
+        save_to_disk, so no writer race: see the run_hook of run_w.py, triggered by a sentinel file),
+        and the mirror must be re-armed right after this call: its init logic then detects 'remote
+        ahead of local', truncates the remote tables and restarts the archive from the empty local DB."""
+        if not self.is_world or self._db_conn is None:
+            return
+        self._dynamic_db_buffer = []  # Pending unsaved rows must not be flushed back after the wipe
+        self._static_db_buffer = []
+        self._db_conn.execute("DELETE FROM dynamic_stats")
+        self._db_conn.execute("DELETE FROM static_stats")
+        self._db_conn.commit()
+        self._stats = {self.GROUP_KEY: {}}  # The whole hot cache restarts empty, like at world start
+        self._leaderboard_cache = None  # The join dashboard rebuilds at the next plot()
 
     # ========================================================== plot() entry
 

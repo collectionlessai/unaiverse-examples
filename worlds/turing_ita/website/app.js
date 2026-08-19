@@ -38,7 +38,9 @@ const L = {
   floor_label: "Floor", room_label: "Room", rooms_label: "rooms",
   no_floors: "No recorded activity yet.",
   room_votes_badge_one: "1 vote", room_votes_badge: "<N> votes",
-  room_convo_badge: "conversation logged",
+  room_msgs_badge_one: "1 message", room_msgs_badge: "<N> messages",
+  room_people_badge_one: "1 participant", room_people_badge: "<N> participants",
+  card_messages: "Messages logged", card_participants: "Participants seen",
   room_conversation: "Conversation", room_votes: "Votes cast in this room",
   room_not_logged: "The conversation of this room was not logged.",
   vote_cols: { voter: "Voter", nature: "Nature", vote: "Vote", truth: "Truth", outcome: "Outcome" },
@@ -119,16 +121,26 @@ async function loadAll() {
     const [fid, rid] = parts;
     if (!floors.has(fid)) floors.set(fid, new Map());
     const rooms = floors.get(fid);
-    if (!rooms.has(rid)) rooms.set(rid, { session, votes: [], convo: null, last_ts: 0 });
+    if (!rooms.has(rid)) rooms.set(rid, { session, votes: [], convo: null, last_ts: 0,
+                                          participants: new Set() });
     return rooms.get(rid);
   };
   for (const rec of votes) {
     const room = roomOf(rec.v && rec.v.session_id);
-    if (room) { room.votes.push(rec); room.last_ts = Math.max(room.last_ts, rec.ts); }
+    if (room) {
+      room.votes.push(rec);
+      room.last_ts = Math.max(room.last_ts, rec.ts);
+      if (rec.v.voter) room.participants.add(rec.v.voter);
+      if (rec.votee) room.participants.add(rec.votee);
+    }
   }
   for (const s of sessions) {
     const room = roomOf(s.session);
-    if (room) { room.convo = s; room.last_ts = Math.max(room.last_ts, s.last_ts); }
+    if (room) {
+      room.convo = s;
+      room.last_ts = Math.max(room.last_ts, s.last_ts);
+      for (const a of (s.authors || [])) room.participants.add(a);
+    }
   }
   DB.floors = floors;
   DB.loaded = true;
@@ -223,11 +235,20 @@ const peerLink = (unaid) => `<a class="peer-cell" href="#/user/${seg(unaid)}" ` 
 function kpiCards() {
   const latest = (stat) => { const pts = (DB.ops.series || {})[stat] || [];
     return pts.length ? pts[pts.length - 1][1] : 0; };
+  const messages = DB.sessions.reduce((tot, s) => tot + s.n, 0);
+  const participants = new Set();
+  for (const rec of DB.votes) {
+    if (rec.v.voter) participants.add(rec.v.voter);
+    if (rec.votee) participants.add(rec.votee);
+  }
+  for (const s of DB.sessions) for (const a of (s.authors || [])) participants.add(a);
   const cards = [
     [L.card_total_agents, DB.ops.n_total_agents == null ? 0 : DB.ops.n_total_agents],
     [L.card_active_rooms, latest("hotel_n_rooms_active")],
     [L.card_active_floors, latest("hotel_n_floors_active")],
     [fill(L.card_votes, { SCOPE: L.scope_labels[STATE.scope] }), votesInScope(STATE.scope).length],
+    [L.card_messages, messages],
+    [L.card_participants, participants.size],
   ];
   return '<div class="summary-bar">' + cards.map(([lbl, val]) =>
     `<div class="card"><span class="card-val">${esc(val)}</span>` +
@@ -273,11 +294,13 @@ function pageFloors() {
   });
   for (const [fid, rooms] of floors) {
     const roomCards = [...rooms.entries()].sort((a, b) => b[1].last_ts - a[1].last_ts).map(([rid, r]) => {
-      const badges = [];
-      if (r.votes.length > 0) badges.push(`<span class="badge badge-past">` +
-        esc(r.votes.length === 1 ? L.room_votes_badge_one
-                                 : fill(L.room_votes_badge, { N: r.votes.length })) + `</span>`);
-      if (r.convo) badges.push(`<span class="badge badge-live">${esc(L.room_convo_badge)}</span>`);
+      const badge = (n, one, many, cls) => n > 0 &&
+        `<span class="badge ${cls}">${esc(n === 1 ? one : fill(many, { N: n }))}</span>`;
+      const badges = [
+        badge(r.votes.length, L.room_votes_badge_one, L.room_votes_badge, "badge-past"),
+        badge(r.convo ? r.convo.n : 0, L.room_msgs_badge_one, L.room_msgs_badge, "badge-live"),
+        badge(r.participants.size, L.room_people_badge_one, L.room_people_badge, "badge-open"),
+      ].filter(Boolean);
       return `<a class="circle-card" href="#/room/${seg(r.session)}">` +
         `<div class="circle-head"><span class="circle-code">${esc(short8(rid))}</span>` +
         `<span class="circle-occ">${esc(fmtTs(r.last_ts))}</span></div>` +
@@ -388,27 +411,33 @@ function pageUser(unaid) {
     `<th>${esc(L.vote_cols.vote)}</th><th>${esc(L.vote_cols.truth)}</th>` +
     `<th>${esc(L.vote_cols.outcome)}</th><th>${esc(L.room_label)}</th><th></th></tr></thead>` +
     `<tbody>${rows.join("")}</tbody></table>`;
+  // Per-user confusion matrices: the SAME matrix of the leaderboard, restricted to this user's
+  // votes — under 'cast' the outcomes of the classifications THEY made, under 'received' how the
+  // other participants classified THEM (only the row of their own nature can be non-empty there)
+  const miniCm = (votes) => votes.length === 0 ? "" :
+    `<h3 style="margin-top:18px">${esc(L.cm_title)}</h3>` + cmTable(aggConfusion(votes));
   return `<div class="user-header"><div class="user-avatar">${esc(shortId(unaid).substring(0, 2).toUpperCase())}</div>` +
     `<div><h2>${esc(shortId(unaid))}</h2><div class="user-unaid">${esc(unaid)}` +
     `${u ? " · " + esc(natureLabel(u.nature)) : ""}</div></div></div>` +
     `<div class="two-col">` +
     `<div class="panel"><h3>${esc(L.user_votes_cast)} ${esc(shortId(unaid))}</h3>` +
-    table(cast.map((r) => row(r, r.votee))) + `</div>` +
+    table(cast.map((r) => row(r, r.votee))) + miniCm(cast) + `</div>` +
     `<div class="panel"><h3>${esc(L.user_votes_received)} ${esc(shortId(unaid))}</h3>` +
-    table(received.map((r) => row(r, r.v.voter))) + `</div></div>`;
+    table(received.map((r) => row(r, r.v.voter))) + miniCm(received) + `</div></div>`;
 }
 
 /* ─── leaderboard (same as the world dashboard) ────────── */
 function cmTable(cm) {
-  const bg = (p) => `rgb(${Math.round(255 - p * 0.8)},${Math.round(255 - p * 0.5)},${Math.round(255 - p * 0.1)})`;
-  const fg = (p) => p > 45 ? "#0A1628" : "";  // Keep the cell text readable on the darker fills
+  // Translucent accent (same formula of the join dashboard): the intensity rides on the ALPHA
+  // channel, so the tint composites over the theme background (light AND dark)
+  const bg = (p) => `rgba(26,92,255,${(p / 100 * 0.55).toFixed(3)})`;
   let html = `<table class="cm-table cm-colored"><thead><tr><th>${esc(L.cm_corner)}</th>` +
     `<th>human</th><th>ai</th></tr></thead><tbody>`;
   for (const gt of ["human", "ai"]) {
     html += `<tr><td><strong>${gt}</strong></td>`;
     for (const vt of ["human", "ai"]) {
       const c = cm.counts[gt][vt], p = cm.pct[gt][vt];
-      html += `<td style="background:${bg(p)};color:${fg(p) || "#0A1628"}">${c}<br>` +
+      html += `<td style="background:${bg(p)}">${c}<br>` +
         `<small>${p.toFixed(1)}%</small></td>`;
     }
     html += "</tr>";
