@@ -238,3 +238,8 @@ table.mini td { padding:6px 10px; border-bottom:1px solid var(--border-subtle); 
 /* ── raw vote messages in the vote tables (hover for the full text) ────── */
 .vote-msg { font-family:'JetBrains Mono',monospace; font-size:.7rem; max-width:220px;
             overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+
+/* ── vote tables: roomy USER column, wrapping VOTE MESSAGE ────── */
+.vote-table td:first-child, .vote-table th:first-child { min-width:150px }
+.vote-table .vote-msg { max-width:420px; white-space:normal; overflow:visible;
+                        text-overflow:clip; word-break:break-word }

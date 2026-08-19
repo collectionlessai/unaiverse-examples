@@ -50,7 +50,7 @@ const L = {
                     "conversation.",
   room_window_tip: "Open the room, restricted to the conversation window shared by voter and votee",
   vote_cols: { voter: "Voter", nature: "Nature", vote: "Vote", truth: "Truth", outcome: "Outcome",
-               fake: "Fake name", msg: "Vote message" },
+               fake_voter: "Voter fake name", fake_votee: "Votee fake name", msg: "Vote message" },
   users_title: "Users", user_cols: { user: "User", nature: "Nature", cast: "Votes cast",
                                      received: "Votes received", last: "Last activity" },
   user_votes_cast: "Votes cast by", user_votes_received: "Votes received by",
@@ -81,6 +81,9 @@ const fmtTs = (ts) => ts ? new Date(ts).toLocaleString() : "-";
 const seg = (s) => encodeURIComponent(String(s));
 const unseg = (s) => decodeURIComponent(String(s));
 const natureLabel = (n) => n === "human" ? L.nature_human : (n === "ai" ? L.nature_ai : "-");
+const stripTag = (s) => String(s == null ? "" : s).replace(/^\[[^\]]+\]\s*/, "");  // '[LEFT_MSG] x' -> 'x'
+//                      (all the status messages carry that tag on the wire and in the DB; the agents
+//                       strip it before showing them, and so does this site)
 const GRID_LANG = () => ({ search: { placeholder: L.search_placeholder },
                            pagination: { previous: "←", next: "→",
                                          showing: L.pg_showing, results: L.pg_results } });
@@ -263,7 +266,7 @@ function kpiCards() {
 }
 
 /* ─── pages ────────────────────────────────────────────── */
-const STATE = { scope: "max", lb: "fooling" };
+const STATE = { scope: "max", lb: "fooling", userTab: "cast" };
 
 function pageOverview() {
   return kpiCards() +
@@ -377,7 +380,7 @@ async function pageRoom(session, pairA, pairB) {
       convo = '<div class="chat">' + chunks.map((ch) => {
         const m = ch.m || {};
         if (m.kind === "event") {  // Joined/left/disconnected: a centered system line, not a bubble
-          return `<div class="msg-event" title="${esc(fmtTs(m.ts || ch.ts))}">${esc(m.text || "")}</div>`;
+          return `<div class="msg-event" title="${esc(fmtTs(m.ts || ch.ts))}">${esc(stripTag(m.text))}</div>`;
         }
         return `<div class="msg"><div class="msg-author" ` +
           `style="color:hsl(${hueOf(m.author_fake_name)} 60% var(--author-l))">` +
@@ -395,14 +398,16 @@ async function pageRoom(session, pairA, pairB) {
   const voteRows = votes.map((rec) => {
     const ok = rec.v.vote === rec.v.ground_truth;
     return `<tr><td>${peerLink(rec.v.voter)}</td><td>${esc(natureLabel(rec.v.voter_nature))}</td>` +
+      `<td>${esc(rec.v.voter_fake_name || "-")}</td>` +
       `<td>${esc(rec.v.votee_fake_name || "-")}</td>` +
       `<td>${esc(rec.v.vote)}</td><td>${esc(rec.v.ground_truth)}</td>` +
       `<td>${ok ? "✓" : "✗"}</td>` +
       `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td></tr>`;
   }).join("");
   const votesHtml = votes.length === 0 ? `<p class="empty">-</p>` :
-    `<table class="cm-table"><thead><tr><th>${esc(L.vote_cols.voter)}</th>` +
-    `<th>${esc(L.vote_cols.nature)}</th><th>${esc(L.vote_cols.fake)}</th>` +
+    `<table class="cm-table vote-table"><thead><tr><th>${esc(L.vote_cols.voter)}</th>` +
+    `<th>${esc(L.vote_cols.nature)}</th><th>${esc(L.vote_cols.fake_voter)}</th>` +
+    `<th>${esc(L.vote_cols.fake_votee)}</th>` +
     `<th>${esc(L.vote_cols.vote)}</th>` +
     `<th>${esc(L.vote_cols.truth)}</th><th>${esc(L.vote_cols.outcome)}</th>` +
     `<th>${esc(L.vote_cols.msg)}</th></tr></thead>` +
@@ -453,6 +458,7 @@ function pageUser(unaid) {
   const received = DB.votes.filter((r) => r.votee === unaid);
   const u = usersIndex().get(unaid);
   const row = (rec, other) => `<tr><td>${peerLink(other)}</td>` +
+    `<td>${esc(rec.v.voter_fake_name || "-")}</td>` +
     `<td>${esc(rec.v.votee_fake_name || "-")}</td><td>${esc(rec.v.vote)}</td>` +
     `<td>${esc(rec.v.ground_truth)}</td><td>${rec.v.vote === rec.v.ground_truth ? "✓" : "✗"}</td>` +
     `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td>` +
@@ -460,26 +466,33 @@ function pageUser(unaid) {
     `title="${esc(L.room_window_tip)}">${esc(short8(rec.v.session_id.split(":")[1] || ""))}</a></td>` +
     `<td>${esc(fmtTs(rec.ts))}</td></tr>`;
   const table = (rows) => rows.length === 0 ? `<p class="empty">-</p>` :
-    `<table class="cm-table"><thead><tr><th>${esc(L.user_cols.user)}</th>` +
-    `<th>${esc(L.vote_cols.fake)}</th>` +
+    `<table class="cm-table vote-table"><thead><tr><th>${esc(L.user_cols.user)}</th>` +
+    `<th>${esc(L.vote_cols.fake_voter)}</th><th>${esc(L.vote_cols.fake_votee)}</th>` +
     `<th>${esc(L.vote_cols.vote)}</th><th>${esc(L.vote_cols.truth)}</th>` +
     `<th>${esc(L.vote_cols.outcome)}</th><th>${esc(L.vote_cols.msg)}</th>` +
     `<th>${esc(L.room_label)}</th><th></th></tr></thead>` +
     `<tbody>${rows.join("")}</tbody></table>`;
-  // Per-user confusion matrices: the SAME matrix of the leaderboard, restricted to this user's
-  // votes — under 'cast' the outcomes of the classifications THEY made, under 'received' how the
-  // other participants classified THEM (only the row of their own nature can be non-empty there)
+  // Per-user confusion matrix: the SAME matrix of the leaderboard, restricted to the shown votes —
+  // under 'cast' the outcomes of the classifications THEY made, under 'received' how the other
+  // participants classified THEM (only the row of their own nature can be non-empty there)
   const miniCm = (votes) => votes.length === 0 ? "" :
     `<h3 style="margin-top:18px">${esc(L.cm_title)}</h3>` + cmTable(aggConfusion(votes));
+
+  // One table at a time (Votes cast / Votes received), switched like the leaderboard tabs
+  const isCast = STATE.userTab !== "received";
+  const votes = isCast ? cast : received;
+  const btns = [["cast", L.user_cols.cast], ["received", L.user_cols.received]].map(([k, lbl]) =>
+    `<button class="ctrl-btn${k === (isCast ? "cast" : "received") ? " active" : ""}" ` +
+    `onclick="setUserTab('${k}')">${esc(lbl)}</button>`).join("");
   return `<div class="user-header"><div class="user-avatar">${esc(shortId(unaid).substring(0, 2).toUpperCase())}</div>` +
     `<div><h2>${esc(shortId(unaid))}</h2><div class="user-unaid">${esc(unaid)}` +
     `${u ? " · " + esc(natureLabel(u.nature)) : ""}</div></div></div>` +
-    `<div class="two-col">` +
-    `<div class="panel"><h3>${esc(L.user_votes_cast)} ${esc(shortId(unaid))}</h3>` +
-    table(cast.map((r) => row(r, r.votee))) + miniCm(cast) + `</div>` +
-    `<div class="panel"><h3>${esc(L.user_votes_received)} ${esc(shortId(unaid))}</h3>` +
-    table(received.map((r) => row(r, r.v.voter))) + miniCm(received) + `</div></div>`;
+    `<div class="ctrl-bar">${btns}</div>` +
+    `<div class="panel"><h3>${esc(isCast ? L.user_votes_cast : L.user_votes_received)} ` +
+    `${esc(shortId(unaid))}</h3>` +
+    table(votes.map((r) => row(r, isCast ? r.votee : r.v.voter))) + miniCm(votes) + `</div>`;
 }
+window.setUserTab = (k) => { STATE.userTab = k; route(); };
 
 /* ─── leaderboard (same as the world dashboard) ────────── */
 function cmTable(cm) {
