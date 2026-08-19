@@ -49,6 +49,9 @@ const L = {
   room_window_fail: "Could not isolate the shared window (events not available): showing the whole " +
                     "conversation.",
   room_window_tip: "Open the room, restricted to the conversation window shared by voter and votee",
+  range_from: "From", range_to: "To", range_apply: "Apply range", range_clear: "Show latest",
+  range_empty: "No messages here.",
+  chat_load_older: "Load older messages", chat_load_more: "Load more messages",
   vote_cols: { voter: "Voter", nature: "Nature", vote: "Vote", truth: "Truth", outcome: "Outcome",
                fake_voter: "Voter fake name", fake_votee: "Votee fake name", msg: "Vote message" },
   users_title: "Users", user_cols: { user: "User", nature: "Nature", cast: "Votes cast",
@@ -325,36 +328,32 @@ function pageFloors() {
   return html;
 }
 
-function pairWindows(chunks, a, aFake, b, bFake) {
-  // ALL the [start, end, endTs] chunk windows (inclusive indexes) in which the two given identities
-  // were in the room TOGETHER: from the join that completes the pair to the first left/disconnected
-  // event of either (both boundary events included, so the reader sees why the window opens/closes).
-  // Rooms are REUSED across sessions, so an identity is the PAIR unaid + fake name (the alias changes
-  // at every activation: matching by unaid alone can hit the wrong session); a null/unknown fake name
-  // matches any alias (older records). Presence is rebuilt from the 'kind: event' records; an agent
-  // chatting without a previous joined event (older transcripts) counts as present.
+function pairWindows(events, a, aFake, b, bFake) {
+  // ALL the [fromId, toId|null, endTs] windows in which the two given identities were in the room
+  // TOGETHER, computed over the EVENT stream only (?q=events — transcripts are unbounded, the chat
+  // rows are fetched later by id range): from the join that completes the pair to the first
+  // left/disconnected of either (both boundary events included). Rooms are REUSED, so an identity is
+  // the PAIR unaid + fake name (matching by unaid alone can hit the wrong session); a null/unknown
+  // fake name matches any alias. A window still open at the end has toId null and endTs Infinity.
   const match = (m, unaid, fake) => m.author === unaid &&
     (!fake || !m.author_fake_name || m.author_fake_name === fake);
   const present = { a: false, b: false };
   const windows = [];
-  let start = null;
-  for (let i = 0; i < chunks.length; i++) {
-    const m = chunks[i].m || {};
+  let startId = null;
+  for (const ev of events) {
+    const m = ev.m || {};
     const who = match(m, a, aFake) ? "a" : (match(m, b, bFake) ? "b" : null);
     if (who === null) continue;
-    if (m.kind === "event" && m.event !== "joined") {  // left / disconnected
-      if (start !== null) windows.push([start, i, m.ts || chunks[i].ts || 0]);
-      start = null;
+    if (m.event === "joined") {
+      present[who] = true;
+      if (startId === null && present.a && present.b) startId = ev.id;
+    } else {  // left / disconnected
+      if (startId !== null) windows.push([startId, ev.id, m.ts || ev.ts || 0]);
+      startId = null;
       present[who] = false;
-      continue;
     }
-    present[who] = true;  // A joined event, or a chat message (chatting implies presence)
-    if (start === null && present.a && present.b) start = i;
   }
-  if (start !== null) {  // Still open at the end of the transcript
-    const last = chunks[chunks.length - 1];
-    windows.push([start, chunks.length - 1, (last.m && last.m.ts) || last.ts || 0]);
-  }
+  if (startId !== null) windows.push([startId, null, Infinity]);  // Still open
   return windows;
 }
 
@@ -376,49 +375,159 @@ function pickWindow(windows, voteTs) {
   return best;
 }
 
+const ROOM = {};  // State of the room page in view (rows, pagination cursors, mode, time range)
+
+async function fetchConvo(params) {
+  const qs = Object.entries(params).filter(([, v]) => v !== null && v !== undefined && v !== "")
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+  return getJSON(API + "?q=conversation&" + qs);
+}
+
+function buildChat(rows) {
+  const hues = {};  // Author -> hue by order of first appearance (golden-angle: far-apart colors)
+  const hueOf = (name) => {
+    const k = String(name || "?");
+    if (!(k in hues)) hues[k] = Math.round(210 + Object.keys(hues).length * 137.508) % 360;
+    return hues[k];
+  };
+  return '<div class="chat">' + rows.map((ch) => {
+    const m = ch.m || {};
+    if (m.kind === "event") {  // Joined/left/disconnected: a centered system line, not a bubble
+      return `<div class="msg-event" title="${esc(fmtTs(m.ts || ch.ts))}">${esc(stripTag(m.text))}</div>`;
+    }
+    return `<div class="msg"><div class="msg-author" ` +
+      `style="color:hsl(${hueOf(m.author_fake_name)} 60% var(--author-l))">` +
+      `${esc(m.author_fake_name || "?")}` +
+      `<span class="msg-unaid">${esc(shortId(m.author || ""))}</span></div>` +
+      `<div class="msg-text">${esc(m.text || "")}</div>` +
+      `<div class="msg-time">${fmtTs(m.ts || ch.ts)}</div></div>`;
+  }).join("") + "</div>";
+}
+
+function renderChatArea() {
+  // Room transcripts are unbounded: the chat area shows one PAGE (latest / time range / vote window)
+  // with its continuation button, plus the time-range controls
+  const toLocal = (ts) => {  // ms -> datetime-local value, in the browser's timezone
+    if (!ts) return "";
+    const d = new Date(ts - new Date(ts).getTimezoneOffset() * 60000);
+    return d.toISOString().slice(0, 19);  // With seconds (step="1")
+  };
+  const controls = `<div class="range-bar">` +
+    `<label>${esc(L.range_from)}</label><input type="datetime-local" step="1" id="range-from" ` +
+    `value="${toLocal(ROOM.from_ts)}">` +
+    `<label>${esc(L.range_to)}</label><input type="datetime-local" step="1" id="range-to" ` +
+    `value="${toLocal(ROOM.to_ts)}">` +
+    `<button class="ctrl-btn" onclick="roomApplyRange()">${esc(L.range_apply)}</button>` +
+    (ROOM.mode !== "latest"
+      ? `<button class="ctrl-btn" onclick="roomClearRange()">${esc(L.range_clear)}</button>` : "") +
+    `</div>`;
+  const older = (ROOM.mode === "latest" && ROOM.moreOlder)
+    ? `<button class="ctrl-btn chat-more" onclick="roomLoadOlder()">${esc(L.chat_load_older)}</button>` : "";
+  const newer = (ROOM.mode !== "latest" && ROOM.moreNewer)
+    ? `<button class="ctrl-btn chat-more" onclick="roomLoadMore()">${esc(L.chat_load_more)}</button>` : "";
+  const chat = ROOM.rows.length === 0 ? `<p class="empty">${esc(L.range_empty)}</p>` : buildChat(ROOM.rows);
+  return ROOM.note + controls + older + chat + newer;
+}
+
+function repaintChat(e) {
+  const el = document.getElementById("chat-area");
+  if (!el) return;
+  el.innerHTML = e ? `<div class="error-banner">${esc(fill(L.site_error_convo, { ERROR: e.message }))}</div>`
+                   : renderChatArea();
+}
+
+window.roomLoadOlder = async () => {
+  try {
+    const r = await fetchConvo({ session: ROOM.session, limit: 300,
+                                 before_id: ROOM.rows.length ? ROOM.rows[0].id : "" });
+    ROOM.rows = r.rows.concat(ROOM.rows);
+    ROOM.moreOlder = r.more;
+    repaintChat();
+  } catch (e) { repaintChat(e); }
+};
+
+window.roomLoadMore = async () => {
+  try {
+    const p = { session: ROOM.session, limit: 300,
+                after_id: ROOM.rows.length ? ROOM.rows[ROOM.rows.length - 1].id : 0 };
+    if (ROOM.mode === "range" && ROOM.to_ts) p.to_ts = ROOM.to_ts;
+    if (ROOM.mode === "window" && ROOM.windowTo != null) p.to_id = ROOM.windowTo;
+    const r = await fetchConvo(p);
+    ROOM.rows = ROOM.rows.concat(r.rows);
+    ROOM.moreNewer = r.more;
+    repaintChat();
+  } catch (e) { repaintChat(e); }
+};
+
+window.roomApplyRange = async () => {
+  try {
+    const f = document.getElementById("range-from").value;
+    const t = document.getElementById("range-to").value;
+    ROOM.from_ts = f ? new Date(f).getTime() : null;
+    ROOM.to_ts = t ? new Date(t).getTime() : null;
+    ROOM.mode = "range";
+    ROOM.note = "";
+    const p = { session: ROOM.session, limit: 300, from_ts: ROOM.from_ts || 0 };  // 0 -> ascending
+    if (ROOM.to_ts) p.to_ts = ROOM.to_ts;
+    const r = await fetchConvo(p);
+    ROOM.rows = r.rows;
+    ROOM.moreNewer = r.more;
+    ROOM.moreOlder = false;
+    repaintChat();
+  } catch (e) { repaintChat(e); }
+};
+
+window.roomClearRange = async () => {
+  try {
+    ROOM.mode = "latest";
+    ROOM.from_ts = ROOM.to_ts = null;
+    ROOM.note = "";
+    const r = await fetchConvo({ session: ROOM.session, limit: 300 });
+    ROOM.rows = r.rows;
+    ROOM.moreOlder = r.more;
+    ROOM.moreNewer = false;
+    repaintChat();
+  } catch (e) { repaintChat(e); }
+};
+
 async function pageRoom(session, pairA, pairB, fakeA, fakeB, voteTs) {
   const parts = String(session).split(":");
   const [fid, rid] = parts.length === 2 ? parts : ["?", session];
   const rooms = DB.floors.get(fid);
   const room = rooms ? rooms.get(rid) : null;
 
+  Object.assign(ROOM, { session, rows: [], moreOlder: false, moreNewer: false, mode: "latest",
+                        note: "", from_ts: null, to_ts: null, windowTo: null });
   let convo = `<p class="empty">${esc(L.room_not_logged)}</p>`;
-  let note = "";
   if (room && room.convo) {
     try {
-      let chunks = await getJSON(API + "?q=conversation&session=" + seg(session));
       if (pairA && pairB) {  // Vote context: only the window the two identities shared, the one that
-        // closed right before the vote (see pairWindows/pickWindow)
-        const w = pickWindow(pairWindows(chunks, pairA, fakeA, pairB, fakeB), voteTs);
+        // closed right before the vote (computed over the cheap event stream, then fetched by id range)
+        const events = await getJSON(API + "?q=events&session=" + seg(session));
+        const w = pickWindow(pairWindows(events, pairA, fakeA, pairB, fakeB), voteTs);
         const allLink = `<a href="#/room/${seg(session)}">${esc(L.room_window_all)}</a>`;
         if (w !== null) {
-          chunks = chunks.slice(w[0], w[1] + 1);
+          ROOM.mode = "window";
+          ROOM.windowTo = w[1];
+          const p = { session, limit: 1000, from_id: w[0] };
+          if (w[1] != null) p.to_id = w[1];
+          const r = await fetchConvo(p);
+          ROOM.rows = r.rows;
+          ROOM.moreNewer = r.more;
           const who = (unaid, fake) => shortId(unaid) + (fake ? ` (${fake})` : "");
-          note = `<p class="section-note">` +
+          ROOM.note = `<p class="section-note">` +
             esc(fill(L.room_window_note, { A: who(pairA, fakeA), B: who(pairB, fakeB) })) +
             ` ${allLink}</p>`;
         } else {
-          note = `<p class="section-note">${esc(L.room_window_fail)}</p>`;
+          ROOM.note = `<p class="section-note">${esc(L.room_window_fail)} ${allLink}</p>`;
         }
       }
-      const hues = {};  // Author -> hue by order of first appearance (golden-angle: far-apart colors)
-      const hueOf = (name) => {
-        const k = String(name || "?");
-        if (!(k in hues)) hues[k] = Math.round(210 + Object.keys(hues).length * 137.508) % 360;
-        return hues[k];
-      };
-      convo = '<div class="chat">' + chunks.map((ch) => {
-        const m = ch.m || {};
-        if (m.kind === "event") {  // Joined/left/disconnected: a centered system line, not a bubble
-          return `<div class="msg-event" title="${esc(fmtTs(m.ts || ch.ts))}">${esc(stripTag(m.text))}</div>`;
-        }
-        return `<div class="msg"><div class="msg-author" ` +
-          `style="color:hsl(${hueOf(m.author_fake_name)} 60% var(--author-l))">` +
-          `${esc(m.author_fake_name || "?")}` +
-          `<span class="msg-unaid">${esc(shortId(m.author || ""))}</span></div>` +
-          `<div class="msg-text">${esc(m.text || "")}</div>` +
-          `<div class="msg-time">${fmtTs(m.ts || ch.ts)}</div></div>`;
-      }).join("") + "</div>";
+      if (ROOM.mode === "latest") {
+        const r = await fetchConvo({ session, limit: 300 });
+        ROOM.rows = r.rows;
+        ROOM.moreOlder = r.more;
+      }
+      convo = renderChatArea();
     } catch (e) {
       convo = `<div class="error-banner">${esc(fill(L.site_error_convo, { ERROR: e.message }))}</div>`;
     }
@@ -445,7 +554,8 @@ async function pageRoom(session, pairA, pairB, fakeA, fakeB, voteTs) {
 
   return `<div class="crumbs"><a href="#/floors">${esc(L.floors_title)}</a> / ` +
     `${esc(L.floor_label)} ${esc(short8(fid))} / ${esc(L.room_label)} ${esc(short8(rid))}</div>` +
-    `<div class="two-col"><div class="panel"><h3>${esc(L.room_conversation)}</h3>${note}${convo}</div>` +
+    `<div class="two-col"><div class="panel"><h3>${esc(L.room_conversation)}</h3>` +
+    `<div id="chat-area">${convo}</div></div>` +
     `<div class="panel"><h3>${esc(L.room_votes)}</h3>${votesHtml}</div></div>`;
 }
 

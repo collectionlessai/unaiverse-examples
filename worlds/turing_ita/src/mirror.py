@@ -55,8 +55,10 @@ from concurrent.futures import ThreadPoolExecutor
 #   every SAVE_STATS_EVERY undisturbed).
 
 
-def make_mirror_hook(db_path: str, target, period: float = 30., batch: int = 5000):
-    """Build a 'run_hook' mirroring the stats DB at 'db_path' through 'target' (see the module notes)."""
+def make_mirror_hook(db_path: str, target, period: float = 30., batch: int = 5000, max_batches: int = 20):
+    """Build a 'run_hook' mirroring the stats DB at 'db_path' through 'target' (see the module notes).
+    Each cycle DRAINS the backlog in batches (up to max_batches * batch rows per cycle): one batch per
+    cycle cannot keep up with busy worlds (100 chatting rooms produce way more rows per hour)."""
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stats-mirror")
     hook_state = {"last": 0., "future": None}  # Touched by the MAIN loop only
     job_state = {"conn": None, "watermark": None, "static_digest": None,  # Touched by the mirror thread
@@ -97,19 +99,29 @@ def make_mirror_hook(db_path: str, target, period: float = 30., batch: int = 500
                              f"last id={remote_last}): remote cleared, fully re-uploading")
                 job_state["static_digest"] = None  # Ship the static snapshot at least once after init
 
-            dynamic_rows = conn.execute(
-                "SELECT rowid, timestamp, peer_id, stat_name, val_num, val_str, val_json "
-                "FROM dynamic_stats WHERE rowid > ? ORDER BY rowid LIMIT ?",
-                (job_state["watermark"], batch)).fetchall()
+            # The static snapshot is read (and possibly shipped) ONCE per cycle; the dynamic backlog
+            # is drained in batches, advancing the watermark after each successful upload (a failure
+            # leaves it in place: the SAME rows are retried at the next cycle, at-least-once)
             static_rows = conn.execute(
                 "SELECT rowid, peer_id, stat_name, val_json, timestamp FROM static_stats").fetchall()
             static_digest = hashlib.sha1(repr(static_rows).encode()).hexdigest()
-            if len(dynamic_rows) == 0 and static_digest == job_state["static_digest"]:
-                return  # Nothing new
-            if target.upload(dynamic_rows, static_rows) is True:
-                job_state["static_digest"] = static_digest  # noqa
+            ship_static = static_digest != job_state["static_digest"]
+            for _ in range(max_batches):
+                dynamic_rows = conn.execute(
+                    "SELECT rowid, timestamp, peer_id, stat_name, val_num, val_str, val_json "
+                    "FROM dynamic_stats WHERE rowid > ? ORDER BY rowid LIMIT ?",
+                    (job_state["watermark"], batch)).fetchall()
+                if len(dynamic_rows) == 0 and not ship_static:
+                    return  # Nothing new (or fully drained)
+                if target.upload(dynamic_rows, static_rows if ship_static else []) is not True:
+                    return  # Failure: retry from the same watermark at the next cycle
+                if ship_static:
+                    job_state["static_digest"] = static_digest  # noqa
+                    ship_static = False
                 if len(dynamic_rows) > 0:
                     job_state["watermark"] = dynamic_rows[-1][0]
+                if len(dynamic_rows) < batch:
+                    return  # Drained
         except Exception as e:
             log.error(f"[stats-mirror] Mirror cycle failed (will retry at the next one): {e}")
 

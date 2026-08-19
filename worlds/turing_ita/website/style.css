@@ -243,3 +243,11 @@ table.mini td { padding:6px 10px; border-bottom:1px solid var(--border-subtle); 
 .vote-table td:first-child, .vote-table th:first-child { min-width:150px }
 .vote-table .vote-msg { max-width:420px; white-space:normal; overflow:visible;
                         text-overflow:clip; word-break:break-word }
+
+/* ── room transcript controls (time range + pagination) ────── */
+.range-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 10px }
+.range-bar label { font-size:.7rem; color:var(--text-muted) }
+.range-bar input[type="datetime-local"] { background:var(--bg-subtle); color:var(--text-primary);
+    border:1px solid var(--border); border-radius:8px; padding:4px 8px; font-size:.72rem;
+    color-scheme:dark light }
+.chat-more { display:block; margin:8px auto }

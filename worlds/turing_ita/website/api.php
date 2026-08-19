@@ -4,8 +4,16 @@
 // Endpoints (GET):
 //   ?q=ops                        -> hotel ops series + totals   {n_total_agents, series: {stat: [[ts, v], ...]}}
 //   ?q=votes                      -> validated turing_vote rows  [{ts, votee, v}, ...] (PARSER_SKIPPED excluded)
-//   ?q=sessions                   -> logged-conversation sessions [{session, n, first_ts, last_ts}, ...]
-//   ?q=conversation&session=S     -> the chunks of one session   [{ts, m}, ...]
+//   ?q=sessions                   -> logged-conversation sessions [{session, n, first_ts, last_ts, authors}, ...]
+//   ?q=events&session=S           -> the 'kind: event' chunks only [{id, ts, m}, ...] (join/left/disconnected)
+//   ?q=conversation&session=S     -> a PAGE of the session transcript: {rows: [{id, ts, m}, ...], more: bool}
+//        Room transcripts are UNBOUNDED (rooms never close), so this endpoint never returns them whole:
+//        - default: the LATEST 'limit' chunks (limit <= 1000, default 300)
+//        - &before_id=X          -> the 'limit' chunks right before id X (backward pagination)
+//        - &from_ts=A&to_ts=B    -> chunks in a time range, ascending, first 'limit' (+ &after_id=X to go on)
+//        - &from_id=A&to_id=B    -> chunks in an id range, ascending (the vote-context windows), 'limit'-paged
+// The g_session/g_kind columns used below are GENERATED columns (see schema.sql): run its migration
+// ALTER TABLE before deploying this file on a database created with the old schema.
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
@@ -85,13 +93,12 @@ try {
             // n counts the CHAT messages only: 'kind: event' records (joined/left/disconnected) are
             // part of the transcript but not of the message count (their author still counts as a
             // participant: it is the AFFECTED guest, so even silent guests leave a trace)
-            $st = $pdo->query("SELECT JSON_UNQUOTE(JSON_EXTRACT(val_json, '$.session_id')) AS session, " .
-                              "SUM(CASE WHEN JSON_EXTRACT(val_json, '$.kind') IS NULL THEN 1 ELSE 0 END) " .
-                              "AS n, MIN(ts) AS first_ts, MAX(ts) AS last_ts, " .
-                              "GROUP_CONCAT(DISTINCT JSON_UNQUOTE(JSON_EXTRACT(val_json, '$.author'))) " .
-                              "AS authors " .
+            $st = $pdo->query("SELECT g_session AS session, " .
+                              "SUM(CASE WHEN g_kind IS NULL THEN 1 ELSE 0 END) AS n, " .
+                              "MIN(ts) AS first_ts, MAX(ts) AS last_ts, " .
+                              "GROUP_CONCAT(DISTINCT g_author) AS authors " .
                               "FROM dynamic_stats WHERE stat_name = 'conversation_chunk' " .
-                              "GROUP BY session ORDER BY last_ts DESC");
+                              "GROUP BY g_session ORDER BY last_ts DESC");
             $out = [];
             foreach ($st as $row) {
                 if ($row['session'] === null) {
@@ -104,24 +111,62 @@ try {
             echo json_encode($out);
             break;
 
+        case 'events':
+            $session = $_GET['session'] ?? '';
+            if ($session === '') {
+                fail(400, "Missing 'session'");
+            }
+            $st = $pdo->prepare("SELECT id, ts, val_json FROM dynamic_stats " .
+                                "WHERE stat_name = 'conversation_chunk' AND g_session = ? " .
+                                "AND g_kind = 'event' ORDER BY id");
+            $st->execute([$session]);
+            $out = [];
+            foreach ($st as $row) {
+                $out[] = ['id' => (int)$row['id'], 'ts' => (int)$row['ts'],
+                          'm' => json_decode($row['val_json'], true)];
+            }
+            echo json_encode($out);
+            break;
+
         case 'conversation':
             $session = $_GET['session'] ?? '';
             if ($session === '') {
                 fail(400, "Missing 'session'");
             }
-            $st = $pdo->prepare("SELECT ts, val_json FROM dynamic_stats " .
-                                "WHERE stat_name = 'conversation_chunk' " .
-                                "AND JSON_UNQUOTE(JSON_EXTRACT(val_json, '$.session_id')) = ? ORDER BY id");
-            $st->execute([$session]);
-            $out = [];
-            foreach ($st as $row) {
-                $out[] = ['ts' => (int)$row['ts'], 'm' => json_decode($row['val_json'], true)];
+            $limit = max(1, min((int)($_GET['limit'] ?? 300), 1000));
+            $conds = ["stat_name = 'conversation_chunk'", "g_session = ?"];
+            $args = [$session];
+            foreach ([['from_ts', 'ts >= ?'], ['to_ts', 'ts <= ?'], ['from_id', 'id >= ?'],
+                      ['to_id', 'id <= ?'], ['after_id', 'id > ?'], ['before_id', 'id < ?']] as $p) {
+                if (isset($_GET[$p[0]]) && $_GET[$p[0]] !== '') {
+                    $conds[] = $p[1];
+                    $args[] = (int)$_GET[$p[0]];
+                }
             }
-            echo json_encode($out);
+            // Backward (latest page, and 'load older' via before_id) unless an explicit range or a
+            // forward cursor asks for ascending; one extra row probes whether more pages exist
+            $backward = !isset($_GET['from_ts']) && !isset($_GET['from_id']) && !isset($_GET['after_id']);
+            $st = $pdo->prepare("SELECT id, ts, val_json FROM dynamic_stats WHERE " .
+                                implode(" AND ", $conds) .
+                                " ORDER BY id " . ($backward ? "DESC" : "ASC") . " LIMIT " . ($limit + 1));
+            $st->execute($args);
+            $rows = [];
+            foreach ($st as $row) {
+                $rows[] = ['id' => (int)$row['id'], 'ts' => (int)$row['ts'],
+                           'm' => json_decode($row['val_json'], true)];
+            }
+            $more = count($rows) > $limit;
+            if ($more) {
+                array_pop($rows);
+            }
+            if ($backward) {
+                $rows = array_reverse($rows);  // Back to chronological order
+            }
+            echo json_encode(['rows' => $rows, 'more' => $more]);
             break;
 
         default:
-            fail(400, "Unknown endpoint '$q' (use: ops, votes, sessions, conversation)");
+            fail(400, "Unknown endpoint '$q' (use: ops, votes, sessions, events, conversation)");
     }
 } catch (Throwable $e) {  // PDO errors AND any other PHP error: always a JSON reply, never a white page
     fail(500, 'Query failed' . detail($e));
