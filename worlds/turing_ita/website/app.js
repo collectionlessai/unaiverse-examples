@@ -638,23 +638,24 @@ async function pageRoom(session, pairA, pairB, fakeA, fakeB, voteTs) {
   const voteRows = votes.map((rec) => {
     const ok = rec.v.vote === rec.v.ground_truth;
     return `<tr id="vote-row-${rec.id}">` +
-      `<td><button class="evt-arrow" onclick="voteToEvent(${rec.id})" ` +
+      `<td class="arrow-col"><button class="evt-arrow" onclick="voteToEvent(${rec.id})" ` +
       `title="${esc(L.vote_to_event_tip)}">⬅️</button></td>` +
-      `<td>${peerLink(rec.v.voter)}</td><td>${esc(natureLabel(rec.v.voter_nature))}</td>` +
+      `<td class="user-col">${peerLink(rec.v.voter)}</td><td>${esc(natureLabel(rec.v.voter_nature))}</td>` +
       `<td>${esc(rec.v.voter_fake_name || "-")}</td>` +
       `<td>${esc(rec.v.votee_fake_name || "-")}</td>` +
       `<td>${esc(rec.v.vote)}</td><td>${esc(rec.v.ground_truth)}</td>` +
-      `<td>${ok ? "✓" : "✗"}</td>` +
-      `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td></tr>`;
+      `<td><span class="${ok ? "out-ok" : "out-ko"}">${ok ? "✓" : "✗"}</span></td>` +
+      `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td>` +
+      `<td>${esc(fmtTs(rec.ts))}</td></tr>`;
   }).join("");
   const votesHtml = votes.length === 0 ? `<p class="empty">-</p>` :
-    `<div class="votes-scroll"><table class="cm-table vote-table"><thead><tr><th></th>` +
-    `<th>${esc(L.vote_cols.voter)}</th>` +
+    `<div class="votes-scroll"><table class="cm-table vote-table"><thead><tr><th class="arrow-col"></th>` +
+    `<th class="user-col">${esc(L.vote_cols.voter)}</th>` +
     `<th>${esc(L.vote_cols.nature)}</th><th>${esc(L.vote_cols.fake_voter)}</th>` +
     `<th>${esc(L.vote_cols.fake_votee)}</th>` +
     `<th>${esc(L.vote_cols.vote)}</th>` +
     `<th>${esc(L.vote_cols.truth)}</th><th>${esc(L.vote_cols.outcome)}</th>` +
-    `<th>${esc(L.vote_cols.msg)}</th></tr></thead>` +
+    `<th>${esc(L.vote_cols.msg)}</th><th></th></tr></thead>` +
     `<tbody>${voteRows}</tbody></table></div>`;
 
   return `<div class="crumbs"><a href="#/floors">${esc(L.floors_title)}</a> / ` +
@@ -702,17 +703,19 @@ function pageUser(unaid) {
   const cast = DB.votes.filter((r) => r.v.voter === unaid);
   const received = DB.votes.filter((r) => r.votee === unaid);
   const u = usersIndex().get(unaid);
-  const row = (rec, other) => `<tr><td>${peerLink(other)}</td>` +
+  const row = (rec, other) => `<tr><td class="user-col">${peerLink(other)}</td>` +
     `<td>${esc(rec.v.voter_fake_name || "-")}</td>` +
     `<td>${esc(rec.v.votee_fake_name || "-")}</td><td>${esc(rec.v.vote)}</td>` +
-    `<td>${esc(rec.v.ground_truth)}</td><td>${rec.v.vote === rec.v.ground_truth ? "✓" : "✗"}</td>` +
+    `<td>${esc(rec.v.ground_truth)}</td>` +
+    `<td><span class="${rec.v.vote === rec.v.ground_truth ? "out-ok" : "out-ko"}">` +
+    `${rec.v.vote === rec.v.ground_truth ? "✓" : "✗"}</span></td>` +
     `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td>` +
     `<td><a href="#/room/${seg(rec.v.session_id)}?a=${seg(rec.v.voter)}&b=${seg(rec.votee)}` +
     `&af=${seg(rec.v.voter_fake_name || "")}&bf=${seg(rec.v.votee_fake_name || "")}&t=${rec.ts}" ` +
     `title="${esc(L.room_window_tip)}">${esc(short8(rec.v.session_id.split(":")[1] || ""))}</a></td>` +
     `<td>${esc(fmtTs(rec.ts))}</td></tr>`;
   const table = (rows) => rows.length === 0 ? `<p class="empty">-</p>` :
-    `<table class="cm-table vote-table"><thead><tr><th>${esc(L.user_cols.user)}</th>` +
+    `<table class="cm-table vote-table"><thead><tr><th class="user-col">${esc(L.user_cols.user)}</th>` +
     `<th>${esc(L.vote_cols.fake_voter)}</th><th>${esc(L.vote_cols.fake_votee)}</th>` +
     `<th>${esc(L.vote_cols.vote)}</th><th>${esc(L.vote_cols.truth)}</th>` +
     `<th>${esc(L.vote_cols.outcome)}</th><th>${esc(L.vote_cols.msg)}</th>` +
@@ -720,9 +723,10 @@ function pageUser(unaid) {
     `<tbody>${rows.join("")}</tbody></table>`;
   // Per-user confusion matrix: the SAME matrix of the leaderboard, restricted to the shown votes —
   // under 'cast' the outcomes of the classifications THEY made, under 'received' how the other
-  // participants classified THEM (only the row of their own nature can be non-empty there)
+  // participants classified THEM. Its OWN panel, separated from the table like in the Leaderboard
   const miniCm = (votes) => votes.length === 0 ? "" :
-    `<h3 style="margin-top:18px">${esc(L.cm_title)}</h3>` + cmTable(aggConfusion(votes));
+    `<div class="panel" style="margin-top:18px"><h3>${esc(L.cm_title)}</h3>` +
+    cmTable(aggConfusion(votes)) + `</div>`;
 
   // One table at a time (Votes cast / Votes received), switched like the leaderboard tabs
   const isCast = STATE.userTab !== "received";
@@ -736,7 +740,7 @@ function pageUser(unaid) {
     `<div class="ctrl-bar">${btns}</div>` +
     `<div class="panel"><h3>${esc(isCast ? L.user_votes_cast : L.user_votes_received)} ` +
     `${esc(shortId(unaid))}</h3>` +
-    table(votes.map((r) => row(r, isCast ? r.votee : r.v.voter))) + miniCm(votes) + `</div>`;
+    table(votes.map((r) => row(r, isCast ? r.votee : r.v.voter))) + `</div>` + miniCm(votes);
 }
 window.setUserTab = (k) => { STATE.userTab = k; route(); };
 

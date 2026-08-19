@@ -528,7 +528,7 @@ tr.gridjs-tr:hover td.gridjs-td{{
   background:var(--table-header-bg);color:var(--text-muted);
   font-weight:600;font-size:.75rem;
 }}
-.cm-table td{{color:#1a1a1a;font-weight:600}}
+.cm-table td{{color:var(--text-primary);font-weight:600}}
 .cm-table td:first-child{{color:var(--text-secondary);background:transparent}}
 
 /* ═══════════════════════════════════════════════════════

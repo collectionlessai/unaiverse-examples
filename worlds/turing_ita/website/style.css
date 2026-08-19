@@ -149,7 +149,7 @@ a.circle-card:hover { border-color:var(--border-strong); text-decoration:none }
 .podium { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 }
 .podium-card { background:var(--bg-paper); border:1px solid var(--border); border-radius:12px;
                padding:12px 18px; text-align:center; flex:1; min-width:140px }
-.podium-medal { font-size:1.3rem }
+.podium-medal { font-size:2rem; line-height:1; margin-bottom:6px }  /* Same size of the join dashboard */
 .podium-rank { font-size:.66rem; color:var(--text-muted) }
 .podium-name { font-family:'JetBrains Mono',monospace; font-size:.8rem; color:var(--text-primary);
                overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; margin:2px auto }
@@ -169,10 +169,12 @@ a.circle-card:hover { border-color:var(--border-strong); text-decoration:none }
 .gridjs-input::placeholder { color:var(--text-muted) !important }
 .gridjs-input:focus { border-color:var(--primary) !important; box-shadow:none !important }
 th.gridjs-th { background:var(--table-header-bg) !important; color:var(--text-muted) !important;
-               border-color:var(--border) !important; font-size:.7rem !important;
+               border-color:var(--border) !important; font-size:.6875rem !important; font-weight:700 !important;
+               padding:11px 14px !important;
                text-transform:uppercase; letter-spacing:.05em }
 td.gridjs-td { background:transparent !important; color:var(--text-secondary) !important;
-               border-color:var(--border-subtle) !important; font-size:.8rem !important }
+               padding:9px 14px !important;
+               border-color:var(--border-subtle) !important; font-size:.9375rem !important }  /* As the join dashboard */
 .gridjs-footer { background:var(--bg-paper) !important; border-color:var(--border) !important;
                  box-shadow:none !important }
 .gridjs-pagination { color:var(--text-muted) !important; font-size:.72rem !important }
@@ -240,7 +242,8 @@ table.mini td { padding:6px 10px; border-bottom:1px solid var(--border-subtle); 
             overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 
 /* ── vote tables: roomy USER column, wrapping VOTE MESSAGE ────── */
-.vote-table td:first-child, .vote-table th:first-child { min-width:150px }
+.vote-table td.user-col, .vote-table th.user-col { min-width:150px }
+.vote-table .arrow-col { width:26px; min-width:26px; padding:8px 0 8px 6px }
 .vote-table .vote-msg { max-width:420px; white-space:normal; overflow:visible;
                         text-overflow:clip; word-break:break-word }
 
@@ -275,3 +278,12 @@ table.mini td { padding:6px 10px; border-bottom:1px solid var(--border-subtle); 
 }
 div.flash { animation:flash-bg 1.8s ease-out; border-radius:8px }
 tr.flash td { animation:flash-bg 1.8s ease-out }
+
+/* ── outcome marks and dashboard-matching confusion matrix cells ────── */
+.out-ok { color:var(--teal); font-weight:700 }
+.out-ko { color:var(--error); font-weight:700 }
+.cm-table.cm-colored { font-size:.8125rem }
+.cm-table.cm-colored td, .cm-table.cm-colored th { border:1px solid var(--border);
+    text-align:center; padding:7px 11px }
+.cm-table.cm-colored td { color:var(--text-primary); font-weight:600 }
+.cm-table.cm-colored td:first-child { color:var(--text-secondary) }
