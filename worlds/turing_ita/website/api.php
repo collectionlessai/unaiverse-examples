@@ -44,15 +44,23 @@ $q = $_GET['q'] ?? '';
 try {
     switch ($q) {
         case 'ops':
+            // The mirror is an ARCHIVE (it never prunes) and the hotel writes these metrics every few
+            // seconds: loading the WHOLE history exhausts the PHP memory after a few days of running.
+            // The chart shows the last 30 days anyway (the widest scope), capped at the most recent
+            // OPS_MAX_POINTS rows per stat (newest first, then reversed back to chronological order)
+            define('OPS_WINDOW_MS', 30 * 24 * 3600 * 1000);
+            define('OPS_MAX_POINTS', 5000);
+            $cutoff = (int)(microtime(true) * 1000) - OPS_WINDOW_MS;
             $series = [];
-            $st = $pdo->prepare("SELECT ts, val_num FROM dynamic_stats WHERE stat_name = ? ORDER BY id");
+            $st = $pdo->prepare("SELECT ts, val_num FROM dynamic_stats WHERE stat_name = ? AND ts >= ? " .
+                                "ORDER BY id DESC LIMIT " . OPS_MAX_POINTS);
             foreach ($OPS_STATS as $stat) {
-                $st->execute([$stat]);
+                $st->execute([$stat, $cutoff]);
                 $pts = [];
                 foreach ($st as $row) {
                     $pts[] = [(int)$row['ts'], (float)$row['val_num']];
                 }
-                $series[$stat] = $pts;
+                $series[$stat] = array_reverse($pts);
             }
             $tot = $pdo->query("SELECT val_json FROM static_stats WHERE stat_name = 'n_total_agents' " .
                                "ORDER BY id DESC LIMIT 1")->fetch();
