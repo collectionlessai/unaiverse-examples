@@ -325,30 +325,58 @@ function pageFloors() {
   return html;
 }
 
-function pairWindow(chunks, a, b) {
-  // The [start, end] chunk indexes (inclusive) of the FIRST window in which the two given unaids
+function pairWindows(chunks, a, aFake, b, bFake) {
+  // ALL the [start, end, endTs] chunk windows (inclusive indexes) in which the two given identities
   // were in the room TOGETHER: from the join that completes the pair to the first left/disconnected
   // event of either (both boundary events included, so the reader sees why the window opens/closes).
-  // Presence is rebuilt from the 'kind: event' records; an agent chatting without a previous joined
-  // event (older transcripts) counts as present. Returns null when the two never overlap.
-  const present = new Map([[a, false], [b, false]]);
+  // Rooms are REUSED across sessions, so an identity is the PAIR unaid + fake name (the alias changes
+  // at every activation: matching by unaid alone can hit the wrong session); a null/unknown fake name
+  // matches any alias (older records). Presence is rebuilt from the 'kind: event' records; an agent
+  // chatting without a previous joined event (older transcripts) counts as present.
+  const match = (m, unaid, fake) => m.author === unaid &&
+    (!fake || !m.author_fake_name || m.author_fake_name === fake);
+  const present = { a: false, b: false };
+  const windows = [];
   let start = null;
   for (let i = 0; i < chunks.length; i++) {
     const m = chunks[i].m || {};
-    const who = m.author;
-    if (who !== a && who !== b) continue;
+    const who = match(m, a, aFake) ? "a" : (match(m, b, bFake) ? "b" : null);
+    if (who === null) continue;
     if (m.kind === "event" && m.event !== "joined") {  // left / disconnected
-      if (start !== null) return [start, i];
-      present.set(who, false);
+      if (start !== null) windows.push([start, i, m.ts || chunks[i].ts || 0]);
+      start = null;
+      present[who] = false;
       continue;
     }
-    present.set(who, true);  // A joined event, or a chat message (chatting implies presence)
-    if (start === null && present.get(a) && present.get(b)) start = i;
+    present[who] = true;  // A joined event, or a chat message (chatting implies presence)
+    if (start === null && present.a && present.b) start = i;
   }
-  return start === null ? null : [start, chunks.length - 1];
+  if (start !== null) {  // Still open at the end of the transcript
+    const last = chunks[chunks.length - 1];
+    windows.push([start, chunks.length - 1, (last.m && last.m.ts) || last.ts || 0]);
+  }
+  return windows;
 }
 
-async function pageRoom(session, pairA, pairB) {
+function pickWindow(windows, voteTs) {
+  // The window of THE vote: the one whose RIGHT extreme is closest to the vote time without passing
+  // it (the voter leaves the room, then votes: the window always closes right before the vote).
+  // Without a vote time, or when the clocks disagree, fall back to the closest window after it.
+  if (windows.length === 0) return null;
+  if (!voteTs) return windows[0];
+  let best = null;
+  for (const w of windows) {
+    if (w[2] <= voteTs && (best === null || w[2] > best[2])) best = w;
+  }
+  if (best === null) {
+    for (const w of windows) {
+      if (best === null || w[2] < best[2]) best = w;
+    }
+  }
+  return best;
+}
+
+async function pageRoom(session, pairA, pairB, fakeA, fakeB, voteTs) {
   const parts = String(session).split(":");
   const [fid, rid] = parts.length === 2 ? parts : ["?", session];
   const rooms = DB.floors.get(fid);
@@ -359,13 +387,15 @@ async function pageRoom(session, pairA, pairB) {
   if (room && room.convo) {
     try {
       let chunks = await getJSON(API + "?q=conversation&session=" + seg(session));
-      if (pairA && pairB) {  // Vote context: only the window the two agents shared (see pairWindow)
-        const w = pairWindow(chunks, pairA, pairB);
+      if (pairA && pairB) {  // Vote context: only the window the two identities shared, the one that
+        // closed right before the vote (see pairWindows/pickWindow)
+        const w = pickWindow(pairWindows(chunks, pairA, fakeA, pairB, fakeB), voteTs);
         const allLink = `<a href="#/room/${seg(session)}">${esc(L.room_window_all)}</a>`;
         if (w !== null) {
           chunks = chunks.slice(w[0], w[1] + 1);
+          const who = (unaid, fake) => shortId(unaid) + (fake ? ` (${fake})` : "");
           note = `<p class="section-note">` +
-            esc(fill(L.room_window_note, { A: shortId(pairA), B: shortId(pairB) })) +
+            esc(fill(L.room_window_note, { A: who(pairA, fakeA), B: who(pairB, fakeB) })) +
             ` ${allLink}</p>`;
         } else {
           note = `<p class="section-note">${esc(L.room_window_fail)}</p>`;
@@ -462,7 +492,8 @@ function pageUser(unaid) {
     `<td>${esc(rec.v.votee_fake_name || "-")}</td><td>${esc(rec.v.vote)}</td>` +
     `<td>${esc(rec.v.ground_truth)}</td><td>${rec.v.vote === rec.v.ground_truth ? "✓" : "✗"}</td>` +
     `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td>` +
-    `<td><a href="#/room/${seg(rec.v.session_id)}?a=${seg(rec.v.voter)}&b=${seg(rec.votee)}" ` +
+    `<td><a href="#/room/${seg(rec.v.session_id)}?a=${seg(rec.v.voter)}&b=${seg(rec.votee)}` +
+    `&af=${seg(rec.v.voter_fake_name || "")}&bf=${seg(rec.v.votee_fake_name || "")}&t=${rec.ts}" ` +
     `title="${esc(L.room_window_tip)}">${esc(short8(rec.v.session_id.split(":")[1] || ""))}</a></td>` +
     `<td>${esc(fmtTs(rec.ts))}</td></tr>`;
   const table = (rows) => rows.length === 0 ? `<p class="empty">-</p>` :
@@ -584,11 +615,14 @@ async function route() {
     if (page === "overview" || page === "") { app.innerHTML = pageOverview(); drawOpsChart(); }
     else if (page === "floors") app.innerHTML = pageFloors();
     else if (page === "room" && parts.length >= 2) {
-      // Optional ?a=<voter>&b=<votee> after the session: restricts the transcript to the window the
-      // two agents shared (the links in the vote tables carry it). URLSearchParams already decodes.
+      // Optional ?a=<voter>&b=<votee>&af=&bf=<their fake names>&t=<vote ts> after the session:
+      // restricts the transcript to the window the two identities shared right before that vote
+      // (the links in the vote tables carry them). URLSearchParams already decodes.
       const [sess, query] = parts.slice(1).join("/").split("?");
       const q = new URLSearchParams(query || "");
-      app.innerHTML = await pageRoom(unseg(sess), q.get("a"), q.get("b"));
+      app.innerHTML = await pageRoom(unseg(sess), q.get("a"), q.get("b"),
+                                     q.get("af") || null, q.get("bf") || null,
+                                     parseInt(q.get("t") || "0", 10) || null);
     }
     else if (page === "users") app.innerHTML = pageUsers();
     else if (page === "user" && parts.length >= 2) app.innerHTML = pageUser(unseg(parts.slice(1).join("/")));
