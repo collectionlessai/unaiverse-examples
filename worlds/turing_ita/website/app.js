@@ -43,7 +43,14 @@ const L = {
   card_messages: "Messages logged", card_participants: "Participants seen",
   room_conversation: "Conversation", room_votes: "Votes cast in this room",
   room_not_logged: "The conversation of this room was not logged.",
-  vote_cols: { voter: "Voter", nature: "Nature", vote: "Vote", truth: "Truth", outcome: "Outcome" },
+  room_window_note: "Showing only the part of the conversation that <A> and <B> shared " +
+                    "(the context of the vote).",
+  room_window_all: "Show the whole conversation",
+  room_window_fail: "Could not isolate the shared window (events not available): showing the whole " +
+                    "conversation.",
+  room_window_tip: "Open the room, restricted to the conversation window shared by voter and votee",
+  vote_cols: { voter: "Voter", nature: "Nature", vote: "Vote", truth: "Truth", outcome: "Outcome",
+               fake: "Fake name", msg: "Vote message" },
   users_title: "Users", user_cols: { user: "User", nature: "Nature", cast: "Votes cast",
                                      received: "Votes received", last: "Last activity" },
   user_votes_cast: "Votes cast by", user_votes_received: "Votes received by",
@@ -315,16 +322,52 @@ function pageFloors() {
   return html;
 }
 
-async function pageRoom(session) {
+function pairWindow(chunks, a, b) {
+  // The [start, end] chunk indexes (inclusive) of the FIRST window in which the two given unaids
+  // were in the room TOGETHER: from the join that completes the pair to the first left/disconnected
+  // event of either (both boundary events included, so the reader sees why the window opens/closes).
+  // Presence is rebuilt from the 'kind: event' records; an agent chatting without a previous joined
+  // event (older transcripts) counts as present. Returns null when the two never overlap.
+  const present = new Map([[a, false], [b, false]]);
+  let start = null;
+  for (let i = 0; i < chunks.length; i++) {
+    const m = chunks[i].m || {};
+    const who = m.author;
+    if (who !== a && who !== b) continue;
+    if (m.kind === "event" && m.event !== "joined") {  // left / disconnected
+      if (start !== null) return [start, i];
+      present.set(who, false);
+      continue;
+    }
+    present.set(who, true);  // A joined event, or a chat message (chatting implies presence)
+    if (start === null && present.get(a) && present.get(b)) start = i;
+  }
+  return start === null ? null : [start, chunks.length - 1];
+}
+
+async function pageRoom(session, pairA, pairB) {
   const parts = String(session).split(":");
   const [fid, rid] = parts.length === 2 ? parts : ["?", session];
   const rooms = DB.floors.get(fid);
   const room = rooms ? rooms.get(rid) : null;
 
   let convo = `<p class="empty">${esc(L.room_not_logged)}</p>`;
+  let note = "";
   if (room && room.convo) {
     try {
-      const chunks = await getJSON(API + "?q=conversation&session=" + seg(session));
+      let chunks = await getJSON(API + "?q=conversation&session=" + seg(session));
+      if (pairA && pairB) {  // Vote context: only the window the two agents shared (see pairWindow)
+        const w = pairWindow(chunks, pairA, pairB);
+        const allLink = `<a href="#/room/${seg(session)}">${esc(L.room_window_all)}</a>`;
+        if (w !== null) {
+          chunks = chunks.slice(w[0], w[1] + 1);
+          note = `<p class="section-note">` +
+            esc(fill(L.room_window_note, { A: shortId(pairA), B: shortId(pairB) })) +
+            ` ${allLink}</p>`;
+        } else {
+          note = `<p class="section-note">${esc(L.room_window_fail)}</p>`;
+        }
+      }
       const hues = {};  // Author -> hue by order of first appearance (golden-angle: far-apart colors)
       const hueOf = (name) => {
         const k = String(name || "?");
@@ -333,6 +376,9 @@ async function pageRoom(session) {
       };
       convo = '<div class="chat">' + chunks.map((ch) => {
         const m = ch.m || {};
+        if (m.kind === "event") {  // Joined/left/disconnected: a centered system line, not a bubble
+          return `<div class="msg-event" title="${esc(fmtTs(m.ts || ch.ts))}">${esc(m.text || "")}</div>`;
+        }
         return `<div class="msg"><div class="msg-author" ` +
           `style="color:hsl(${hueOf(m.author_fake_name)} 60% var(--author-l))">` +
           `${esc(m.author_fake_name || "?")}` +
@@ -349,18 +395,22 @@ async function pageRoom(session) {
   const voteRows = votes.map((rec) => {
     const ok = rec.v.vote === rec.v.ground_truth;
     return `<tr><td>${peerLink(rec.v.voter)}</td><td>${esc(natureLabel(rec.v.voter_nature))}</td>` +
+      `<td>${esc(rec.v.votee_fake_name || "-")}</td>` +
       `<td>${esc(rec.v.vote)}</td><td>${esc(rec.v.ground_truth)}</td>` +
-      `<td>${ok ? "✓" : "✗"}</td></tr>`;
+      `<td>${ok ? "✓" : "✗"}</td>` +
+      `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td></tr>`;
   }).join("");
   const votesHtml = votes.length === 0 ? `<p class="empty">-</p>` :
     `<table class="cm-table"><thead><tr><th>${esc(L.vote_cols.voter)}</th>` +
-    `<th>${esc(L.vote_cols.nature)}</th><th>${esc(L.vote_cols.vote)}</th>` +
-    `<th>${esc(L.vote_cols.truth)}</th><th>${esc(L.vote_cols.outcome)}</th></tr></thead>` +
+    `<th>${esc(L.vote_cols.nature)}</th><th>${esc(L.vote_cols.fake)}</th>` +
+    `<th>${esc(L.vote_cols.vote)}</th>` +
+    `<th>${esc(L.vote_cols.truth)}</th><th>${esc(L.vote_cols.outcome)}</th>` +
+    `<th>${esc(L.vote_cols.msg)}</th></tr></thead>` +
     `<tbody>${voteRows}</tbody></table>`;
 
   return `<div class="crumbs"><a href="#/floors">${esc(L.floors_title)}</a> / ` +
     `${esc(L.floor_label)} ${esc(short8(fid))} / ${esc(L.room_label)} ${esc(short8(rid))}</div>` +
-    `<div class="two-col"><div class="panel"><h3>${esc(L.room_conversation)}</h3>${convo}</div>` +
+    `<div class="two-col"><div class="panel"><h3>${esc(L.room_conversation)}</h3>${note}${convo}</div>` +
     `<div class="panel"><h3>${esc(L.room_votes)}</h3>${votesHtml}</div></div>`;
 }
 
@@ -402,14 +452,19 @@ function pageUser(unaid) {
   const cast = DB.votes.filter((r) => r.v.voter === unaid);
   const received = DB.votes.filter((r) => r.votee === unaid);
   const u = usersIndex().get(unaid);
-  const row = (rec, other) => `<tr><td>${peerLink(other)}</td><td>${esc(rec.v.vote)}</td>` +
+  const row = (rec, other) => `<tr><td>${peerLink(other)}</td>` +
+    `<td>${esc(rec.v.votee_fake_name || "-")}</td><td>${esc(rec.v.vote)}</td>` +
     `<td>${esc(rec.v.ground_truth)}</td><td>${rec.v.vote === rec.v.ground_truth ? "✓" : "✗"}</td>` +
-    `<td><a href="#/room/${seg(rec.v.session_id)}">${esc(short8(rec.v.session_id.split(":")[1] || ""))}</a></td>` +
+    `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td>` +
+    `<td><a href="#/room/${seg(rec.v.session_id)}?a=${seg(rec.v.voter)}&b=${seg(rec.votee)}" ` +
+    `title="${esc(L.room_window_tip)}">${esc(short8(rec.v.session_id.split(":")[1] || ""))}</a></td>` +
     `<td>${esc(fmtTs(rec.ts))}</td></tr>`;
   const table = (rows) => rows.length === 0 ? `<p class="empty">-</p>` :
     `<table class="cm-table"><thead><tr><th>${esc(L.user_cols.user)}</th>` +
+    `<th>${esc(L.vote_cols.fake)}</th>` +
     `<th>${esc(L.vote_cols.vote)}</th><th>${esc(L.vote_cols.truth)}</th>` +
-    `<th>${esc(L.vote_cols.outcome)}</th><th>${esc(L.room_label)}</th><th></th></tr></thead>` +
+    `<th>${esc(L.vote_cols.outcome)}</th><th>${esc(L.vote_cols.msg)}</th>` +
+    `<th>${esc(L.room_label)}</th><th></th></tr></thead>` +
     `<tbody>${rows.join("")}</tbody></table>`;
   // Per-user confusion matrices: the SAME matrix of the leaderboard, restricted to this user's
   // votes — under 'cast' the outcomes of the classifications THEY made, under 'received' how the
@@ -515,7 +570,13 @@ async function route() {
   try {
     if (page === "overview" || page === "") { app.innerHTML = pageOverview(); drawOpsChart(); }
     else if (page === "floors") app.innerHTML = pageFloors();
-    else if (page === "room" && parts.length >= 2) app.innerHTML = await pageRoom(unseg(parts.slice(1).join("/")));
+    else if (page === "room" && parts.length >= 2) {
+      // Optional ?a=<voter>&b=<votee> after the session: restricts the transcript to the window the
+      // two agents shared (the links in the vote tables carry it). URLSearchParams already decodes.
+      const [sess, query] = parts.slice(1).join("/").split("?");
+      const q = new URLSearchParams(query || "");
+      app.innerHTML = await pageRoom(unseg(sess), q.get("a"), q.get("b"));
+    }
     else if (page === "users") app.innerHTML = pageUsers();
     else if (page === "user" && parts.length >= 2) app.innerHTML = pageUser(unseg(parts.slice(1).join("/")));
     else if (page === "leaderboard") app.innerHTML = pageLeaderboard();

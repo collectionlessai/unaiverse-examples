@@ -643,6 +643,8 @@ class WAgent(Agent):
 
                         _vote_dict_ = copy.deepcopy(vote_dict)
                         _vote_dict_["VOTE_MSG"] = vote_dict["vote"]  # We also save the original vote message
+                        _vote_dict_["votee_fake_name"] = fake_name  # The votee's room alias: it makes the
+                        #                                             VOTE_MSG (and the transcript) readable
                         _vote_dict_["vote"] = classification
                         _vote_dict_["ground_truth"] = vote_dict["ground_truth"][fake_name][0]
                         _vote_dict_["msgs_from_votee"] = vote_dict["msgs_from_votee"][fake_name]

@@ -74,8 +74,12 @@ try {
         case 'sessions':
             // Conversations are grouped by the session_id INSIDE the chunk (see src/stats.py: the DB
             // group key of a chunk is a different string, "<room.uuid>:<activation_ts>")
+            // n counts the CHAT messages only: 'kind: event' records (joined/left/disconnected) are
+            // part of the transcript but not of the message count (their author still counts as a
+            // participant: it is the AFFECTED guest, so even silent guests leave a trace)
             $st = $pdo->query("SELECT JSON_UNQUOTE(JSON_EXTRACT(val_json, '$.session_id')) AS session, " .
-                              "COUNT(*) AS n, MIN(ts) AS first_ts, MAX(ts) AS last_ts, " .
+                              "SUM(CASE WHEN JSON_EXTRACT(val_json, '$.kind') IS NULL THEN 1 ELSE 0 END) " .
+                              "AS n, MIN(ts) AS first_ts, MAX(ts) AS last_ts, " .
                               "GROUP_CONCAT(DISTINCT JSON_UNQUOTE(JSON_EXTRACT(val_json, '$.author'))) " .
                               "AS authors " .
                               "FROM dynamic_stats WHERE stat_name = 'conversation_chunk' " .

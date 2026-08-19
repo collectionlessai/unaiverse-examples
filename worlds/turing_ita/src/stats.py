@@ -12,8 +12,11 @@ OUTER dynamic (peer_id = group key):
                       Value shape:
                         {
                           "voter":            "<unaid>",
+                          "voter_fake_name":  "<str>",   (the voter's room alias)
                           "voter_nature":     "human" | "ai",
                           "vote":             "human" | "ai",
+                          "votee_fake_name":  "<str>",   (the votee's room alias)
+                          "VOTE_MSG":         "<str>",   (the raw vote message the voter wrote)
                           "ground_truth":     "human" | "ai",
                           "session_id":       "<floor.peer_id>:<room.uuid>",
                           "floor_manager":    "<peer_id>",
@@ -38,6 +41,10 @@ OUTER dynamic (peer_id = group key):
                            "text":             "<str>",
                            "ts":               <ts_ms>,
                          }
+                       Room EVENTS (guest joined/left/disconnected) are stored in the same stream with
+                       two extra keys: "kind": "event" and "event": "joined" | "left" | "disconnected";
+                       there the author is the AFFECTED guest and the text is the broadcast announce
+                       (records without "kind" are plain chat messages).
 
   hotel_n_*         - one scalar stat per hotel operational metric.
                       peer_id = hotel manager real peer id.

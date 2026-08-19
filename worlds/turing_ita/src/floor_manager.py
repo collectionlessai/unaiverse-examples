@@ -108,6 +108,7 @@ class WAgent(Agent):
             # Send this message only if the agent was chatting (i.e., not if he was in the voting booth)
             if room.get_status(peer_id) in {GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE, GuestStatus.AT_ROUND_TABLE}:
                 disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
+                self.__store_event_chunk(room, peer_id, "disconnected", disconnected_message)
                 others = [g for g in list(room.get_guests()) if g != peer_id]
 
                 # Do not check if this fails: if you do, and then you disconnect when it fails,
@@ -196,6 +197,7 @@ class WAgent(Agent):
             # This dictionary is almost filled, it misses the actual vote (it will be sent in its own stream)
             vote_dict = {
                 "voter": room.get_unaid_of(guest),
+                "voter_fake_name": fake_name,  # The voter's room alias (needed to READ the transcripts)
                 "voter_nature": room.get_ground_truth_of(guest),
                 "vote": None,  # This will be filled when actually receiving the vote from the processor stream
                 "ground_truth": {
@@ -415,6 +417,7 @@ class WAgent(Agent):
             else:
                 sent = True
                 joined_message = Config.joined_message.replace("<SOME_NAME>", room.fake_name_of(guest))
+                self.__store_event_chunk(room, guest, "joined", joined_message)
                 await asyncio.gather(*[
                     self.__send_or_disconnect(_guest,
                                               action_name="get_status_msg",
@@ -451,6 +454,7 @@ class WAgent(Agent):
             # (2) Tell other guest that the handled guest left
             self._guest2vote_info[guest] = [interaction.uuid, None]
             left_message = Config.left_message.replace("<SOME_NAME>", fake_name)
+            self.__store_event_chunk(room, guest, "left", left_message)
             await asyncio.gather(
                 self.__send_or_disconnect(guest,
                                           action_name="get_status_msg",
@@ -663,6 +667,23 @@ class WAgent(Agent):
         await asyncio.gather(*[self.disconnect(guest) for guest in guests], return_exceptions=True)
 
         return True
+
+    def __store_event_chunk(self, room, guest: str, event: str, text: str) -> None:
+        """Room events (joined/left/disconnected) enter the stored transcript too, as 'kind: event'
+        conversation_chunk records (see stats.py): without them a transcript reader cannot tell when
+        the cast of a room changed. The 'author' is the AFFECTED guest, so even a guest who never
+        writes a message leaves a trace in the room archive."""
+        if not Config.store_conversations:
+            return
+        ts = self.clock.get_time_ms(monotonic=True)
+        self.stats.store_stat("conversation_chunk",
+                              {"session_id": self.floor.id + ":" + room.id,
+                               "kind": "event", "event": event,
+                               "author": room.get_unaid_of(guest),
+                               "author_fake_name": room.fake_name_of(guest),
+                               "text": text,
+                               "ts": ts},
+                              group_key=room.id, timestamp=ts)
 
     @action
     async def get_msg_and_broadcast(self, msg: str | None = None, interaction: Interaction | None = None):
