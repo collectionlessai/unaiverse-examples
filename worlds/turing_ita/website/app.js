@@ -59,6 +59,8 @@ const L = {
   users_title: "Users", user_cols: { user: "User", nature: "Nature", cast: "Votes cast",
                                      received: "Votes received", last: "Last activity" },
   user_votes_cast: "Votes cast by", user_votes_received: "Votes received by",
+  user_info_btn: "Info", info_none: "This is not registered in any Google Forms.",
+  info_unavailable: "The info sheet could not be loaded.",
   // The leaderboard labels below are VERBATIM from src/html_renderer.py (the dashboard shown when
   // joining the world IS this leaderboard: same tabs, columns, podium score labels, nature values)
   lb_title: "Leaderboard", lb_fooling: "Best Fooling", lb_detecting: "Best Detecting",
@@ -119,9 +121,88 @@ try {
 } catch (e) { /* keep dark */ }
 
 /* ─── data ─────────────────────────────────────────────── */
-const DB = { ops: null, votes: [], sessions: [], floors: null, loaded: false, error: null };
+const DB = { ops: null, votes: [], sessions: [], floors: null, loaded: false, error: null,
+             info: {} };  // info: per-nature sheet data, see loadSheets()
+
+/* ── participant info from the Google Spreadsheets (view-by-link) ──────
+   TWO registration forms feed two sheets, one for AI agents and one for HUMAN agents (similar but
+   not identical structure: same B/D/E/F columns, F has a different header — each popup line uses the
+   header of ITS OWN sheet). Loaded at startup through the 'gviz' JSON endpoint (works on link-shared
+   sheets, CORS enabled). Row 1 is the header; column D ("UNaIVERSE nickname") is the key of each
+   associative map — the nickname is the part of the UNaID BEFORE the '/' (UNaID = nickname/agent
+   name). An agent is looked up in the sheet of its NATURE (from the votes), falling back to the
+   other sheet; a failure here never blocks the site. */
+const SHEETS = {
+  ai: "1mdIUYWe28xA04qV-nV1KlTQKOrN4CxXCYDfRZ55yo9o",     // AI-agents registration form
+  human: "1a4RQh39XAed-X87JzB8kOk1IQOjqo54PhMSazVAk1nc",  // Human-agents registration form
+};
+const sheetUrl = (kind) => (window.SHEET_URL_OVERRIDES || {})[kind] ||
+  `https://docs.google.com/spreadsheets/d/${SHEETS[kind]}/gviz/tq?tqx=out:json&headers=1`;
+const INFO_KEY_COL = 3;       // Column D
+const INFO_SHOW_COLS = [1, 4, 5];  // Columns B, E, F
+
+async function loadSheet(kind) {
+  try {
+    const r = await fetch(sheetUrl(kind), { cache: "no-store" });
+    const text = await r.text();  // JSONP-ish: google.visualization.Query.setResponse({...});
+    const data = JSON.parse(text.substring(text.indexOf("(") + 1, text.lastIndexOf(")")));
+    const cell = (row, i) => {
+      const c = (row.c || [])[i];
+      return c == null ? "" : String(c.f != null ? c.f : (c.v != null ? c.v : ""));
+    };
+    const headers = (data.table.cols || []).map((c) => String(c.label || "").trim());
+    const map = new Map();
+    for (const row of (data.table.rows || [])) {
+      const key = cell(row, INFO_KEY_COL).trim();
+      if (key !== "") map.set(key, INFO_SHOW_COLS.map((i) => cell(row, i)));
+    }
+    DB.info[kind] = { map, headers };
+  } catch (e) {
+    DB.info[kind] = null;  // Sheet unreachable/misconfigured: the Info popup will say so
+  }
+}
+
+function loadSheets() {
+  DB.info = {};
+  loadSheet("ai");
+  loadSheet("human");
+}
+
+window.showUserInfo = (unaidSeg) => {
+  const unaid = unseg(unaidSeg);
+  const cut = unaid.lastIndexOf("/");
+  const nickname = cut >= 0 ? unaid.substring(0, cut) : unaid;
+  const u = usersIndex().get(unaid);
+  const nature = u ? u.nature : "-";
+  const order = nature === "human" ? ["human", "ai"] : ["ai", "human"];  // Own-nature sheet first
+  let entry = null;
+  let headers = null;
+  let loadedAny = false;
+  for (const kind of order) {
+    const s = (DB.info || {})[kind];
+    if (!s) continue;
+    loadedAny = true;
+    if (entry === null && s.map.has(nickname)) {
+      entry = s.map.get(nickname);
+      headers = s.headers;
+    }
+  }
+  let body;
+  if (!loadedAny) body = `<p class="empty">${esc(L.info_unavailable)}</p>`;
+  else if (entry === null) body = `<p class="empty">${esc(L.info_none)}</p>`;
+  else body = entry.map((v, j) =>
+    `<div class="info-line"><strong>${esc(headers[INFO_SHOW_COLS[j]] || "?")}:</strong> ` +
+    `${esc(v || "-")}</div>`).join("");
+  const back = document.createElement("div");
+  back.className = "modal-back";
+  back.innerHTML = `<div class="modal panel"><div class="modal-head"><h3>${esc(shortId(unaid))}</h3>` +
+    `<button class="ctrl-btn" onclick="this.closest('.modal-back').remove()">✕</button></div>${body}</div>`;
+  back.addEventListener("click", (ev) => { if (ev.target === back) back.remove(); });
+  document.body.appendChild(back);
+};
 
 async function loadAll() {
+  loadSheets();  // In parallel, never blocking: the maps fill as soon as the sheets answer
   const [ops, votes, sessions] = await Promise.all([
     getJSON(API + "?q=ops"), getJSON(API + "?q=votes"), getJSON(API + "?q=sessions")]);
   DB.ops = ops;
@@ -734,7 +815,8 @@ function pageUser(unaid) {
   const votes = isCast ? cast : received;
   const btns = [["cast", L.user_cols.cast], ["received", L.user_cols.received]].map(([k, lbl]) =>
     `<button class="ctrl-btn${k === (isCast ? "cast" : "received") ? " active" : ""}" ` +
-    `onclick="setUserTab('${k}')">${esc(lbl)}</button>`).join("");
+    `onclick="setUserTab('${k}')">${esc(lbl)}</button>`).join("") +
+    `<button class="ctrl-btn" onclick="showUserInfo('${seg(unaid)}')">${esc(L.user_info_btn)}</button>`;
   return `<div class="user-header"><div class="user-avatar">${esc(shortId(unaid).substring(0, 2).toUpperCase())}</div>` +
     `<div><h2>${esc(shortId(unaid))}</h2><div class="user-unaid">${esc(unaid)}` +
     `${u ? " · " + esc(natureLabel(u.nature)) : ""}</div></div></div>` +

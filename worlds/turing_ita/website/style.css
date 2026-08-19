@@ -292,3 +292,13 @@ tr.flash td { animation:flash-bg 1.8s ease-out }
 /* ── full-width room page: the message column sits CENTERED in the pane ────── */
 .chat .msg { align-self:center; width:100%; max-width:860px }
 .chat .msg-event { max-width:860px }
+
+/* ── the Info popup of the user page ────── */
+.modal-back { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000;
+              display:flex; align-items:center; justify-content:center }
+.modal { max-width:520px; width:calc(100% - 40px); max-height:80vh; overflow-y:auto }
+.modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px;
+              margin-bottom:10px }
+.info-line { font-size:.85rem; color:var(--text-secondary); padding:6px 0;
+             border-bottom:1px solid var(--border-subtle); white-space:pre-wrap }
+.info-line strong { color:var(--text-primary) }
