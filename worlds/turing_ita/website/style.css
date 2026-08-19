@@ -288,3 +288,7 @@ tr.flash td { animation:flash-bg 1.8s ease-out }
     text-align:center; padding:7px 11px }
 .cm-table.cm-colored td { color:var(--text-primary); font-weight:600 }
 .cm-table.cm-colored td:first-child { color:var(--text-secondary) }
+
+/* ── full-width room page: the message column sits CENTERED in the pane ────── */
+.chat .msg { align-self:center; width:100%; max-width:860px }
+.chat .msg-event { max-width:860px }
