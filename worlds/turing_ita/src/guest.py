@@ -371,6 +371,13 @@ class WAgent(Agent):
             return
 
         msg = self.__queued_msgs.pop(0)
+
+        # Limiting message to max size
+        if Config.max_message_size > 0:
+            if len(msg) > Config.max_message_size:
+                msg = msg[:Config.max_message_size]
+                log.user(f"✂️ Messaggio troppo lungo: invio solo i primi {Config.max_message_size} caratteri")
+
         self.__last_msg_sent_time = time.time()
         if len(self.__queued_msgs) == 0:
             self.__flood_warned = False  # Burst over: the notice can be printed again on the next one

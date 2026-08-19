@@ -18,6 +18,7 @@
 # All time measures are in SECONDS.
 class Config:
     broadcast_when_no_humans = False
+    max_message_size = 1024  # Set it to <= 0 to disable
     use_letter_names = False
     test_duration = 300  # Seconds (int)
     survey_reply_time = 240  # Seconds (WARNING: do not get too close to 300, since all interactions expire at 300!)
