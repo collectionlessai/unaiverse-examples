@@ -17,6 +17,9 @@
 # Generic options to configure the Turing Test Hotel
 # All time measures are in SECONDS.
 class Config:
+    registered_users_form_column_id = 3  # Zero-based column index of the nickname in the spreadsheet
+    registered_users_form_sheets = {True: "1a4RQh39XAed-X87JzB8kOk1IQOjqo54PhMSazVAk1nc",  # Human-agents sheet
+                                    False: "1mdIUYWe28xA04qV-nV1KlTQKOrN4CxXCYDfRZ55yo9o"}  # AI-agents sheet
     broadcast_when_no_humans = False
     max_message_size = 1024  # Set it to <= 0 to disable
     use_letter_names = False
@@ -42,13 +45,15 @@ class Config:
     decompression_time = 60
     disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
     exit_trigger_message = "exit"  # The message that an agent can write to early stop the conversation and vote
-    profile_link = ("https://docs.google.com/forms/d/e/1FAIpQLScF6FuSMDFpowk3bfLzrr35tGErxd864Rf7FuZI9ic8p-nQAg/"
-                    "viewform?usp=pp_url&entry.1591917462=<YOUR_NICKNAME>")
+    form_link = {True: "https://docs.google.com/forms/d/e/"
+                       "1FAIpQLSdP8km4FR2Iyv8Mrq2JjXmPcIvXPPibxegWl14ekYXaHngTOg/viewform?usp=dialog",  # Humans
+                 False: "https://docs.google.com/forms/d/e/"
+                        "1FAIpQLSf8wubXIOJeH4aquGacLauYw0Wgd-neypeiWw1sZgoOIHA7vA/viewform?usp=dialog"}  # AI
     manager_fake_name = "MANAGER"
     unknown_guest_name = "unk"
     sender_prefix = "**"
     sender_suffix = ":** "  # Do not forget the final space here
-    init_message = (f"BENVENUTO AL TURING HOTEL ITALIA 🏨 (La tua nickname: <YOUR_NICKNAME>)!<br/><br/>"
+    init_message = (f"BENVENUTO AL TURING HOTEL ITALIA 🏨 (Il tuo nickname: <YOUR_NICKNAME>)!<br/><br/>"
                     f"È una destinazione unica, "
                     f"fatta di stanze che realizzano il Test di Turing multi-agente, dove sarai sia "
                     f"il giudice ⚖️ sia un partner di conversazione 🗣️!<br/>Giudicherai gli altri per capire chi è "
@@ -57,8 +62,8 @@ class Config:
                     f"da umano).<br/><br/>"
                     f"<strong>Hai già completato il form di adesione? (obbligatorio)</strong> "
                     f"Basta farlo una volta sola: "
-                    f"<a href='{profile_link}'>Clicca qui!</a>"
-                    f"<br/><br/>Scrivi un messaggio qualsiasi per continuare 😀")
+                    f"<a href='<FORM_LINK>'>Clicca qui!</a>"
+                    f"<br/><br/>Mi accorgerò di quando avrai finito e ti farò entrare 😀")
     start_message = (f"[START_MSG] Benvenuto/a, ti chiami **<YOUR_NAME>** e gli "
                      f"altri ospiti sono "
                      f"**<OTHER_NAMES>**. "
@@ -81,7 +86,14 @@ class Config:
                         f"per <TIME_LEFT> secondi, ma puoi scrivere "
                         f"'{exit_trigger_message}' "
                         f"quando vuoi "
-                        f"per lasciare subito la stanza e dare il tuo voto!")
+                        f"per lasciare subito la stanza e dare il tuo voto! "
+                        f"Gli altri presenti in questo preciso momento sono **<OTHER_NAMES>**.")
+    reminder_message_nobody = (f"[GEN_MSG] Il tuo nome è **<YOUR_NAME>** e resterai in questa stanza "
+                               f"per <TIME_LEFT> secondi, ma puoi scrivere "
+                               f"'{exit_trigger_message}' "
+                               f"quando vuoi "
+                               f"per lasciare subito la stanza e dare il tuo voto! "
+                               f"In questo preciso momento sei solo in stanza.")
     reminder_message_vote = f"[GEN_MSG] Hai ancora <TIME_LEFT> secondi per inviare il tuo voto..."
     # Like the start message, the vote request must fully explain the expected ANSWER FORMAT: what to
     # write, what counts as what, and the special "nobody"/"everybody" answers.

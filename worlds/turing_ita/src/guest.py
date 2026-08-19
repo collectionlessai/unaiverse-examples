@@ -12,9 +12,12 @@
                  Code Repositories:  https://github.com/collectionlessai/
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
+import io
 import re
+import csv
 import time
 import random
+import urllib.request
 from .config import Config
 from unaiverse.custom import Custom
 from unaiverse.utils.logger import log
@@ -74,6 +77,8 @@ class WAgent(Agent):
         self.__queued_msgs: list[str] = []  # Messages waiting for the anti-flooding cooldown to expire
         self.__last_msg_sent_time: float = -1.  # When the last message was sent to the room (-1: never)
         self.__flood_warned: bool = False  # Whether the "too fast" notice was already printed in this burst
+        self.__found_in_form_filled_list: bool = False
+        self.__form_filled_list_last_check: float = -1.
 
     async def add_agent(self, peer_id: str, profile: NodeProfile,
                         add_proc_streams: bool = True, add_env_streams: bool = True,
@@ -135,9 +140,13 @@ class WAgent(Agent):
     @action
     async def init(self):
         if not self._init_message_printed:
-            init_message = Config.init_message.replace("<YOUR_NICKNAME>", self.get_profile().get_static_profile()['nickname'])
-            log.user(init_message)
-            self._init_message_printed = True
+            nickname = self.get_profile().get_static_profile()['nickname']
+            is_human = self.get_profile().get_static_profile()["node_type"] == Agent.HUMAN
+            if not self.__is_in_form_filled_user_list(nickname, is_human):
+                init_message = (Config.init_message.replace("<YOUR_NICKNAME>", nickname).
+                                replace("<FORM_LINK>", Config.form_link[is_human]))
+                log.user(init_message)
+                self._init_message_printed = True
         return True
 
     @action
@@ -145,8 +154,10 @@ class WAgent(Agent):
         return True
 
     @action
-    async def skip_confirmation(self):
-        return self.get_profile().get_static_profile()["node_type"] != Agent.HUMAN
+    async def check_confirmation(self):
+        nickname = self.get_profile().get_static_profile()['nickname']
+        is_human = self.get_profile().get_static_profile()["node_type"] == Agent.HUMAN
+        return self.__is_in_form_filled_user_list(nickname, is_human)
 
     @action
     async def connect_to_hotel_manager(self):
@@ -411,3 +422,33 @@ class WAgent(Agent):
         # in the next "process" action that is bound to the given UUID (for humans this stream is disabled,
         # so this is a no-op: humans read the room through the printed messages)
         input_stream.set(payload, uuid=process_uuid)
+
+    def __is_in_form_filled_user_list(self, nickname: str, is_human: bool) -> bool:
+        if (not hasattr(Config, "registered_users_form_sheets") or
+                not hasattr(Config, "registered_users_form_column_id")):
+            return True
+
+        if self.__found_in_form_filled_list:
+            return True
+
+        if (self.clock.get_time() - self.__form_filled_list_last_check) <= 5.0:  # Try every 5s
+            return False
+        else:
+            self.__form_filled_list_last_check = self.clock.get_time() + 2.0  # Assuming it will take 2s to get response
+
+        form_column_id = Config.registered_users_form_column_id
+        form_sheets = Config.registered_users_form_sheets
+
+        url = (f"https://docs.google.com/spreadsheets/d/{form_sheets[is_human]}"
+               f"/gviz/tq?tqx=out:csv")
+        try:
+            with urllib.request.urlopen(url, timeout=6) as r:
+                text = r.read().decode("utf-8", errors="replace")
+            for row in csv.reader(io.StringIO(text)):
+                if len(row) > form_column_id:
+                    if row[form_column_id].strip().lower() == nickname.strip().lower():
+                        self.__found_in_form_filled_list = True
+        except Exception as e:
+            log.error(f"Could not read the registration-form sheet: {e}")
+            return False
+        return self.__found_in_form_filled_list

@@ -183,9 +183,7 @@ class WWorld(World):
         behav.add_state("can_vote", blocking=True)
         behav.add_state("vote_provided", blocking=True, msg="✅ Voto inviato")
 
-        behav.add_transit("init", "ready", action="process", args={},
-                          avoid_changing_ready=True)
-        behav.add_transit("init", "ready", action="skip_confirmation")
+        behav.add_transit("init", "ready", action="check_confirmation")
         behav.add_transit("ready", "reached_hotel_manager", action="connect_to_hotel_manager")
         behav.add_transit("reached_hotel_manager", "hall", action="hotel_manager_ack", args={})
         behav.add_transit("reached_hotel_manager", "wait_for_ready",

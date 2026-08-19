@@ -480,8 +480,18 @@ class WAgent(Agent):
             time_left = Config.test_duration - room.get_time_in_current_status(guest)
             sent = False
             if time_left > 0:
-                reminder_message = (Config.reminder_message.replace("<TIME_LEFT>", str(time_left)).
-                                    replace("<YOUR_NAME>", room.fake_name_of(guest)))
+                other_guests_names = sorted([room.fake_name_of(_guest)
+                                             for _guest in room.get_guests()
+                                             if _guest != guest and
+                                             room.get_status(_guest) in {GuestStatus.AT_ROUND_TABLE,
+                                                                         GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE}])
+                if len(other_guests_names) == 0:
+                    reminder_message = Config.reminder_message_nobody
+                else:
+                    reminder_message = Config.reminder_message
+                reminder_message = (reminder_message.replace("<TIME_LEFT>", str(time_left)).
+                                    replace("<YOUR_NAME>", room.fake_name_of(guest)).
+                                    replace("<OTHER_NAMES>", ", ".join(other_guests_names)))
                 if not await self.send(action_name="get_status_msg",
                                        action_kwargs={"msg": format_message(Config.manager_fake_name,
                                                                             reminder_message)},
