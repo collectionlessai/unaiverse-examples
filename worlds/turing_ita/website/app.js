@@ -436,18 +436,31 @@ function repaintChat(e) {
                    : renderChatArea();
 }
 
+const chatEl = () => document.querySelector("#chat-area .chat");
+
+function scrollChatBottom() {  // The LAST message must be on screen when the conversation appears
+  const el = chatEl();
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
 window.roomLoadOlder = async () => {
   try {
+    const el0 = chatEl();  // Keep the reader anchored on the message they were looking at
+    const prevTop = el0 ? el0.scrollTop : 0;
+    const prevHeight = el0 ? el0.scrollHeight : 0;
     const r = await fetchConvo({ session: ROOM.session, limit: 300,
                                  before_id: ROOM.rows.length ? ROOM.rows[0].id : "" });
     ROOM.rows = r.rows.concat(ROOM.rows);
     ROOM.moreOlder = r.more;
     repaintChat();
+    const el1 = chatEl();
+    if (el1) el1.scrollTop = el1.scrollHeight - prevHeight + prevTop;
   } catch (e) { repaintChat(e); }
 };
 
 window.roomLoadMore = async () => {
   try {
+    const prevTop = chatEl() ? chatEl().scrollTop : 0;  // Appending: keep the current position
     const p = { session: ROOM.session, limit: 300,
                 after_id: ROOM.rows.length ? ROOM.rows[ROOM.rows.length - 1].id : 0 };
     if (ROOM.mode === "range" && ROOM.to_ts) p.to_ts = ROOM.to_ts;
@@ -456,6 +469,7 @@ window.roomLoadMore = async () => {
     ROOM.rows = ROOM.rows.concat(r.rows);
     ROOM.moreNewer = r.more;
     repaintChat();
+    if (chatEl()) chatEl().scrollTop = prevTop;
   } catch (e) { repaintChat(e); }
 };
 
@@ -487,6 +501,7 @@ window.roomClearRange = async () => {
     ROOM.moreOlder = r.more;
     ROOM.moreNewer = false;
     repaintChat();
+    scrollChatBottom();  // Back to the 'latest' view: land on the last message
   } catch (e) { repaintChat(e); }
 };
 
@@ -528,6 +543,9 @@ async function pageRoom(session, pairA, pairB, fakeA, fakeB, voteTs) {
         ROOM.moreOlder = r.more;
       }
       convo = renderChatArea();
+      // The page HTML is injected by route() right after this returns: scroll then (latest mode
+      // lands on the LAST message; range/window modes read forward from their start)
+      setTimeout(() => { if (ROOM.mode === "latest") scrollChatBottom(); }, 0);
     } catch (e) {
       convo = `<div class="error-banner">${esc(fill(L.site_error_convo, { ERROR: e.message }))}</div>`;
     }
@@ -544,13 +562,13 @@ async function pageRoom(session, pairA, pairB, fakeA, fakeB, voteTs) {
       `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td></tr>`;
   }).join("");
   const votesHtml = votes.length === 0 ? `<p class="empty">-</p>` :
-    `<table class="cm-table vote-table"><thead><tr><th>${esc(L.vote_cols.voter)}</th>` +
+    `<div class="votes-scroll"><table class="cm-table vote-table"><thead><tr><th>${esc(L.vote_cols.voter)}</th>` +
     `<th>${esc(L.vote_cols.nature)}</th><th>${esc(L.vote_cols.fake_voter)}</th>` +
     `<th>${esc(L.vote_cols.fake_votee)}</th>` +
     `<th>${esc(L.vote_cols.vote)}</th>` +
     `<th>${esc(L.vote_cols.truth)}</th><th>${esc(L.vote_cols.outcome)}</th>` +
     `<th>${esc(L.vote_cols.msg)}</th></tr></thead>` +
-    `<tbody>${voteRows}</tbody></table>`;
+    `<tbody>${voteRows}</tbody></table></div>`;
 
   return `<div class="crumbs"><a href="#/floors">${esc(L.floors_title)}</a> / ` +
     `${esc(L.floor_label)} ${esc(short8(fid))} / ${esc(L.room_label)} ${esc(short8(rid))}</div>` +

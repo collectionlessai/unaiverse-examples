@@ -251,3 +251,17 @@ table.mini td { padding:6px 10px; border-bottom:1px solid var(--border-subtle); 
     border:1px solid var(--border); border-radius:8px; padding:4px 8px; font-size:.72rem;
     color-scheme:dark light }
 .chat-more { display:block; margin:8px auto }
+
+/* ── room panels: always-visible scrollbars, both sides bounded ────── */
+.chat { overflow-y:scroll; scrollbar-width:auto; scrollbar-color:auto }
+/* NOTE: the standard scrollbar-* props must stay at their INITIAL value here (the global '*' rule sets
+   them), otherwise Chrome ignores the ::-webkit-scrollbar rules below and falls back to the overlay
+   scrollbars that hide when idle — the whole point is an ALWAYS-VISIBLE scrollbar */
+.chat::-webkit-scrollbar { width:10px }
+.chat::-webkit-scrollbar-track { background:var(--bg-subtle); border-radius:5px }
+.chat::-webkit-scrollbar-thumb { background:var(--scrollbar-thumb); border-radius:5px }
+.chat::-webkit-scrollbar-thumb:hover { background:var(--scrollbar-hover) }
+.votes-scroll { max-height:640px; overflow-y:scroll; scrollbar-width:auto; scrollbar-color:auto }
+.votes-scroll::-webkit-scrollbar { width:10px }
+.votes-scroll::-webkit-scrollbar-track { background:var(--bg-subtle); border-radius:5px }
+.votes-scroll::-webkit-scrollbar-thumb { background:var(--scrollbar-thumb); border-radius:5px }
