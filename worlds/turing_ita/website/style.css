@@ -22,7 +22,8 @@
 [data-theme="light"] {
   --bg-body:#EDF1F5; --bg-subtle:#F6F8FA; --bg-paper:#FFFFFF; --bg-elevated:#FFFFFF;
   --border:#C0C8D6; --border-subtle:#DBE1EB; --border-strong:#909CB0;
-  --text-primary:#0A1628; --text-secondary:#666666; --text-muted:#677385; --text-disabled:#909CB0;
+  --text-primary:#0A1628; --text-secondary:#333B47; --text-muted:#525E6E; --text-disabled:#909CB0;
+  /* Light-mode text DARKER than the join dashboard (deliberate divergence, for readability) */
   --primary:#1A5CFF; --primary-light:#4D7FFF; --primary-dark:#1248CC;
   --primary-a12:rgba(26,92,255,.08); --primary-a20:rgba(26,92,255,.12);
   --teal:#00D4AA; --teal-a12:rgba(0,212,170,.08); --amber:#FFB347; --amber-a12:rgba(255,179,71,.08);

@@ -660,9 +660,9 @@ async function pageRoom(session, pairA, pairB, fakeA, fakeB, voteTs) {
 
   return `<div class="crumbs"><a href="#/floors">${esc(L.floors_title)}</a> / ` +
     `${esc(L.floor_label)} ${esc(short8(fid))} / ${esc(L.room_label)} ${esc(short8(rid))}</div>` +
-    `<div class="two-col"><div class="panel"><h3>${esc(L.room_conversation)}</h3>` +
+    `<div class="panel"><h3>${esc(L.room_conversation)}</h3>` +
     `<div id="chat-area">${convo}</div></div>` +
-    `<div class="panel"><h3>${esc(L.room_votes)}</h3>${votesHtml}</div></div>`;
+    `<div class="panel" style="margin-top:14px"><h3>${esc(L.room_votes)}</h3>${votesHtml}</div>`;
 }
 
 function usersIndex() {
@@ -723,10 +723,11 @@ function pageUser(unaid) {
     `<tbody>${rows.join("")}</tbody></table>`;
   // Per-user confusion matrix: the SAME matrix of the leaderboard, restricted to the shown votes —
   // under 'cast' the outcomes of the classifications THEY made, under 'received' how the other
-  // participants classified THEM. Its OWN panel, separated from the table like in the Leaderboard
+  // participants classified THEM. Same presentation of the Leaderboard one: its own panel, in a
+  // half-width column (the empty sibling keeps it narrower than the table above)
   const miniCm = (votes) => votes.length === 0 ? "" :
-    `<div class="panel" style="margin-top:18px"><h3>${esc(L.cm_title)}</h3>` +
-    cmTable(aggConfusion(votes)) + `</div>`;
+    `<div class="two-col" style="margin-top:18px"><div class="panel"><h3>${esc(L.cm_title)}</h3>` +
+    cmTable(aggConfusion(votes)) + `</div><div></div></div>`;
 
   // One table at a time (Votes cast / Votes received), switched like the leaderboard tabs
   const isCast = STATE.userTab !== "received";
