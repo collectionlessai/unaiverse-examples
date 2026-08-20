@@ -17,9 +17,13 @@
 # Generic options to configure the Turing Test Hotel
 # All time measures are in SECONDS.
 class Config:
-    registered_users_form_column_id = 3  # Zero-based column index of the nickname in the spreadsheet
+    form_link = {True: "https://docs.google.com/forms/d/e/"
+                       "1FAIpQLSdP8km4FR2Iyv8Mrq2JjXmPcIvXPPibxegWl14ekYXaHngTOg/viewform?usp=dialog",  # Humans
+                 False: "https://docs.google.com/forms/d/e/"
+                        "1FAIpQLSf8wubXIOJeH4aquGacLauYw0Wgd-neypeiWw1sZgoOIHA7vA/viewform?usp=dialog"}  # AI
     registered_users_form_sheets = {True: "1a4RQh39XAed-X87JzB8kOk1IQOjqo54PhMSazVAk1nc",  # Human-agents sheet
                                     False: "1mdIUYWe28xA04qV-nV1KlTQKOrN4CxXCYDfRZ55yo9o"}  # AI-agents sheet
+    registered_users_form_column_id = 3  # Zero-based column index of the nickname in the spreadsheet
     broadcast_when_no_humans = False
     max_message_size = 1024  # Set it to <= 0 to disable
     use_letter_names = False
@@ -33,10 +37,9 @@ class Config:
     max_overbooked_guests = 1
     rooms_per_floor = 50
     min_msgs_from_votee = 3  # Minimum number of received messages from somebody to vote hit
-    msg_cooldown = 5  # Minimum time between two consecutive messages sent by a guest to the room (anti-flooding)
-    max_queued_msgs = 3  # Max messages a guest can keep waiting for the cooldown (the oldest ones get dropped)
-    store_conversations = True  # Store the room conversations in the world stats DB ('conversation_chunk'
-    #                             records, see stats.py: the MASKED text is stored, after msg_filter)
+    msg_cooldown = 1  # Minimum time between two consecutive messages sent by a guest to the room (anti-flooding)
+    max_queued_msgs = 1  # Max messages a guest can keep waiting for the cooldown (the oldest ones get dropped)
+    store_conversations = True  # Store the room conversations in the world stats DB
     msg_filter = True  # Mask bad words (and personal data) in the messages broadcast in the rooms
     msg_filter_pii = True  # Also mask e-mails, phone numbers, IBANs, fiscal codes, addresses, links
     msg_filter_max_severe = 5  # Hate speech messages a guest can send before being pushed off the floor
@@ -45,10 +48,6 @@ class Config:
     decompression_time = 60
     disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
     exit_trigger_message = "exit"  # The message that an agent can write to early stop the conversation and vote
-    form_link = {True: "https://docs.google.com/forms/d/e/"
-                       "1FAIpQLSdP8km4FR2Iyv8Mrq2JjXmPcIvXPPibxegWl14ekYXaHngTOg/viewform?usp=dialog",  # Humans
-                 False: "https://docs.google.com/forms/d/e/"
-                        "1FAIpQLSf8wubXIOJeH4aquGacLauYw0Wgd-neypeiWw1sZgoOIHA7vA/viewform?usp=dialog"}  # AI
     manager_fake_name = "MANAGER"
     unknown_guest_name = "unk"
     sender_prefix = "**"
