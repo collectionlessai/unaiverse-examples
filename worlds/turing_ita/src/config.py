@@ -17,8 +17,9 @@
 # Generic options to configure the Turing Test Hotel
 # All time measures are in SECONDS.
 class Config:
-    form = {True: '@c2bsFWak1DczV3PtJ3bmdXZpZ3Ln9EVn5GShhVWrVGNxw2VnVGeilGUQhldJNGUthlaKJTcy1EO2lXSyIlR002a4AFZTxUUw'
-                  'lUQGFzLl9CZvMXby9mZv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa',  # Humans
+    form = {True: '@4TRNFkTLNUSO9lUV9UW80TM1UTMxITN4cTMuknc05WZmwmc19Fcw1DczV3PtJ3bmdXZpZ3Ln9EVn5GShhVWrVGNxw2VnVGei'
+                  'lGUQhldJNGUthlaKJTcy1EO2lXSyIlR002a4AFZTxUUwlUQGFzLl9CZvMXby9mZv02bj5SZ'
+                  'sd2bvdmLzN2bk9yL6MHc0RHa',  # Humans
             False: '@c2bsFWak1DczV3PtJ3bmdXZpZ3LBZ3NBhUSP92ZaNXM3dValBXel5WLkd2VwcXW1FGTjF2R1FXY0gUZK9USYJWd3hjZTxUU'
                    'wlUQGFzLl9CZvMXby9mZv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa'}  # AIs
     registered_users_form_sheets = {True: '@MmbxsWQWpXYT1EaQRTNvFnaPFVSxs2TrhjQ6p0N4gVLkVWQYlzMoFlU0EWMvQ2LzRXZlh2ck'
