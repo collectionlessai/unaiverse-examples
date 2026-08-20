@@ -17,12 +17,14 @@
 # Generic options to configure the Turing Test Hotel
 # All time measures are in SECONDS.
 class Config:
-    form_link = {True: "https://docs.google.com/forms/d/e/"
-                       "1FAIpQLSdP8km4FR2Iyv8Mrq2JjXmPcIvXPPibxegWl14ekYXaHngTOg/viewform?usp=dialog",  # Humans
-                 False: "https://docs.google.com/forms/d/e/"
-                        "1FAIpQLSf8wubXIOJeH4aquGacLauYw0Wgd-neypeiWw1sZgoOIHA7vA/viewform?usp=dialog"}  # AI
-    registered_users_form_sheets = {True: "1a4RQh39XAed-X87JzB8kOk1IQOjqo54PhMSazVAk1nc",  # Human-agents sheet
-                                    False: "1mdIUYWe28xA04qV-nV1KlTQKOrN4CxXCYDfRZ55yo9o"}  # AI-agents sheet
+    form = {True: '@c2bsFWak1DczV3PtJ3bmdXZpZ3Ln9EVn5GShhVWrVGNxw2VnVGeilGUQhldJNGUthlaKJTcy1EO2lXSyIlR002a4AFZTxUUw'
+                  'lUQGFzLl9CZvMXby9mZv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa',  # Humans
+            False: '@c2bsFWak1DczV3PtJ3bmdXZpZ3LBZ3NBhUSP92ZaNXM3dValBXel5WLkd2VwcXW1FGTjF2R1FXY0gUZK9USYJWd3hjZTxUU'
+                   'wlUQGFzLl9CZvMXby9mZv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa'}  # AIs
+    registered_users_form_sheets = {True: '@MmbxsWQWpXYT1EaQRTNvFnaPFVSxs2TrhjQ6p0N4gVLkVWQYlzMoFlU0EWMvQ2LzRXZlh2ck'
+                                          'FWZyB3cv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa',  # Humans
+                                    False: '@8WOvlXN1olUmRUWDhFeDRjTy90SRRFbLFjVu1iVxRDMBhHOyU2VZVVSk1WMvQ2LzRXZlh2c'
+                                           'kFWZyB3cv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa'}  # AIs
     registered_users_form_column_id = 3  # Zero-based column index of the nickname in the spreadsheet
     broadcast_when_no_humans = False
     max_message_size = 1024  # Set it to <= 0 to disable

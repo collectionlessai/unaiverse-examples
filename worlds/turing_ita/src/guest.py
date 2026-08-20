@@ -16,6 +16,7 @@ import io
 import re
 import csv
 import time
+import base64
 import random
 import urllib.request
 from .config import Config
@@ -144,7 +145,8 @@ class WAgent(Agent):
             is_human = self.get_profile().get_static_profile()["node_type"] == Agent.HUMAN
             if not self.__is_in_form_filled_user_list(nickname, is_human):
                 init_message = (Config.init_message.replace("<YOUR_NICKNAME>", nickname).
-                                replace("<FORM_LINK>", Config.form_link[is_human]))
+                                replace("<FORM_LINK>",
+                                        base64.b64decode(('=' + Config.form[is_human][1:])[::-1].encode()).decode()))
                 log.user(init_message)
                 self._init_message_printed = True
         return True
@@ -439,7 +441,7 @@ class WAgent(Agent):
         form_column_id = Config.registered_users_form_column_id
         form_sheets = Config.registered_users_form_sheets
 
-        url = (f"https://docs.google.com/spreadsheets/d/{form_sheets[is_human]}"
+        url = (f"{base64.b64decode(('=' + form_sheets[is_human][1:])[::-1].encode()).decode()}"
                f"/gviz/tq?tqx=out:csv")
         try:
             try:
