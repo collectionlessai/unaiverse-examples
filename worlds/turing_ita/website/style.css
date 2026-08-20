@@ -175,7 +175,8 @@ th.gridjs-th { background:var(--table-header-bg) !important; color:var(--text-mu
                text-transform:uppercase; letter-spacing:.05em }
 td.gridjs-td { background:transparent !important; color:var(--text-secondary) !important;
                padding:9px 14px !important;
-               border-color:var(--border-subtle) !important; font-size:.9375rem !important }  /* As the join dashboard */
+               border-color:var(--border-subtle) !important; font-size:.8rem !important }  /* Same size of the
+               per-user vote tables (preferred over the bigger dashboard sizing) */
 .gridjs-footer { background:var(--bg-paper) !important; border-color:var(--border) !important;
                  box-shadow:none !important }
 .gridjs-pagination { color:var(--text-muted) !important; font-size:.72rem !important }
@@ -265,7 +266,8 @@ table.mini td { padding:6px 10px; border-bottom:1px solid var(--border-subtle); 
 .chat::-webkit-scrollbar-track { background:var(--bg-subtle); border-radius:5px }
 .chat::-webkit-scrollbar-thumb { background:var(--scrollbar-thumb); border-radius:5px }
 .chat::-webkit-scrollbar-thumb:hover { background:var(--scrollbar-hover) }
-.votes-scroll { max-height:640px; overflow-y:scroll; scrollbar-width:auto; scrollbar-color:auto }
+.votes-scroll { max-height:640px; overflow-y:scroll; overflow-x:auto; scrollbar-width:auto;
+                scrollbar-color:auto }
 .votes-scroll::-webkit-scrollbar { width:10px }
 .votes-scroll::-webkit-scrollbar-track { background:var(--bg-subtle); border-radius:5px }
 .votes-scroll::-webkit-scrollbar-thumb { background:var(--scrollbar-thumb); border-radius:5px }
@@ -302,3 +304,7 @@ tr.flash td { animation:flash-bg 1.8s ease-out }
 .info-line { font-size:.85rem; color:var(--text-secondary); padding:6px 0;
              border-bottom:1px solid var(--border-subtle); white-space:pre-wrap }
 .info-line strong { color:var(--text-primary) }
+
+/* ── mobile: wide vote tables scroll INSIDE their panel instead of overflowing it ────── */
+.table-scroll { overflow-x:auto; max-width:100% }
+.table-scroll > .vote-table, .votes-scroll > .vote-table { width:max-content; min-width:100% }

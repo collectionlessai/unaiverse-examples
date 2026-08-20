@@ -796,12 +796,13 @@ function pageUser(unaid) {
     `title="${esc(L.room_window_tip)}">${esc(short8(rec.v.session_id.split(":")[1] || ""))}</a></td>` +
     `<td>${esc(fmtTs(rec.ts))}</td></tr>`;
   const table = (rows) => rows.length === 0 ? `<p class="empty">-</p>` :
-    `<table class="cm-table vote-table"><thead><tr><th class="user-col">${esc(L.user_cols.user)}</th>` +
+    `<div class="table-scroll"><table class="cm-table vote-table">` +
+    `<thead><tr><th class="user-col">${esc(L.user_cols.user)}</th>` +
     `<th>${esc(L.vote_cols.fake_voter)}</th><th>${esc(L.vote_cols.fake_votee)}</th>` +
     `<th>${esc(L.vote_cols.vote)}</th><th>${esc(L.vote_cols.truth)}</th>` +
     `<th>${esc(L.vote_cols.outcome)}</th><th>${esc(L.vote_cols.msg)}</th>` +
     `<th>${esc(L.room_label)}</th><th></th></tr></thead>` +
-    `<tbody>${rows.join("")}</tbody></table>`;
+    `<tbody>${rows.join("")}</tbody></table></div>`;
   // Per-user confusion matrix: the SAME matrix of the leaderboard, restricted to the shown votes —
   // under 'cast' the outcomes of the classifications THEY made, under 'received' how the other
   // participants classified THEM. Same presentation of the Leaderboard one: its own panel, in a
