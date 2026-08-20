@@ -42,7 +42,7 @@ def run_hook(node):  # noqa (the Node passes itself)
         except Exception as e:
             log.error(f"[stats] RESET_STATS failed: {e}")
     if mirror_hook is not None:
-        mirror_hook(node)
+        mirror_hook(node)  # noqa
 
 
 # Node hosting world

@@ -113,20 +113,7 @@
         "init": [
             {
                 "on": {
-                    "action": "process",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "ready"
-            },
-            {
-                "on": {
-                    "action": "skip_confirmation",
+                    "action": "check_confirmation",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
