@@ -442,12 +442,23 @@ class WAgent(Agent):
         url = (f"https://docs.google.com/spreadsheets/d/{form_sheets[is_human]}"
                f"/gviz/tq?tqx=out:csv")
         try:
-            with urllib.request.urlopen(url, timeout=6) as r:
-                text = r.read().decode("utf-8", errors="replace")
-            for row in csv.reader(io.StringIO(text)):
-                if len(row) > form_column_id:
-                    if row[form_column_id].strip().lower() == nickname.strip().lower():
-                        self.__found_in_form_filled_list = True
+            try:
+                from pyodide.http import open_url  # Only exists in Pyodide (guests running in a browser)
+            except ImportError:
+                open_url = None
+            text = None
+            if open_url is not None:
+                # No sockets in the browser sandbox: urllib CANNOT work there; this is a synchronous
+                # XHR through the browser (the Google endpoint sends the needed CORS headers)
+                text = open_url(url).read()  # noqa
+            else:
+                with urllib.request.urlopen(url, timeout=6) as r:
+                    text = r.read().decode("utf-8", errors="replace")
+            if text is not None:
+                for row in csv.reader(io.StringIO(text)):
+                    if len(row) > form_column_id:
+                        if row[form_column_id].strip().lower() == nickname.strip().lower():
+                            self.__found_in_form_filled_list = True
         except Exception as e:
             log.error(f"Could not read the registration-form sheet: {e}")
             return False
