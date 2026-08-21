@@ -373,6 +373,9 @@ h3{{font-weight:600;font-size:.9375rem;color:var(--text-primary);letter-spacing:
 }}
 /* right group: lb toggle */
 .ctrl-lb{{display:flex;gap:2px;flex-shrink:0}}
+.ctrl-check{{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;
+  color:var(--text-secondary);cursor:pointer;user-select:none;white-space:nowrap;flex-shrink:0}}
+.ctrl-check input{{accent-color:var(--primary);width:14px;height:14px;cursor:pointer}}
 /* shared button style for ctrl-bar buttons */
 .ctrl-btn{{
   background:transparent;border:none;border-radius:7px;
@@ -718,6 +721,9 @@ tr.gridjs-tr:hover td.gridjs-td{{
         >
       </div>
       <div class="ctrl-sep"></div>
+      <!-- Human-votes-only filter (selects the '@h' precomputed variant of the active scope) -->
+      <label class="ctrl-check"><input type="checkbox" onchange="toggleHumanOnly(this.checked)"> Human votes only</label>
+      <div class="ctrl-sep"></div>
       <!-- LB toggle group -->
       <div class="ctrl-lb">
         <button class="ctrl-btn lb-tab active" data-lb="fooling" onclick="switchLB('fooling')">Best Fooling</button>
@@ -807,14 +813,22 @@ tr.gridjs-tr:hover td.gridjs-td{{
      ═══════════════════════════════════════════════════ */
   var DEFAULT='{default_scope}';
   var _activeScope=DEFAULT;
+  var _humanOnly=false;
 
-  function switchScope(key){{
-    _activeScope=key;
+  /* The EFFECTIVE scope key: the '@h' suffix selects the human-votes-only precomputed variant
+     (panels, cards and grids all exist twice, once per variant); the scope BUTTONS stay keyed on
+     the base scope */
+  function effScope(){{
+    return _activeScope+(_humanOnly?'@h':'');
+  }}
+
+  function applyScope(){{
+    var key=effScope();
     document.querySelectorAll('.scope-panel').forEach(function(el){{
       el.classList.toggle('visible',el.dataset.scope===key);
     }});
     document.querySelectorAll('.ctrl-btn[data-scope]').forEach(function(btn){{
-      btn.classList.toggle('active',btn.dataset.scope===key);
+      btn.classList.toggle('active',btn.dataset.scope===_activeScope);
     }});
     document.querySelectorAll('.scope-card').forEach(function(el){{
       el.style.display=el.dataset.scope===key?'':'none';
@@ -822,7 +836,18 @@ tr.gridjs-tr:hover td.gridjs-td{{
     var lbType=_activeLB==='fooling'?'votee':'voter';
     ensureGrid(lbType+'-'+key, lbType==='votee'?VOTEE_COLUMNS:VOTER_COLUMNS);
   }}
+
+  function switchScope(key){{
+    _activeScope=key;
+    applyScope();
+  }}
   window.switchScope=switchScope;
+
+  function toggleHumanOnly(v){{
+    _humanOnly=!!v;
+    applyScope();
+  }}
+  window.toggleHumanOnly=toggleHumanOnly;
 
   /* ═══════════════════════════════════════════════════
      LEADERBOARD TOGGLE
@@ -841,7 +866,7 @@ tr.gridjs-tr:hover td.gridjs-td{{
     var si=document.getElementById('ctrl-search-input');
     if(si) si.value='';
     var lbType=key==='fooling'?'votee':'voter';
-    ensureGrid(lbType+'-'+_activeScope, lbType==='votee'?VOTEE_COLUMNS:VOTER_COLUMNS);
+    ensureGrid(lbType+'-'+effScope(), lbType==='votee'?VOTEE_COLUMNS:VOTER_COLUMNS);
   }}
   window.switchLB=switchLB;
 

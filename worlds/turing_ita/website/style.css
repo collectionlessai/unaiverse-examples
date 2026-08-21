@@ -308,3 +308,8 @@ tr.flash td { animation:flash-bg 1.8s ease-out }
 /* ── mobile: wide vote tables scroll INSIDE their panel instead of overflowing it ────── */
 .table-scroll { overflow-x:auto; max-width:100% }
 .table-scroll > .vote-table, .votes-scroll > .vote-table { width:max-content; min-width:100% }
+
+/* ── the 'Human votes only' filter of the leaderboard ────── */
+.ctrl-check { display:inline-flex; align-items:center; gap:6px; font-size:.75rem;
+              color:var(--text-secondary); cursor:pointer; user-select:none; margin-right:6px }
+.ctrl-check input { accent-color:var(--primary); width:14px; height:14px; cursor:pointer }

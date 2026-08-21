@@ -163,14 +163,20 @@ class WStats(Stats):
 
         buckets = self._bucket_by_scope(votes, now_ms)
 
+        # Each scope is aggregated TWICE: over all the votes, and over the votes cast by HUMAN voters
+        # only (the '@h' variant, selected by the 'Human votes only' checkbox of the dashboard: there
+        # Best Fooling counts only how well the AIs fooled human judges, and Best Detecting can only
+        # rank human detectors, since the AI voters have no votes left)
         scopes: dict[str, dict] = {}
         for scope_key, scope_votes in buckets.items():
-            scopes[scope_key] = {
-                "confusion": self._compute_confusion_matrix(scope_votes),
-                "votee": self._compute_votee_leaderboard(scope_votes, _MIN_VOTES),
-                "voter": self._compute_voter_leaderboard(scope_votes, _MIN_VOTES),
-                "n_total_votes": len(scope_votes),
-            }
+            human_votes = [v for v in scope_votes if v.get("voter_nature") == "human"]
+            for suffix, votes_subset in (("", scope_votes), ("@h", human_votes)):
+                scopes[scope_key + suffix] = {
+                    "confusion": self._compute_confusion_matrix(votes_subset),
+                    "votee": self._compute_votee_leaderboard(votes_subset, _MIN_VOTES),
+                    "voter": self._compute_voter_leaderboard(votes_subset, _MIN_VOTES),
+                    "n_total_votes": len(votes_subset),
+                }
 
         global_counters = self._derive_global_counters(ops, now_ms)
 
@@ -474,14 +480,16 @@ class WStats(Stats):
             _card("Active floors", global_counters.get("n_active_floors", 0)),
         ])
 
-        # n_total_votes varies per scope - render one card per scope, hide/show via JS
+        # n_total_votes varies per scope (and per '@h' human-only variant) - render one card per
+        # scope key, hide/show via JS (the label always names the BASE scope window)
         scope_vote_cards = ""
-        for scope_key in _SCOPE_WINDOWS_MS:
-            n = scope_counters.get(scope_key, {}).get("n_total_votes", 0)
+        for scope_key, counters in scope_counters.items():
+            n = counters.get("n_total_votes", 0)
+            base_key = scope_key.split("@")[0]
             scope_vote_cards += (
                 f'<div class="card scope-card" data-scope="{scope_key}" style="display:none">'
                 f'<span class="card-val">{self._esc(n)}</span>'
-                f'<span class="card-lbl">Votes ({_SCOPE_LABELS[scope_key]})</span></div>'
+                f'<span class="card-lbl">Votes ({_SCOPE_LABELS[base_key]})</span></div>'
             )
 
         # age_s = max(0,(int(time.time() * 1000) - global_counters.get("refreshed_ms", int(time.time()*1000))) // 1000)

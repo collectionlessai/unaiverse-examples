@@ -66,6 +66,7 @@ const L = {
   lb_title: "Leaderboard", lb_fooling: "Best Fooling", lb_detecting: "Best Detecting",
   lb_score_fooling: "Turing Score", lb_score_detecting: "Detection Score",
   lb_none: "No data (minimum vote threshold not reached).",
+  lb_human_only: "Human votes only",
   cm_title: "Confusion matrix", cm_corner: "Truth \\ Vote",
   votee_cols: { peer: "AI Agent", votes: "Votes received", fooling: "Fooling rate %",
                 avg_msgs: "Avg msgs sent", turing: "Turing score" },
@@ -352,7 +353,7 @@ function kpiCards() {
 }
 
 /* ─── pages ────────────────────────────────────────────── */
-const STATE = { scope: "max", lb: "fooling", userTab: "cast" };
+const STATE = { scope: "max", lb: "fooling", userTab: "cast", humanOnly: false };
 
 function pageOverview() {
   return kpiCards() +
@@ -859,7 +860,11 @@ function podium(rows, scoreKey, scoreLabel) {
 }
 
 function pageLeaderboard() {
-  const votes = votesInScope(STATE.scope);
+  // 'Human votes only': the SAME filter feeds the boards and the confusion matrix — Best Fooling then
+  // counts only how well the AIs fooled HUMAN judges, and Best Detecting ranks human detectors only
+  // (an all-AI-voters subset leaves nothing to rank once filtered)
+  let votes = votesInScope(STATE.scope);
+  if (STATE.humanOnly) votes = votes.filter((r) => r.v.voter_nature === "human");
   const fooling = STATE.lb === "fooling";
   const rows = fooling ? aggVotee(votes) : aggVoter(votes);
   const cm = aggConfusion(votes);
@@ -867,6 +872,9 @@ function pageLeaderboard() {
   const scopeBtns = Object.keys(SCOPES).map((k) =>
     `<button class="ctrl-btn${k === STATE.scope ? " active" : ""}" ` +
     `onclick="setScope('${k}')">${esc(L.scope_labels[k])}</button>`).join("");
+  const humanOnly = `<label class="ctrl-check"><input type="checkbox" ` +
+    `${STATE.humanOnly ? "checked" : ""} onchange="setHumanOnly(this.checked)"> ` +
+    `${esc(L.lb_human_only)}</label>`;
   const lbBtns = [["fooling", L.lb_fooling], ["detecting", L.lb_detecting]].map(([k, lbl]) =>
     `<button class="ctrl-btn${k === STATE.lb ? " active" : ""}" ` +
     `onclick="setLB('${k}')">${esc(lbl)}</button>`).join("");
@@ -891,7 +899,7 @@ function pageLeaderboard() {
   return `<h2 class="section-title">${esc(L.lb_title)}</h2>` +
     podium(rows, fooling ? "turing_score" : "detection_score",
            fooling ? L.lb_score_fooling : L.lb_score_detecting) +
-    `<div class="ctrl-bar">${scopeBtns}<span style="flex:1"></span>${lbBtns}</div>` +
+    `<div class="ctrl-bar">${scopeBtns}<span style="flex:1"></span>${humanOnly}${lbBtns}</div>` +
     `<div id="lb-grid"></div>` +
     `<div class="two-col" style="margin-top:18px"><div class="panel">` +
     `<h3>${esc(L.cm_title)} — ${esc(L.scope_labels[STATE.scope])}</h3>${cmTable(cm)}</div><div></div></div>`;
@@ -899,6 +907,7 @@ function pageLeaderboard() {
 
 window.setScope = (k) => { STATE.scope = k; route(); };
 window.setLB = (k) => { STATE.lb = k; route(); };
+window.setHumanOnly = (v) => { STATE.humanOnly = !!v; route(); };
 
 /* ─── router ───────────────────────────────────────────── */
 function applyNav(page) {
