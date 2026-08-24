@@ -28,7 +28,8 @@ from unaiverse.interaction import Interaction
 from unaiverse.streams.dataprops import DataProps
 from concurrent.futures import ThreadPoolExecutor
 from .filter import RuleBasedFilter
-from .utils import compute_check_in_proposals, format_message
+from .utils import build_vote_form, compute_check_in_proposals, format_message
+from unaiverse.uai import gen_id, serialize_block
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
     asyncio.get_event_loop().set_default_executor(_turing_executor)
@@ -72,7 +73,7 @@ class WAgent(Agent):
         self._sponsored_guests = {}
 
         # Attributes that handle some guest-status related info
-        self._guest2vote_info = {}  # Guest who got the survey message -> [UUID of the request message, vote dict]
+        self._guest2vote_info = {}  # Guest who got the survey -> [UUID of the request, vote dict, vote form]
         self._guest2reminder_time = {}  # Guest who got the survey message -> last reminder message time
         self._wants_to_exit = set()  # Guest who wants to leave
         self._severe_strikes = {}  # Guest -> how many times he said something we consider hate speech
@@ -219,7 +220,10 @@ class WAgent(Agent):
                     votee_fake_name: room.count_messages_recv_by(fake_name=votee_fake_name,
                                                                  from_fake_name=fake_name)
                     for votee_fake_name in fake_names_seen_so_far if votee_fake_name != fake_name
-                }
+                },
+
+                # The form this guest was asked: the hotel manager reads the answer against it
+                "vote_form": self._guest2vote_info[guest][2] if guest in self._guest2vote_info else None
             }
 
             # We save the vote dictionary as second element of the tuple below
@@ -441,6 +445,19 @@ class WAgent(Agent):
                 Config.survey_message if len(other_guests_names) > 0 else Config.survey_message_nobody).replace(
                 "<YOUR_NAME>", room.fake_name_of(guest)).replace("<OTHER_NAMES>", ", ".join(other_guests_names))
 
+            # The vote travels as a protocol form, on its own lines after the framing text: whoever answers
+            # it (a widget, a model, a person writing by hand) is held to it, and the hotel manager reads
+            # one judgement per name. The id is per guest, because one answer would otherwise mark every
+            # copy of this form as answered.
+            vote_form = None
+            if len(other_guests_names) > 0:
+                try:
+                    vote_form = build_vote_form(other_guests_names, form_id=gen_id(suffix=fake_name))
+                    survey_msg = survey_msg + "\n\n" + serialize_block(vote_form)
+                except Exception as e:  # A form that cannot be composed must never cost the round
+                    log.error(f"Unable to compose the vote form, sending the plain request: {e}")
+                    vote_form = None
+
             interaction = await self._send(action_name="process",
                                            from_state="can_vote",
                                            callback="guest_back_to_hall",
@@ -452,7 +469,7 @@ class WAgent(Agent):
             # Interacting with the guests for two reasons:
             # (1) Send the "vote-request" message to the handled guest
             # (2) Tell other guest that the handled guest left
-            self._guest2vote_info[guest] = [interaction.uuid, None]
+            self._guest2vote_info[guest] = [interaction.uuid, None, vote_form]
             left_message = Config.left_message.replace("<SOME_NAME>", fake_name)
             self.__store_event_chunk(room, guest, "left", left_message)
             await asyncio.gather(
@@ -609,7 +626,7 @@ class WAgent(Agent):
         to_remove = []
 
         # Votes are expected to be found on the guest's processor, with a UUID that we saved in advance
-        for guest, (vote_interaction_uuid, vote_dict) in self._guest2vote_info.items():
+        for guest, (vote_interaction_uuid, vote_dict, _) in self._guest2vote_info.items():
             if vote_dict is None:
 
                 # If the vote_dict is None, then the guest was asked to go to the voting booth and was asked for a vote,
