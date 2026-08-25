@@ -100,12 +100,12 @@ class Config:
     # The vote request is a protocol form (a "uai" block, see src/utils.py::build_vote_form): one choice per
     # guest the voter met, each required. Who can draw the form sees buttons; a model, or a person reading
     # the log, is shown vote_instruction in its place and answers IN WORDS with the list of the names judged
-    # human (the world's own slot filler, src/utils.py::vote_list_values, expands it: named means Persona,
-    # not named means Agente, plus the two whole-room shortcuts). The message itself only frames the
+    # human (the world's own slot filler, src/utils.py::vote_list_values, expands it: named means Umano,
+    # not named means Artificiale, plus the two whole-room shortcuts). The message itself only frames the
     # question; keep instruction, labels and shortcuts in sync.
     vote_form_name = "voto"
-    vote_human_label = "Persona"  # The option labels of the form (what a widget draws on its buttons)
-    vote_ai_label = "Agente"
+    vote_human_label = "Umano"  # The option labels of the form (what a widget draws on its buttons)
+    vote_ai_label = "Artificiale"
     vote_all_humans_shortcut = "tutti"  # Everybody was a person
     vote_all_ai_shortcut = "nessuno"  # Nobody was a person
     vote_instruction = (f"Scrivi solo i nomi di quelli che secondo te erano **persone vere**, separati da "
@@ -115,9 +115,9 @@ class Config:
                         f"**'{vote_all_ai_shortcut}'**. Non aggiungere spiegazioni o altro testo. "
                         f"I nomi su cui esprimerti: <OTHER_NAMES>.")
     survey_message = (f"[VOTE_REQ_MSG] \n### Caro/a **<YOUR_NAME>**, hai interagito con **<OTHER_NAMES>**. "
-                      f"Ognuno di loro era una **{vote_human_label}** in carne e ossa oppure un "
-                      f"**{vote_ai_label}** artificiale (potrebbero anche essere stati tutti persone, "
-                      f"o tutti agenti). "
+                      f"Ognuno di loro era un **{vote_human_label}** in carne e ossa oppure un agente "
+                      f"**{vote_ai_label}** (potrebbero anche essere stati tutti umani, "
+                      f"o tutti artificiali). "
                       f"<br/><br/><strong>DI' CHI ERA CHI.</strong> "
                       f"<br/>Hai al massimo {survey_reply_time} secondi per rispondere.")
     survey_message_nobody = (f"[VOTE_REQ_MSG] Caro/a **<YOUR_NAME>**, purtroppo non hai interagito con "

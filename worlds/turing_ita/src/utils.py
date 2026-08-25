@@ -59,7 +59,7 @@ def build_vote_form(other_fake_names: list[str], form_id: str) -> dict:
 def vote_list_values(form_spec: dict, text: str) -> tuple[dict[str, str] | None, list[str] | None]:
     """Reads a vote written the way the instruction asks: the names judged human, or a whole-room shortcut.
 
-    Naming somebody means Persona, not naming them means Agente, so a readable list determines every field
+    Naming somebody means Umano, not naming them means Artificiale, so a readable list determines every field
     of the form. Anything carrying a protocol block or labeled lines is left to the general interpreter,
     and plain prose that names nobody is not a vote.
 
@@ -347,7 +347,7 @@ def test_vote_form_roundtrip():
         "Pax": VOTE_HUMAN, "Roy": VOTE_AI, "Ada": VOTE_HUMAN}
 
     # Words are not a vote any more, whatever they say, and neither is a block to another form
-    assert read_vote("Pax: Persona\nRoy: Agente\nAda: Persona", form) == {}
+    assert read_vote("Pax: Umano\nRoy: Artificiale\nAda: Umano", form) == {}
     assert read_vote("tutti", form) == {}
     assert read_vote(encode_reply(dict(form, id="v2"), {"pax": VOTE_HUMAN}), form) == {}
     assert read_vote("qualsiasi cosa", None) == {}
@@ -366,7 +366,7 @@ def test_vote_form_roundtrip():
     # A near-miss names who could not be read; prose, labeled lines and other forms are not its business
     assert vote_list_values(form, "Pax, Bob") == (None, ["Bob"])
     assert vote_list_values(form, "Boh, secondo me erano tutti bot") == (None, None)
-    assert vote_list_values(form, "Pax: Persona") == (None, None)
+    assert vote_list_values(form, "Pax: Umano") == (None, None)
     assert vote_list_values(dict(form, name="altro"), "tutti") == (None, None)
 
     # Aliases become field names the protocol accepts, and two that normalise the same stay two fields
@@ -436,7 +436,7 @@ def test_vote_gate_roundtrip(monkeypatch):
     assert len(spy.calls) == 1 and "```" not in spy.calls[0] and "separati da virgola" in spy.calls[0]
 
     # Labeled lines still work, through the general interpreter
-    spy = Spy("Pax: Persona\nRoy: Agente\nAda: Persona")
+    spy = Spy("Pax: Umano\nRoy: Artificiale\nAda: Umano")
     assert read_vote(run(spy, message), form) == {"Pax": VOTE_HUMAN, "Roy": VOTE_AI, "Ada": VOTE_HUMAN}
     assert len(spy.calls) == 1
 
