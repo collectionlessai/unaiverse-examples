@@ -72,15 +72,15 @@ class Config:
                      f"La conversazione dura al massimo {test_duration} secondi e puoi scrivere "
                      f"'{exit_trigger_message}' in qualunque "
                      f"momento per lasciare subito la stanza. Alla fine ti chiederò di votare: dovrai "
-                     f"elencare quali ospiti secondo te erano persone vere. Come comportarti, che cosa dire e "
-                     f"che persona essere è una scelta interamente tua.")
+                     f"dire, per ciascun ospite, se secondo te era una persona vera o un agente. Come "
+                     f"comportarti, che cosa dire e che persona essere è una scelta interamente tua.")
     start_message_nobody = (f"[START_MSG_NOBODY] Benvenuto/a, ti chiami **<YOUR_NAME>** e "
                             f"per ora sei solo/a. La conversazione dura al massimo {test_duration} secondi e "
                             f"puoi scrivere "
                             f"'{exit_trigger_message}' in qualunque "
                             f"momento per lasciare subito la stanza. Alla fine ti chiederò di votare: dovrai "
-                            f"elencare quali ospiti secondo te erano persone vere. Come comportarti, che cosa dire e "
-                            f"che persona essere è una scelta interamente tua.")
+                            f"dire, per ciascun ospite, se secondo te era una persona vera o un agente. Come "
+                            f"comportarti, che cosa dire e che persona essere è una scelta interamente tua.")
     joined_message = f"[JOINED_MSG] Un nuovo agente è entrato nella stanza: **<SOME_NAME>**"
     left_message = f"[LEFT_MSG] Un agente ha lasciato la stanza: **<SOME_NAME>**"
     disconnected_message = f"[DISCO_MSG] Un agente si è disconnesso: **<SOME_NAME>**"
@@ -97,19 +97,29 @@ class Config:
                                f"per lasciare subito la stanza e dare il tuo voto! "
                                f"In questo preciso momento sei solo in stanza.")
     reminder_message_vote = f"[GEN_MSG] Hai ancora <TIME_LEFT> secondi per inviare il tuo voto..."
-    # Like the start message, the vote request must fully explain the expected ANSWER FORMAT: what to
-    # write, what counts as what, and the special "nobody"/"everybody" answers.
-    survey_message = (f"[VOTE_REQ_MSG] Caro/a **<YOUR_NAME>**, hai interagito con **<OTHER_NAMES>**. "
-                      f"Ognuno di loro era una persona vera oppure un agente artificiale (e potrebbero "
-                      f"anche essere stati tutti persone, o tutti agenti). "
-                      f"<br/><br/><strong>ELENCA QUELLI CHE SECONDO TE ERANO PERSONE VERE.</strong> "
-                      f"<br/>Formato della risposta: scrivi solo i loro nomi, separati da virgole o "
-                      f"spazi. I nomi che scrivi valgono come giudizio 'persona vera'; su chi non "
-                      f"nomini non esprimerai alcun giudizio. Se pensi che nessuno fosse una persona "
-                      f"vera scrivi solo 'nessuno'; se pensi che lo fossero tutti scrivi solo 'tutti'. "
-                      f"Non aggiungere spiegazioni o altro testo: renderebbero il tuo voto più "
-                      f"difficile da interpretare. "
-                      f"<br/><br/>Hai al massimo {survey_reply_time} secondi per rispondere.")
+    # The vote request is a protocol form (a "uai" block, see src/utils.py::build_vote_form): one choice per
+    # guest the voter met, each required. Who can draw the form sees buttons; a model, or a person reading
+    # the log, is shown vote_instruction in its place and answers IN WORDS with the list of the names judged
+    # human (the world's own slot filler, src/utils.py::vote_list_values, expands it: named means Umano,
+    # not named means Artificiale, plus the two whole-room shortcuts). The message itself only frames the
+    # question; keep instruction, labels and shortcuts in sync.
+    vote_form_name = "voto"
+    vote_human_label = "Umano"  # The option labels of the form (what a widget draws on its buttons)
+    vote_ai_label = "Artificiale"
+    vote_all_humans_shortcut = "tutti"  # Everybody was a person
+    vote_all_ai_shortcut = "nessuno"  # Nobody was a person
+    vote_instruction = (f"Scrivi solo i nomi di quelli che secondo te erano **persone vere**, separati da "
+                        f"virgola (ad esempio 'Roy, Pax'). Chi non nomini conterà come {vote_ai_label}. "
+                        f"Se pensi che fossero **tutte persone vere** scrivi solo "
+                        f"**'{vote_all_humans_shortcut}'**; se pensi che nessuno lo fosse scrivi solo "
+                        f"**'{vote_all_ai_shortcut}'**. Non aggiungere spiegazioni o altro testo. "
+                        f"I nomi su cui esprimerti: <OTHER_NAMES>.")
+    survey_message = (f"[VOTE_REQ_MSG] \n### Caro/a **<YOUR_NAME>**, hai interagito con **<OTHER_NAMES>**. "
+                      f"Ognuno di loro era un **{vote_human_label}** in carne e ossa oppure un agente "
+                      f"**{vote_ai_label}** (potrebbero anche essere stati tutti umani, "
+                      f"o tutti artificiali). "
+                      f"<br/><br/><strong>DI' CHI ERA CHI.</strong> "
+                      f"<br/>Hai al massimo {survey_reply_time} secondi per rispondere.")
     survey_message_nobody = (f"[VOTE_REQ_MSG] Caro/a **<YOUR_NAME>**, purtroppo non hai interagito con "
                              f"nessuno. "
                              f"Scrivi un messaggio qualsiasi per continuare (hai {survey_reply_time} secondi).")

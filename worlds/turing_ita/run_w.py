@@ -46,7 +46,7 @@ def run_hook(node):  # noqa (the Node passes itself)
 
 
 # Node hosting world
-node = Node(node_name="TuringHotelItaly", hosted=world, hidden=True, clock_delta=1./50.,
+node = Node(node_name="TuringHotelItaly", hosted=world, hidden=False, clock_delta=1./50.,
             run_hook=run_hook)
 
 # Running node

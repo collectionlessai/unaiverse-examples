@@ -10,6 +10,140 @@ from rich.live import Live
 from rich.table import Table
 from rich.console import Group
 from unaiverse.utils.misc import build_unaid
+from unaiverse.uai import (ISSUE_UNKNOWN_OPTION, ReplyEvent, build_form, describe_answer, has_fence,
+                                interactive_fields, normalize_label, parse_reply)
+
+
+# The two judgements a vote carries: they are the values on the wire and the ones stored as statistics
+VOTE_HUMAN = "human"
+VOTE_AI = "ai"
+
+
+def vote_field_name(fake_name: str) -> str:
+    """Turn a room alias into a field name the protocol accepts ([A-Za-z_][A-Za-z0-9_]*)."""
+    name = re.sub(r'[^a-z0-9_]', '_', fake_name.strip().lower())
+    return name if re.match(r'^[a-z_]', name) else 'g_' + name
+
+
+def build_vote_form(other_fake_names: list[str], form_id: str) -> dict:
+    """Compose the form that asks one guest who, among those he met, was a real person.
+
+    One required choice per votee: the manager reads one judgement per name without parsing anything, and
+    wherever a widget can be drawn the answer is a row of buttons. The instruction a model (or a person in
+    the log) reads in place of the block is Config.vote_instruction, written by hand rather than generated:
+    it travels as the form's aiHint, which the protocol copies into the alt.
+
+    Args:
+        other_fake_names: The aliases the voter met, the ones he has to judge.
+        form_id: The id an answer refers to. It must be unique per guest, since one answer would otherwise
+            mark every copy of the form as answered.
+
+    Returns:
+        The validated form spec, which the floor manager sends and the hotel manager reads the answer with.
+    """
+    fields = []
+    used = set()
+    for fake_name in other_fake_names:
+        name = vote_field_name(fake_name)
+        while name in used:  # Two aliases normalising the same way would be one single field for the receiver
+            name += '_'
+        used.add(name)
+        fields.append({"name": name, "type": "select", "label": fake_name, "required": True,
+                       "options": [{"value": VOTE_HUMAN, "label": Config.vote_human_label},
+                                   {"value": VOTE_AI, "label": Config.vote_ai_label}],
+                       "ui": "buttons"})
+    instruction = Config.vote_instruction.replace("<OTHER_NAMES>", ", ".join(other_fake_names))
+    return build_form(Config.vote_form_name, fields, form_id=form_id, lang="it", ai_hint=instruction)
+
+
+def vote_list_values(form_spec: dict, text: str) -> tuple[dict[str, str] | None, list[str] | None]:
+    """Reads a vote written the way the instruction asks: the names judged human, or a whole-room shortcut.
+
+    Naming somebody means Umano, not naming them means Artificiale, so a readable list determines every field
+    of the form. Anything carrying a protocol block or labeled lines is left to the general interpreter,
+    and plain prose that names nobody is not a vote.
+
+    Args:
+        form_spec: The validated vote form.
+        text: What was written.
+
+    Returns:
+        A tuple: the full canonical values when the text reads as a vote, or None; and, when the text looks
+        like a list but names somebody who is not in the room, the tokens that match nobody, so that whoever
+        wrote them can be asked again about exactly those.
+    """
+    if (not isinstance(text, str) or not form_spec or form_spec.get("name") != Config.vote_form_name
+            or has_fence(text) or ":" in text):
+        return None, None
+    fields = interactive_fields(form_spec)
+    word = text.strip().strip(".!").lower()
+    if word == Config.vote_all_humans_shortcut:
+        return {f["name"]: VOTE_HUMAN for f in fields}, None
+    if word == Config.vote_all_ai_shortcut:
+        return {f["name"]: VOTE_AI for f in fields}, None
+
+    # The names, by normalized label; commas are the declared separator, but a spaced list works too
+    by_label = {}
+    for f in fields:
+        by_label.setdefault(normalize_label(f["label"]), []).append(f["name"])
+    tokens = [t for t in (piece.strip() for piece in re.split(r"[,;]+", text)) if t]
+    if len(tokens) == 1 and " " in tokens[0]:
+        tokens = tokens[0].split()
+    named, unknown = set(), []
+    for token in tokens:
+        key = normalize_label(token.strip().strip(".!"))
+        if key in by_label:
+            named.update(by_label[key])
+        else:
+            unknown.append(token.strip())
+    if unknown:
+
+        # A near-miss (some real names beside something unreadable) is worth asking again about; a text
+        # naming nobody at all is not a vote, and the general policy decides what it is
+        return (None, unknown) if named else (None, None)
+    if not named:
+        return None, None
+    return {f["name"]: (VOTE_HUMAN if f["name"] in named else VOTE_AI) for f in fields}, None
+
+
+def vote_near_miss_event(form_spec: dict, text: str, unknown: list[str]) -> ReplyEvent:
+    """The event a list naming somebody unknown is read as, for the general fell-short policy."""
+    return ReplyEvent(to=form_spec.get("id"), name=form_spec.get("name"), raw=text, via="labeled",
+                      issues={token: ISSUE_UNKNOWN_OPTION for token in unknown})
+
+
+def vote_retry_prompt(form_spec: dict, text: str, event, model_view: str | None = None) -> str:
+    """Words the second request the way this world asks its question, instead of the generic wording."""
+    view = model_view if model_view else form_spec.get("alt", "")
+    ask = (f"La tua risposta era:\n{text.strip()}\n\nNon soddisfa la richiesta: "
+           f"{describe_answer(form_spec, event)}. Scrivi SOLO i nomi di chi secondo te era una persona "
+           f"vera, separati da virgola, oppure '{Config.vote_all_humans_shortcut}' o "
+           f"'{Config.vote_all_ai_shortcut}', senza altro testo.")
+    return f"{view.rstrip()}\n\n{ask}" if view.strip() else ask
+
+
+def read_vote(vote_msg: str | None, form_spec: dict | None) -> dict[str, str]:
+    """Read a vote: the canonical reply block to the form that was sent, and nothing else.
+
+    A compliant answer is the only thing that can arrive here, since whoever answers is held to the form
+    before anything leaves (a widget, a model asked again until it complies, a person told to write again).
+    What is not a reply block to this very form, or names a judgement nobody offered, reads as no vote.
+
+    Args:
+        vote_msg: The vote message, as the guest's processor produced it.
+        form_spec: The spec of the form that was sent to that guest.
+
+    Returns:
+        The judgements, mapping room alias to VOTE_HUMAN or VOTE_AI; empty when nothing could be read.
+    """
+    if not isinstance(vote_msg, str) or not form_spec:
+        return {}
+    event = parse_reply(vote_msg, form_spec)
+    if event is None or event.to != form_spec.get("id"):
+        return {}
+    by_field = {f["name"]: f["label"] for f in interactive_fields(form_spec)}
+    return {by_field[name]: value for name, value in event.values.items()
+            if name in by_field and value in (VOTE_HUMAN, VOTE_AI)}
 
 
 def parse_vote_msg(
@@ -189,6 +323,163 @@ def parse_vote_msg(
                             results[norm(agents[i])] = classify(m.group(1))
 
     return results
+
+
+def test_vote_form_roundtrip():
+    """The vote as a form: what is composed, what is read back, and what is not a vote."""
+    from unaiverse.uai import encode_reply, has_fence, parse_message, serialize_block, to_model_text
+
+    others = ["Pax", "Roy", "Ada"]
+    form = build_vote_form(others, form_id="v1")
+
+    # What travels is a valid block: a receiver that knows the protocol draws it, one that does not shows
+    # the hand-written instruction, and nobody is ever shown the JSON
+    message = "Caro/a Ivy, hai interagito con Pax, Roy, Ada.\n\n" + serialize_block(form)
+    assert has_fence(message)
+    parts = parse_message(message)
+    assert [p["type"] for p in parts] == ["text", "form"] and not parts[1].get("degraded")
+    assert "```" not in to_model_text(message)
+    assert form["alt"] == form["aiHint"] and "Pax, Roy, Ada" in form["alt"]
+    assert all(f["required"] for f in interactive_fields(form))
+
+    # The canonical block, which is the only shape a compliant answer has
+    assert read_vote(encode_reply(form, {"pax": VOTE_HUMAN, "roy": VOTE_AI, "ada": VOTE_HUMAN}), form) == {
+        "Pax": VOTE_HUMAN, "Roy": VOTE_AI, "Ada": VOTE_HUMAN}
+
+    # Words are not a vote any more, whatever they say, and neither is a block to another form
+    assert read_vote("Pax: Umano\nRoy: Artificiale\nAda: Umano", form) == {}
+    assert read_vote("tutti", form) == {}
+    assert read_vote(encode_reply(dict(form, id="v2"), {"pax": VOTE_HUMAN}), form) == {}
+    assert read_vote("qualsiasi cosa", None) == {}
+
+    # A value nobody offered, or a field this form does not declare, never reaches the manager
+    assert read_vote(serialize_block(
+        {"v": 1, "kind": "reply", "to": "v1", "values": {"pax": "marziano", "ghost": VOTE_AI}}), form) == {}
+
+    # The world's own reading of a vote in words: named means human, not named means ai
+    assert vote_list_values(form, "Pax, Ada") == ({"pax": VOTE_HUMAN, "ada": VOTE_HUMAN, "roy": VOTE_AI}, None)
+    assert vote_list_values(form, "roy") == ({"roy": VOTE_HUMAN, "pax": VOTE_AI, "ada": VOTE_AI}, None)
+    assert vote_list_values(form, "Pax Ada") == ({"pax": VOTE_HUMAN, "ada": VOTE_HUMAN, "roy": VOTE_AI}, None)
+    assert vote_list_values(form, " Tutti! ") == ({"pax": VOTE_HUMAN, "roy": VOTE_HUMAN, "ada": VOTE_HUMAN}, None)
+    assert vote_list_values(form, "nessuno") == ({"pax": VOTE_AI, "roy": VOTE_AI, "ada": VOTE_AI}, None)
+
+    # A near-miss names who could not be read; prose, labeled lines and other forms are not its business
+    assert vote_list_values(form, "Pax, Bob") == (None, ["Bob"])
+    assert vote_list_values(form, "Boh, secondo me erano tutti bot") == (None, None)
+    assert vote_list_values(form, "Pax: Umano") == (None, None)
+    assert vote_list_values(dict(form, name="altro"), "tutti") == (None, None)
+
+    # Aliases become field names the protocol accepts, and two that normalise the same stay two fields
+    assert vote_field_name("Roy") == "roy" and vote_field_name("3B") == "g_3b"
+    names = [f["name"] for f in build_vote_form(["Roy", "roy"], form_id="v2")["fields"]]
+    assert names == ["roy", "roy_"]
+
+
+def test_vote_gate_roundtrip(monkeypatch):
+    """The whole vote loop, without a network: the floor manager's message as built, through the real guest
+    role and the real processor gate, and what the hotel manager reads out of what leaves."""
+    import torch
+    from unaiverse.uai import AnswerWithheld, gen_id, serialize_block
+    from unaiverse.modules.utils import ModuleWrapper, HumanModule
+    from unaiverse.streams.dataprops import StreamType
+    from .guest import WAgent
+
+    others = ["Pax", "Roy", "Ada"]
+    form = build_vote_form(others, form_id=gen_id(suffix="Ivy"))
+    survey = (Config.survey_message.replace("<YOUR_NAME>", "Ivy").replace("<OTHER_NAMES>", ", ".join(others))
+              + "\n\n" + serialize_block(form))
+    message = re.sub(r'^\[.*?]\s*', '', format_message(Config.manager_fake_name, survey))
+
+    class Spy(torch.nn.Module):
+        """A processor that answers with its fixed texts, one per call."""
+
+        def __init__(self, *answers: str) -> None:
+            super().__init__()
+            self.answers = list(answers)
+            self.calls = []
+
+        def forward(self, msg: str) -> str:
+            self.calls.append(msg)
+            return self.answers[min(len(self.calls), len(self.answers)) - 1]
+
+    class FakeGuest(WAgent):
+        """The real guest role, on a skeleton with no node: only what the gate touches is set up."""
+
+        # noinspection PyMissingConstructor
+        def __init__(self) -> None:
+            self.uai_inbox = {}
+            self.uai_writing_to = None
+            self.proc = None
+
+        def uai_peer(self):
+            return "floor"
+
+        def get_current_interaction(self):
+            return None
+
+        class clock:
+            @staticmethod
+            def get_time() -> float:
+                return 0.
+
+    def run(module, text, remembered: bool = False):
+        agent = FakeGuest()
+        if remembered:  # What get_status_msg does on the vote request, for a person's later answer
+            agent.uai_remember_form("floor", message)
+        agent.proc = ModuleWrapper(module=module, proc_inputs=[StreamType(data_type="text")],
+                                   proc_outputs=[StreamType(data_type="text")], agent=agent)
+        return agent.proc(text)[0]
+
+    # A model that follows the instruction (the list of the humans): one call, one block, every name judged
+    spy = Spy("Pax, Ada")
+    assert read_vote(run(spy, message), form) == {"Pax": VOTE_HUMAN, "Ada": VOTE_HUMAN, "Roy": VOTE_AI}
+    assert len(spy.calls) == 1 and "```" not in spy.calls[0] and "separati da virgola" in spy.calls[0]
+
+    # Labeled lines still work, through the general interpreter
+    spy = Spy("Pax: Umano\nRoy: Artificiale\nAda: Umano")
+    assert read_vote(run(spy, message), form) == {"Pax": VOTE_HUMAN, "Roy": VOTE_AI, "Ada": VOTE_HUMAN}
+    assert len(spy.calls) == 1
+
+    # A list naming somebody unknown is asked again, in this world's own words, about exactly that name
+    spy = Spy("Pax, Bob", "Pax")
+    assert read_vote(run(spy, message), form) == {"Pax": VOTE_HUMAN, "Roy": VOTE_AI, "Ada": VOTE_AI}
+    assert len(spy.calls) == 2 and "Bob" in spy.calls[1] and "separati da virgola" in spy.calls[1]
+    assert "campo: valore" not in spy.calls[1]
+
+    # The two shortcuts stand for a full answer, with no second call
+    spy = Spy("tutti")
+    assert read_vote(run(spy, message), form) == {n: VOTE_HUMAN for n in others}
+    assert len(spy.calls) == 1
+    assert read_vote(run(Spy("Nessuno."), message), form) == {n: VOTE_AI for n in others}
+
+    # A model that never complies: the words travel after the retries, and the manager reads no vote (the
+    # hotel manager then stores it as SKIPPED, exactly as it did with unparsable free text)
+    spy = Spy("Boh, non saprei proprio")
+    out = run(spy, message)
+    assert out == "Boh, non saprei proprio" and len(spy.calls) == 3
+    assert read_vote(out, form) == {}
+
+    # A person at a terminal who names somebody unknown is told and asked to write again; a proper list
+    # becomes the block
+    try:
+        run(HumanModule(), "Pax, Bob", remembered=True)
+        assert False, "a vote naming somebody unknown, from a terminal person, must be withheld"
+    except AnswerWithheld:
+        pass
+    out = run(HumanModule(), "Pax, Ada", remembered=True)
+    assert read_vote(out, form) == {"Pax": VOTE_HUMAN, "Ada": VOTE_HUMAN, "Roy": VOTE_AI}
+
+    # A person in the web application is never held back: an unreadable list travels as written (no vote),
+    # a proper one is still encoded, and the widget's own block passes untouched
+    import unaiverse.agent_basics as agent_basics_module
+    monkeypatch.setattr(agent_basics_module.sys, "platform", "emscripten")
+    assert run(HumanModule(), "Pax, Bob", remembered=True) == "Pax, Bob"
+    out = run(HumanModule(), "nessuno", remembered=True)
+    assert read_vote(out, form) == {n: VOTE_AI for n in others}
+    from unaiverse.uai import encode_reply
+    widget = encode_reply(form, {vote_field_name(n): VOTE_AI for n in others})
+    assert run(HumanModule(), widget, remembered=True) == widget
+    assert read_vote(widget, form) == {n: VOTE_AI for n in others}
 
 
 def test_parse_vote_msg_names():

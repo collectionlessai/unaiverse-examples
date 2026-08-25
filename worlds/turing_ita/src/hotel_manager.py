@@ -24,7 +24,7 @@ from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
 from concurrent.futures import ThreadPoolExecutor
 from unaiverse.networking.node.profile import NodeProfile
-from .utils import parse_vote_msg, compute_check_in_proposals
+from .utils import read_vote, compute_check_in_proposals
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
     asyncio.get_event_loop().set_default_executor(_turing_executor)
@@ -613,15 +613,13 @@ class WAgent(Agent):
                         if v < Config.min_msgs_from_votee:
                             fake_names_to_ignore.add(k)
 
-                    # Parsing vote
-                    parsed_vote = parse_vote_msg(vote_dict["vote"],  # Dict fake-name (votee) to "human" | "ai"
-                                                 agents=self.fake_names,
-                                                 bots=[k for k, v
-                                                       in vote_dict["ground_truth"].items() if v[0] == "ai"],
-                                                 humans=[k for k, v
-                                                         in vote_dict["ground_truth"].items() if v[0] == "human"])
+                    # Reading the vote: a reply block to the form this guest was asked, read without parsing
+                    # anything, since whoever answered was held to the form before the answer left. The form
+                    # itself is taken out of the dictionary here, as it is not part of what we store.
+                    vote_form = vote_dict.pop("vote_form", None)
+                    parsed_vote = read_vote(vote_dict["vote"], vote_form)  # Dict fake-name (votee) to "human" | "ai"
 
-                    # If parsing failed or if the vote is actually garbage, we save the result
+                    # If nothing could be read (no block, or a block to something else), we save the result
                     if len(parsed_vote) == 0:
                         int_timestamp = self.clock.get_time_ms(monotonic=True)
                         vote_dict["VOTE_MSG"] = vote_dict["vote"]

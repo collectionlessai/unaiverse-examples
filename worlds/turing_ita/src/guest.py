@@ -25,6 +25,8 @@ from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
 from unaiverse.interaction import Interaction
 from unaiverse.networking.node.profile import NodeProfile
+from unaiverse.uai import AnswerOutcome, encode_reply, has_fence
+from .utils import vote_list_values, vote_near_miss_event, vote_retry_prompt
 
 
 class WAgent(Agent):
@@ -273,8 +275,11 @@ class WAgent(Agent):
         elif msg.startswith("[VOTE_REQ_MSG]"):
 
             # Vote request: pushed ALONE, under the UUID communicated by sending this status message, so
-            # that the "process" action parked on that UUID fires and the processor answers with its vote
+            # that the "process" action parked on that UUID fires and the processor answers with its vote.
+            # It carries a form, and it arrives here as an action argument rather than as a stream sample,
+            # so it is remembered explicitly: a person's typed answer is read against it on the way out
             msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
+            self.uai_remember_form(self.__floor_manager, msg_no_tag)
             self.__push_to_processor(msg_no_tag, process_uuid=process_uuid)
 
         elif msg.startswith("[JOINED_MSG]") or msg.startswith("[LEFT_MSG]") or msg.startswith("[GEN_MSG]"):
@@ -292,8 +297,11 @@ class WAgent(Agent):
         else:
             return True  # Consume the interaction (unknown status messages are neither printed nor forwarded)
 
-        # Print every known status message (without the initial [...] tag)
-        log.user(re.sub(r'^\[.*?]\s*', '', msg))
+        # Print every known status message (without the initial [...] tag). Rendering of protocol blocks
+        # happens in the logger, per sink: a terminal reads the alt of a block, a sink that declared uai
+        # support gets the raw block to render its own way
+        printable = re.sub(r'^\[.*?]\s*', '', msg)
+        log.user(printable)
         return True  # Consume the interaction
 
     @action
@@ -362,12 +370,36 @@ class WAgent(Agent):
         return True  # Don't stop the transition
 
     @action
-    def process(self, interaction: Interaction | None = None) -> bool:
+    async def process(self, interaction: Interaction | None = None) -> bool:
         """This is just an override to clear the push buffer when it gets consumed by the processor."""
-        ret = super().process(interaction)
+        ret = await super().process(interaction)
         if ret:
             self._pending_events = []
         return ret
+
+    def uai_postprocess(self, text: str, spec: dict, **kwargs) -> AnswerOutcome:
+        """The vote is answered in words as the list of the names judged human (or a whole-room shortcut):
+        this is the world's own slot filler, run before the general policy would read the list as something
+        else. A list naming somebody unknown goes to the fell-short policy with exactly those tokens, so
+        that whoever wrote it is asked again about them."""
+        values, unknown = vote_list_values(spec, text)
+        if values is not None:
+            self.uai_forget_form(spec)
+            return AnswerOutcome(text=encode_reply(spec, values))
+        if unknown:
+            return self.uai_answer_fell_short(text, spec, vote_near_miss_event(spec, text, unknown),
+                                                   kwargs.get("attempt", 0), kwargs.get("model_view"))
+        return super().uai_postprocess(text, spec, **kwargs)
+
+    def uai_answer_fell_short(self, text: str, spec: dict, event, attempt: int,
+                                   model_view: str | None = None) -> AnswerOutcome:
+        """Same policy as the framework (who is asked again, how many times, who is told): only the wording
+        of the second request to a model is this world's own, since the generic one asks for 'field: value'
+        lines and this form is answered with a list of names."""
+        outcome = super().uai_answer_fell_short(text, spec, event, attempt, model_view)
+        if outcome.retry is not None and spec.get("name") == Config.vote_form_name:
+            return AnswerOutcome(retry=vote_retry_prompt(spec, text, event, model_view))
+        return outcome
 
     def __cooldown_left(self) -> float:
         """Seconds still to wait before another message can be sent to the room (<= 0 means: send it now)."""
@@ -410,8 +442,10 @@ class WAgent(Agent):
         if msg is None:
             return
 
-        # One event per line: newlines inside a single event would break the line-based batching below
-        msg = msg.replace("\n", " ").strip()
+        # One event per line: newlines inside a single event would break the line-based batching below.
+        # A message carrying a protocol block is the exception, because a fence is only a fence with its
+        # newlines: those messages are delivered alone (see the vote request), so nothing gets confused
+        msg = msg.strip() if has_fence(msg) else msg.replace("\n", " ").strip()
         if len(msg) == 0:
             return
 
