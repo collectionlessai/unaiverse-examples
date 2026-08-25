@@ -25,7 +25,7 @@ from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
 from unaiverse.interaction import Interaction
 from unaiverse.networking.node.profile import NodeProfile
-from unaiverse.uai import AnswerOutcome, encode_reply, has_fence, to_model_text
+from unaiverse.uai import AnswerOutcome, encode_reply, has_fence
 from .utils import vote_list_values, vote_near_miss_event, vote_retry_prompt
 
 
@@ -297,10 +297,11 @@ class WAgent(Agent):
         else:
             return True  # Consume the interaction (unknown status messages are neither printed nor forwarded)
 
-        # Print every known status message (without the initial [...] tag). A message that carries a
-        # protocol block is printed as the text that block stands for: nobody has to read JSON
+        # Print every known status message (without the initial [...] tag). Rendering of protocol blocks
+        # happens in the logger, per sink: a terminal reads the alt of a block, a sink that declared uai
+        # support gets the raw block to render its own way
         printable = re.sub(r'^\[.*?]\s*', '', msg)
-        log.user(to_model_text(printable) if has_fence(printable) else printable)
+        log.user(printable)
         return True  # Consume the interaction
 
     @action

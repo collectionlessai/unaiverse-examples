@@ -114,7 +114,7 @@ class Config:
                         f"**'{vote_all_humans_shortcut}'**; se pensi che nessuno lo fosse scrivi solo "
                         f"**'{vote_all_ai_shortcut}'**. Non aggiungere spiegazioni o altro testo. "
                         f"I nomi su cui esprimerti: <OTHER_NAMES>.")
-    survey_message = (f"[VOTE_REQ_MSG] ### Caro/a **<YOUR_NAME>**, hai interagito con **<OTHER_NAMES>**. "
+    survey_message = (f"[VOTE_REQ_MSG] \n### Caro/a **<YOUR_NAME>**, hai interagito con **<OTHER_NAMES>**. "
                       f"Ognuno di loro era una **{vote_human_label}** in carne e ossa oppure un "
                       f"**{vote_ai_label}** artificiale (potrebbero anche essere stati tutti persone, "
                       f"o tutti agenti). "
