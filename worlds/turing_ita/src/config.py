@@ -47,6 +47,7 @@ class Config:
     msg_filter_pii = True  # Also mask e-mails, phone numbers, IBANs, fiscal codes, addresses, links
     msg_filter_max_severe = 5  # Hate speech messages a guest can send before being pushed off the floor
     send_reminder_every = 65  # Reminder on how to exit the room and vote
+    skipped_votes_alarm = 3  # Unreadable votes in a row (hotel-wide) that trip the pipeline alarm in the logs
     send_floor_updates_every = 3  # From floor manager to hotel manager
     decompression_time = 60
     disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
@@ -55,6 +56,10 @@ class Config:
     unknown_guest_name = "unk"
     sender_prefix = "**"
     sender_suffix = ":** "  # Do not forget the final space here
+    # Separator between the EVENTS batched into one processor input sample (see guest.py's contract).
+    # It is the ASCII RECORD SEPARATOR, a character no chat message can contain (the guest strips it from
+    # every event before batching), so events keep their internal newlines and splitting is lossless
+    event_separator = "\x1e"
     init_message = (f"BENVENUTO AL TURING HOTEL ITALIA 🏨 (Il tuo nickname: <YOUR_NICKNAME>)!<br/><br/>"
                     f"È una destinazione unica, "
                     f"fatta di stanze che realizzano il Test di Turing multi-agente, dove sarai sia "
@@ -123,7 +128,9 @@ class Config:
     survey_message_nobody = (f"[VOTE_REQ_MSG] Caro/a **<YOUR_NAME>**, purtroppo non hai interagito con "
                              f"nessuno. "
                              f"Scrivi un messaggio qualsiasi per continuare (hai {survey_reply_time} secondi).")
-    violation_message = ("[GEN_MSG] Il tuo ingresso è stato segnalato dal direttore dell'hotel, mi dispiace ma "
+    # A violation has its own tag: it must reach whoever is playing even BEFORE any room started (a
+    # generic [GEN_MSG] would be swallowed by the guest's pre-room ignore gate, and the reason lost)
+    violation_message = ("[VIOLATION_MSG] Il tuo ingresso è stato segnalato dal direttore dell'hotel, mi dispiace ma "
                          "devo disconnetterti")
     # Messages sent to the AUTHOR of a filtered message (the other guests only see the masked text)
     filter_mask_message = ("[GEN_MSG] Ho oscurato una parte del tuo messaggio prima di mostrarlo agli altri "

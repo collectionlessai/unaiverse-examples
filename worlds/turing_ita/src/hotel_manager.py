@@ -57,6 +57,9 @@ class WAgent(Agent):
         self._last_update_received_at = "..."
         self._last_guest_send_to_floor_at = "..."
 
+        # Unreadable votes arriving back to back: a streak of Config.skipped_votes_alarm trips the alarm
+        self._skipped_votes_in_a_row = 0
+
     async def on_tick(self):
         connected_floor_managers = self.get_agents_by_role("floor_manager")
         connected_guests = self.get_agents_by_role("guest")
@@ -619,13 +622,35 @@ class WAgent(Agent):
                     vote_form = vote_dict.pop("vote_form", None)
                     parsed_vote = read_vote(vote_dict["vote"], vote_form)  # Dict fake-name (votee) to "human" | "ai"
 
-                    # If nothing could be read (no block, or a block to something else), we save the result
+                    # If nothing could be read, we save the result anyway, under a group that names the
+                    # reason: a voter who met NOBODY had no form and nothing to read by design, an EMPTY
+                    # answer (a processor that stayed silent) is a different failure from words carrying
+                    # no readable judgement, and conflating the three once hid a systematic break. Real
+                    # skips are also said out loud, and a streak of them raises a hotel-wide alarm (once
+                    # per streak, deliberately blind to rooms and floors): votes normally read fine, so a
+                    # run of unreadable ones means something upstream is broken
                     if len(parsed_vote) == 0:
                         int_timestamp = self.clock.get_time_ms(monotonic=True)
                         vote_dict["VOTE_MSG"] = vote_dict["vote"]
                         vote_dict["vote"] = "SKIPPED"
-                        self.stats.store_stat("turing_vote", vote_dict,
-                                              group_key="PARSER_SKIPPED", timestamp=int_timestamp)
+                        if vote_form is None:
+                            self.stats.store_stat("turing_vote", vote_dict,
+                                                  group_key="NO_FORM_SKIPPED", timestamp=int_timestamp)
+                        else:
+                            vote_was_empty = len(str(vote_dict["VOTE_MSG"]).strip()) == 0
+                            self.stats.store_stat("turing_vote", vote_dict,
+                                                  group_key="EMPTY_SKIPPED" if vote_was_empty else "PARSER_SKIPPED",
+                                                  timestamp=int_timestamp)
+                            self._skipped_votes_in_a_row += 1
+                            log.user(f"⚠️ Vote from {vote_dict.get('voter', '?')} could not be read "
+                                     f"({'empty answer' if vote_was_empty else 'no reply block in it'}): "
+                                     f"stored as SKIPPED")
+                            if self._skipped_votes_in_a_row == Config.skipped_votes_alarm:
+                                log.error(f"❌ {self._skipped_votes_in_a_row} votes in a row could not be read: "
+                                          f"the voting pipeline is likely broken (check the guests' processors "
+                                          f"and the vote form round-trip)")
+                    else:
+                        self._skipped_votes_in_a_row = 0
 
                     # Reversing the logic: the index is the votee, hence the vote dictionary must be replicated for each
                     # votee of in the parsed vote structure

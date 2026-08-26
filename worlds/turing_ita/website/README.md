@@ -35,8 +35,8 @@ repo): a static SPA (`index.html` + `app.js` + `style.css`) plus one read-only P
 
 ## Notes
 
-- `api.php` endpoints: `?q=ops`, `?q=votes` (validated `turing_vote` rows only — `PARSER_SKIPPED`
-  is excluded, like in `src/stats.py`), `?q=sessions`, `?q=conversation&session=S`.
+- `api.php` endpoints: `?q=ops`, `?q=votes` (validated `turing_vote` rows only — the `*_SKIPPED`
+  reason groups are excluded, like in `src/stats.py`), `?q=sessions`, `?q=conversation&session=S`.
 - Conversations: `conversation_chunk` records (`session_id`, `author`, `author_fake_name`, `text`,
   `ts`) are written by the floor managers on every broadcast message (the MASKED text, after the
   room filter), gated by `store_conversations` in `src/config.py`; their `session_id` matches the

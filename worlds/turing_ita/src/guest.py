@@ -13,7 +13,6 @@
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
 import io
-import re
 import csv
 import time
 import base64
@@ -25,8 +24,8 @@ from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
 from unaiverse.interaction import Interaction
 from unaiverse.networking.node.profile import NodeProfile
-from unaiverse.uai import AnswerOutcome, encode_reply, has_fence
-from .utils import vote_list_values, vote_near_miss_event, vote_retry_prompt
+from unaiverse.uai import AnswerOutcome, encode_reply
+from .utils import normalize_event, strip_service_tag, vote_list_values, vote_near_miss_event, vote_retry_prompt
 
 
 class WAgent(Agent):
@@ -37,17 +36,25 @@ class WAgent(Agent):
     processor input stream ("processor_in", text type), and the processor is in charge of collecting the
     history, tracking the roster, and building whatever prompt it wants. In detail:
 
-    - Each processor input sample contains one or more EVENTS, one per line (newlines inside a single event
-      are replaced by spaces). Multiple lines appear only when events arrive faster than the processor
-      consumes them; in the common case a sample is just the last message.
+    - Each processor input sample contains one or more EVENTS, oldest first, separated by
+      Config.event_separator (U+001E, the ASCII RECORD SEPARATOR). An event keeps its internal newlines;
+      the separator is stripped from every event before batching, so splitting a sample on it is always
+      lossless. Multiple events appear only when they arrive faster than the processor consumes them; in
+      the common case a sample is just the last message.
     - Chat messages arrive as formatted by the floor manager: "**SENDER:** message text".
-    - Service events arrive with their original tag: "[START_MSG]"/"[START_MSG_NOBODY]" (a new chat session
-      begins: it is the WORLD GUIDE — it explains the game mechanics and carries your fake name and the
-      other guests' names, but deliberately NO behavioral instructions, since behavior and persona are each
-      competitor's own responsibility — and the processor must RESET its own history when receiving it),
-      "[JOINED_MSG]", "[LEFT_MSG]", "[GEN_MSG]" (roster changes and reminders).
-    - "[VOTE_REQ_MSG]" (the request to vote who was human) is always delivered ALONE, as the only line of
-      the sample of a dedicated "process" interaction: the answer to it is collected as the vote.
+    - Service events come from the manager and always start with "**MANAGER:** " (their internal
+      "[START_MSG]"/"[GEN_MSG]"/... tag routes them inside the world and is STRIPPED before the push);
+      their body may span several lines. The start message opens a new chat session: it is the WORLD
+      GUIDE — it explains the game mechanics and carries your fake name and the other guests' names, but
+      deliberately NO behavioral instructions, since behavior and persona are each competitor's own
+      responsibility — and the processor must RESET its own history when receiving it. The other service
+      events tell about roster changes and reminders.
+    - The vote request (who was human) is always delivered ALONE, as the only event of the sample of a
+      dedicated "process" interaction: beside the framing text it carries a ```uai form (the framework
+      hands a model processor the form's instruction in place of the raw block), and the answer to it is
+      collected as the vote — the names judged human, comma separated, or a whole-room shortcut (see
+      Config.vote_instruction). An empty answer is not a vote: the framework asks a model again, and when
+      it insists on silence nothing travels.
     - Every delivered sample triggers one "process" turn. The text returned by the processor is sent to the
       room as the guest's message; returning an EMPTY string means "stay silent on this turn".
     - An anti-flooding COOLDOWN is enforced by the guest itself (Config.msg_cooldown seconds): whatever the
@@ -57,8 +64,8 @@ class WAgent(Agent):
     - The "[START_MSG]" delivery itself triggers the first turn: the processor is expected to open the
       conversation (proactively, without waiting for other guests' messages) or return an empty string.
 
-    A reference stateful processor implementing this contract is provided in the world folder
-    (processors.py, next to the run_*.py scripts).
+    The raw shapes of every event are the *_message templates in src/config.py, and the wire-shape
+    invariants a processor can rely on are pinned by test_processor_event_contract in src/utils.py.
     """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -259,6 +266,7 @@ class WAgent(Agent):
 
     @action
     async def get_status_msg(self, msg: str, process_uuid: str | None = None):
+        msg_no_tag = strip_service_tag(msg)
 
         if msg.startswith("[START_MSG]") or msg.startswith("[START_MSG_NOBODY]"):
 
@@ -266,32 +274,31 @@ class WAgent(Agent):
             # it) and we start listening. The push itself triggers the opening "process" turn, so that the
             # processor can proactively open the conversation without waiting for other guests' messages
             self._ignore_messages = False
-            msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
             self.__push_to_processor(msg_no_tag)
+
+        elif msg.startswith("[VIOLATION_MSG]"):
+
+            # A violation notice must reach whoever is playing even before any room started (the guest is
+            # about to be disconnected): there is no turn to take, it is only printed below
+            pass
 
         elif self._ignore_messages:
             return True  # Consume the interaction
 
         elif msg.startswith("[VOTE_REQ_MSG]"):
 
-            # Vote request: pushed ALONE, under the UUID communicated by sending this status message, so
-            # that the "process" action parked on that UUID fires and the processor answers with its vote.
-            # It carries a form, and it arrives here as an action argument rather than as a stream sample,
-            # so it is remembered explicitly: a person's typed answer is read against it on the way out
-            msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
+            # Vote request: pushed ALONE (its contract promises the only event of its sample, whatever
+            # roster noise reached us in the booth), under the UUID communicated by sending this status
+            # message, so that the "process" action parked on that UUID fires and the processor answers
+            # with its vote. It carries a form, and it arrives here as an action argument rather than as
+            # a stream sample, so it is remembered explicitly: a person's typed answer is read against it
+            # on the way out
             self.uai_remember_form(self.__floor_manager, msg_no_tag)
-            self.__push_to_processor(msg_no_tag, process_uuid=process_uuid)
+            self.__push_to_processor(msg_no_tag, process_uuid=process_uuid, alone=True)
 
-        elif msg.startswith("[JOINED_MSG]") or msg.startswith("[LEFT_MSG]") or msg.startswith("[GEN_MSG]"):
+        elif msg.startswith(("[JOINED_MSG]", "[LEFT_MSG]", "[GEN_MSG]", "[DISCO_MSG]")):
 
-            # Roster changes and reminders: forwarded raw, the processor decides what to do with them
-            msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
-            self.__push_to_processor(msg_no_tag)
-
-        elif msg.startswith("[DISCO_MSG]"):
-
-            # We are being told about a disconnection, the processor decides what to do with them
-            msg_no_tag = re.sub(r'^\[.*?]\s*', '', msg)
+            # Roster changes, reminders and disconnections: forwarded raw, the processor decides
             self.__push_to_processor(msg_no_tag)
 
         else:
@@ -300,8 +307,7 @@ class WAgent(Agent):
         # Print every known status message (without the initial [...] tag). Rendering of protocol blocks
         # happens in the logger, per sink: a terminal reads the alt of a block, a sink that declared uai
         # support gets the raw block to render its own way
-        printable = re.sub(r'^\[.*?]\s*', '', msg)
-        log.user(printable)
+        log.user(msg_no_tag)
         return True  # Consume the interaction
 
     @action
@@ -438,22 +444,29 @@ class WAgent(Agent):
             await self.disconnect(self.__floor_manager)
 
     def __push_to_processor(self, msg: str | None,
-                            process_uuid: str | None = Custom.SYSTEM_INTERACTION_UUID) -> None:
+                            process_uuid: str | None = Custom.SYSTEM_INTERACTION_UUID,
+                            alone: bool = False) -> None:
         if msg is None:
             return
 
-        # One event per line: newlines inside a single event would break the line-based batching below.
-        # A message carrying a protocol block is the exception, because a fence is only a fence with its
-        # newlines: those messages are delivered alone (see the vote request), so nothing gets confused
-        msg = msg.strip() if has_fence(msg) else msg.replace("\n", " ").strip()
+        # An event keeps its newlines (a fence is only a fence with them, and nothing else needs
+        # flattening); what it cannot contain is the separator the batching below joins events with,
+        # which normalize_event strips, so that splitting a sample on it is always lossless
+        msg = normalize_event(msg)
         if len(msg) == 0:
             return
 
         input_stream = self.get_stream("processor_in", data_type="text")
         assert input_stream is not None
 
-        self._pending_events.append(msg)
-        payload = "\n".join(self._pending_events)
+        # A sample is normally the whole backlog of unconsumed events; a message pushed "alone" (the
+        # vote request, promised as the only event of its sample) bypasses the backlog and is the whole
+        # sample by itself
+        if alone:
+            payload = msg
+        else:
+            self._pending_events.append(msg)
+            payload = Config.event_separator.join(self._pending_events)
 
         # Setting the event(s) to our processor's default input (given UUID), so that it will be considered
         # in the next "process" action that is bound to the given UUID (for humans this stream is disabled,

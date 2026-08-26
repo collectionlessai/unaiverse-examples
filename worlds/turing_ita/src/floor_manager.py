@@ -28,8 +28,7 @@ from unaiverse.interaction import Interaction
 from unaiverse.streams.dataprops import DataProps
 from concurrent.futures import ThreadPoolExecutor
 from .filter import RuleBasedFilter
-from .utils import build_vote_form, compute_check_in_proposals, format_message
-from unaiverse.uai import gen_id, serialize_block
+from .utils import build_survey_wire, compute_check_in_proposals, format_message, sanitize_room_message
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
     asyncio.get_event_loop().set_default_executor(_turing_executor)
@@ -440,23 +439,11 @@ class WAgent(Agent):
             fake_name = room.fake_name_of(guest)
             other_guests_names = sorted(list(room.get_fake_names_met_by(fake_name)))
 
-            # Interacting with the guest's processor
-            survey_msg = (
-                Config.survey_message if len(other_guests_names) > 0 else Config.survey_message_nobody).replace(
-                "<YOUR_NAME>", room.fake_name_of(guest)).replace("<OTHER_NAMES>", ", ".join(other_guests_names))
-
-            # The vote travels as a protocol form, on its own lines after the framing text: whoever answers
-            # it (a widget, a model, a person writing by hand) is held to it, and the hotel manager reads
-            # one judgement per name. The id is per guest, because one answer would otherwise mark every
-            # copy of this form as answered.
-            vote_form = None
-            if len(other_guests_names) > 0:
-                try:
-                    vote_form = build_vote_form(other_guests_names, form_id=gen_id(suffix=fake_name))
-                    survey_msg = survey_msg + "\n\n" + serialize_block(vote_form)
-                except Exception as e:  # A form that cannot be composed must never cost the round
-                    log.error(f"Unable to compose the vote form, sending the plain request: {e}")
-                    vote_form = None
+            # Interacting with the guest's processor. The vote travels as a protocol form, on its own lines
+            # after the framing text: whoever answers it (a widget, a model, a person writing by hand) is
+            # held to it, and the hotel manager reads one judgement per name. The wire message is built by
+            # utils.build_survey_wire, the ONE place that knows its shape (the contract tests pin it there)
+            survey_wire, vote_form = build_survey_wire(fake_name, other_guests_names)
 
             interaction = await self._send(action_name="process",
                                            from_state="can_vote",
@@ -475,7 +462,7 @@ class WAgent(Agent):
             await asyncio.gather(
                 self.__send_or_disconnect(guest,
                                           action_name="get_status_msg",
-                                          action_kwargs={"msg": format_message(Config.manager_fake_name, survey_msg),
+                                          action_kwargs={"msg": survey_wire,
                                                          "process_uuid": interaction.uuid},
                                           from_state="can_vote",
                                           volatile=True),
@@ -685,7 +672,7 @@ class WAgent(Agent):
         # Send all violation messages in parallel, then disconnect (disconnect must follow send).
         await asyncio.gather(*[
             self.send(action_name="get_status_msg",
-                      action_kwargs={"msg": Config.violation_message},
+                      action_kwargs={"msg": format_message(Config.manager_fake_name, Config.violation_message)},
                       target=guest)
             for guest in guests
         ], return_exceptions=True)
@@ -727,6 +714,11 @@ class WAgent(Agent):
             if msg.strip().lower() == Config.exit_trigger_message.lower():
                 self._wants_to_exit.add(guest)
                 return True
+
+            # A guest-authored message must not be able to wear the room's wire format (the event
+            # separator, or a line reading as "**SENDER:** " that would impersonate the manager or
+            # another guest): defused ONCE here, so broadcast, transcripts and processors see one text
+            msg = sanitize_room_message(msg)
 
             # Bad words and personal data are masked here, before anything else sees the message:
             # what is broadcast (and what will end up in the stored conversations) is the masked text

@@ -24,9 +24,16 @@ OUTER dynamic (peer_id = group key):
                           "msgs_from_votee":  <int>,
                           "msgs_from_voter":  <int>,
                         }
-                      Invalid votes are NEVER written: the Floor Manager sends valid votes
-                      to the Hotel Manager that sent there that peer. Then the Hotel Manager
-                      stores the valid vote and sends it to the world.
+                      A vote whose message could not be read is stored too, with
+                      vote="SKIPPED" and the raw message in VOTE_MSG, under the reason
+                      group "NO_FORM_SKIPPED" (the voter met nobody, there was no form
+                      to answer), "EMPTY_SKIPPED" (the voter answered nothing) or
+                      "PARSER_SKIPPED" (words with no readable judgement): those
+                      *_SKIPPED rows never enter the plotted statistics, they exist to
+                      make failures visible. Everything else is a validated judgement:
+                      the Floor Manager sends the votes to the Hotel Manager that
+                      sponsored that peer, which stores them and sends them to the
+                      world.
 
   conversation_chunk - per-message transcript chunk (one record per message broadcast in a room).
                        peer_id = room id (grouping only: consumers join by the session_id INSIDE the
@@ -202,7 +209,7 @@ class WStats(Stats):
         ).fetchall()
         votes = []
         for ts, votee_peer_id, val_json in rows:
-            if votee_peer_id == "PARSER_SKIPPED":
+            if votee_peer_id.endswith("_SKIPPED"):  # The unreadable-vote reason groups: kept, never plotted
                 continue
             try:
                 record = json.loads(val_json)

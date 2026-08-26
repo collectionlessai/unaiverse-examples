@@ -3,7 +3,8 @@
 // site (app.js) and the MySQL mirror of the world stats DB (see src/mirror.py + run_w.py).
 // Endpoints (GET):
 //   ?q=ops                        -> hotel ops series + totals   {n_total_agents, series: {stat: [[ts, v], ...]}}
-//   ?q=votes                      -> validated turing_vote rows  [{ts, votee, v}, ...] (PARSER_SKIPPED excluded)
+//   ?q=votes                      -> validated turing_vote rows  [{ts, votee, v}, ...] (the *_SKIPPED
+//                                    reason groups are excluded, like in src/stats.py)
 //   ?q=sessions                   -> logged-conversation sessions [{session, n, first_ts, last_ts, authors}, ...]
 //   ?q=events&session=S           -> the 'kind: event' chunks only [{id, ts, m}, ...] (join/left/disconnected)
 //   ?q=conversation&session=S     -> a PAGE of the session transcript: {rows: [{id, ts, m}, ...], more: bool}
@@ -78,7 +79,8 @@ try {
 
         case 'votes':
             $st = $pdo->query("SELECT id, ts, peer_id, val_json FROM dynamic_stats " .
-                              "WHERE stat_name = 'turing_vote' AND peer_id <> 'PARSER_SKIPPED' ORDER BY id");
+                              "WHERE stat_name = 'turing_vote' " .
+                              "AND peer_id NOT LIKE '%\\_SKIPPED' ORDER BY id");
             $out = [];
             foreach ($st as $row) {
                 $out[] = ['id' => (int)$row['id'], 'ts' => (int)$row['ts'],
