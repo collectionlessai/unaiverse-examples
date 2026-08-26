@@ -387,22 +387,24 @@ class WAgent(Agent):
         """The vote is answered in words as the list of the names judged human (or a whole-room shortcut):
         this is the world's own slot filler, run before the general policy would read the list as something
         else. A list naming somebody unknown goes to the fell-short policy with exactly those tokens, so
-        that whoever wrote it is asked again about them."""
+        that whoever wrote it is asked again about them. The words that filled the form travel inside the
+        block as its raw: the hotel manager stores them as the vote message the voter actually wrote."""
         values, unknown = vote_list_values(spec, text)
         if values is not None:
             self.uai_forget_form(spec)
-            return AnswerOutcome(text=encode_reply(spec, values))
+            return AnswerOutcome(text=encode_reply(spec, values, raw=[text]))
         if unknown:
             return self.uai_answer_fell_short(text, spec, vote_near_miss_event(spec, text, unknown),
-                                                   kwargs.get("attempt", 0), kwargs.get("model_view"))
+                                                   kwargs.get("attempt", 0), kwargs.get("model_view"),
+                                                   attempts=[text])
         return super().uai_postprocess(text, spec, **kwargs)
 
     def uai_answer_fell_short(self, text: str, spec: dict, event, attempt: int,
-                                   model_view: str | None = None) -> AnswerOutcome:
+                                   model_view: str | None = None, attempts: list | None = None) -> AnswerOutcome:
         """Same policy as the framework (who is asked again, how many times, who is told): only the wording
         of the second request to a model is this world's own, since the generic one asks for 'field: value'
         lines and this form is answered with a list of names."""
-        outcome = super().uai_answer_fell_short(text, spec, event, attempt, model_view)
+        outcome = super().uai_answer_fell_short(text, spec, event, attempt, model_view, attempts=attempts)
         if outcome.retry is not None and spec.get("name") == Config.vote_form_name:
             return AnswerOutcome(retry=vote_retry_prompt(spec, text, event, model_view))
         return outcome

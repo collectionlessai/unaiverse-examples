@@ -25,7 +25,7 @@ OUTER dynamic (peer_id = group key):
                           "msgs_from_voter":  <int>,
                         }
                       A vote whose message could not be read is stored too, with
-                      vote="SKIPPED" and the raw message in VOTE_MSG, under the reason
+                      vote="SKIPPED" and the voter's words in VOTE_MSG, under the reason
                       group "NO_FORM_SKIPPED" (the voter met nobody, there was no form
                       to answer), "EMPTY_SKIPPED" (the voter answered nothing) or
                       "PARSER_SKIPPED" (words with no readable judgement): those
@@ -33,7 +33,31 @@ OUTER dynamic (peer_id = group key):
                       make failures visible. Everything else is a validated judgement:
                       the Floor Manager sends the votes to the Hotel Manager that
                       sponsored that peer, which stores them and sends them to the
-                      world.
+                      world. VOTE_MSG holds the words the voter actually wrote (the
+                      raw of the vote's reply block, per the protocol), never the
+                      block's JSON.
+
+  turing_empty_vote - one record per (voter, votee) pair of a vote that could NOT be read.
+                      peer_id = votee real <unaid>, like turing_vote: an expressed nothing
+                      is still a data point about the pair. Written beside the *_SKIPPED
+                      record of the same vote (never for the met-nobody case, which has no
+                      pairs); the min-messages filter is NOT applied, the counts are stored
+                      and whoever reads decides. Never read by plot().
+                      Value shape:
+                        {
+                          "voter":            "<unaid>",
+                          "voter_fake_name":  "<str>",
+                          "voter_nature":     "human" | "ai",
+                          "votee_fake_name":  "<str>",
+                          "ground_truth":     "human" | "ai",
+                          "VOTE_MSG":         "<str>",   (the words the voter wrote, possibly "")
+                          "reason":           "EMPTY" | "UNREADABLE",
+                          "session_id":       "<floor.peer_id>:<room.uuid>",
+                          "floor_manager":    "<peer_id>",
+                          "hotel_manager":    "<peer_id>",
+                          "msgs_from_votee":  <int>,
+                          "msgs_from_voter":  <int>,
+                        }
 
   conversation_chunk - per-message transcript chunk (one record per message broadcast in a room).
                        peer_id = room id (grouping only: consumers join by the session_id INSIDE the
@@ -137,6 +161,7 @@ class WStats(Stats):
 
     CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA = {
         "turing_vote":              (dict, None),
+        "turing_empty_vote":        (dict, None),
         "conversation_chunk":       (dict, None),
         }
 

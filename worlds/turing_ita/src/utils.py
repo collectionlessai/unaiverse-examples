@@ -11,8 +11,9 @@ from rich.table import Table
 from rich.console import Group
 from unaiverse.utils.logger import log
 from unaiverse.utils.misc import build_unaid
-from unaiverse.uai import (ISSUE_UNKNOWN_OPTION, ReplyEvent, build_form, describe_answer, gen_id, has_fence,
-                                interactive_fields, normalize_label, parse_reply, serialize_block)
+from unaiverse.uai import (ISSUE_UNKNOWN_OPTION, ReplyEvent, build_form, describe_answer, find_reply, gen_id,
+                                has_fence, interactive_fields, normalize_label, parse_message, parse_reply,
+                                serialize_block)
 
 
 # The two judgements a vote carries: they are the values on the wire and the ones stored as statistics
@@ -171,6 +172,21 @@ def read_vote(vote_msg: str | None, form_spec: dict | None) -> dict[str, str]:
     by_field = {f["name"]: f["label"] for f in interactive_fields(form_spec)}
     return {by_field[name]: value for name, value in event.values.items()
             if name in by_field and value in (VOTE_HUMAN, VOTE_AI)}
+
+
+def vote_words(vote_msg: str | None) -> str:
+    """The words the voter actually wrote, for the record.
+
+    A vote normally arrives as a reply block whose raw lists the texts the judgements were read from
+    (oldest first, per the protocol): those are the voter's own words, and they are what the stats store
+    as VOTE_MSG. A message with no such block (legacy prose, an empty answer) stands as its own words.
+    """
+    if not isinstance(vote_msg, str):
+        return ""
+    reply = find_reply(parse_message(vote_msg))
+    if reply is not None and reply.get("raw"):
+        return "\n".join(reply["raw"])
+    return vote_msg
 
 
 def parse_vote_msg(
@@ -496,10 +512,13 @@ def test_vote_gate_roundtrip(monkeypatch):
                                    proc_outputs=[StreamType(data_type="text")], agent=agent)
         return agent.proc(text)[0]
 
-    # A model that follows the instruction (the list of the humans): one call, one block, every name judged
+    # A model that follows the instruction (the list of the humans): one call, one block, every name judged.
+    # The block's raw carries the words the voter wrote, and vote_words reads them back for the stats
     spy = Spy("Pax, Ada")
-    assert read_vote(run(spy, message), form) == {"Pax": VOTE_HUMAN, "Ada": VOTE_HUMAN, "Roy": VOTE_AI}
+    out = run(spy, message)
+    assert read_vote(out, form) == {"Pax": VOTE_HUMAN, "Ada": VOTE_HUMAN, "Roy": VOTE_AI}
     assert len(spy.calls) == 1 and "```" not in spy.calls[0] and "separati da virgola" in spy.calls[0]
+    assert vote_words(out) == "Pax, Ada"
 
     # Labeled lines still work, through the general interpreter
     spy = Spy("Pax: Umano\nRoy: Artificiale\nAda: Umano")
@@ -518,12 +537,13 @@ def test_vote_gate_roundtrip(monkeypatch):
     assert len(spy.calls) == 1
     assert read_vote(run(Spy("Nessuno."), message), form) == {n: VOTE_AI for n in others}
 
-    # A model that never complies: the words travel after the retries, and the manager reads no vote (the
-    # hotel manager then stores it as SKIPPED, exactly as it did with unparsable free text)
+    # A model that never complies: after the retries the answer travels as one reply block that carries
+    # the words in its raw and no values; the manager reads no vote (SKIPPED) but keeps the words
     spy = Spy("Boh, non saprei proprio")
     out = run(spy, message)
-    assert out == "Boh, non saprei proprio" and len(spy.calls) == 3
+    assert has_fence(out) and len(spy.calls) == 3
     assert read_vote(out, form) == {}
+    assert vote_words(out) == "Boh, non saprei proprio"
 
     # A model that stays silent is asked again and, when it insists, nothing travels at all: silence is
     # never delivered as an empty ballot (the floor manager reads no sample, and the guest times out of
@@ -537,11 +557,12 @@ def test_vote_gate_roundtrip(monkeypatch):
     assert len(spy.calls) == 3
 
     # A retry that comes back blank never erases the words of an earlier attempt: the near-miss travels
-    # as written (and reads as no vote), not the blank that followed it
+    # inside the failure block (and reads as no vote), not the blank that followed it
     spy = Spy("Pax, Bob", "")
     out = run(spy, message)
-    assert out == "Pax, Bob" and len(spy.calls) == 3
+    assert has_fence(out) and len(spy.calls) == 3
     assert read_vote(out, form) == {}
+    assert vote_words(out) == "Pax, Bob"
 
     # A person at a terminal who names somebody unknown is told and asked to write again; a proper list
     # becomes the block

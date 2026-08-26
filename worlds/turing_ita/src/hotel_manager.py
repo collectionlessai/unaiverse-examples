@@ -24,7 +24,7 @@ from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
 from concurrent.futures import ThreadPoolExecutor
 from unaiverse.networking.node.profile import NodeProfile
-from .utils import read_vote, compute_check_in_proposals
+from .utils import read_vote, vote_words, compute_check_in_proposals
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
     asyncio.get_event_loop().set_default_executor(_turing_executor)
@@ -622,6 +622,10 @@ class WAgent(Agent):
                     vote_form = vote_dict.pop("vote_form", None)
                     parsed_vote = read_vote(vote_dict["vote"], vote_form)  # Dict fake-name (votee) to "human" | "ai"
 
+                    # The words the voter actually wrote: a compliant vote arrives as a reply block whose
+                    # raw carries them, and they (not the block's JSON) are what the stats keep as VOTE_MSG
+                    voter_words = vote_words(vote_dict["vote"])
+
                     # If nothing could be read, we save the result anyway, under a group that names the
                     # reason: a voter who met NOBODY had no form and nothing to read by design, an EMPTY
                     # answer (a processor that stayed silent) is a different failure from words carrying
@@ -631,13 +635,13 @@ class WAgent(Agent):
                     # run of unreadable ones means something upstream is broken
                     if len(parsed_vote) == 0:
                         int_timestamp = self.clock.get_time_ms(monotonic=True)
-                        vote_dict["VOTE_MSG"] = vote_dict["vote"]
+                        vote_dict["VOTE_MSG"] = voter_words
                         vote_dict["vote"] = "SKIPPED"
                         if vote_form is None:
                             self.stats.store_stat("turing_vote", vote_dict,
                                                   group_key="NO_FORM_SKIPPED", timestamp=int_timestamp)
                         else:
-                            vote_was_empty = len(str(vote_dict["VOTE_MSG"]).strip()) == 0
+                            vote_was_empty = len(voter_words.strip()) == 0
                             self.stats.store_stat("turing_vote", vote_dict,
                                                   group_key="EMPTY_SKIPPED" if vote_was_empty else "PARSER_SKIPPED",
                                                   timestamp=int_timestamp)
@@ -649,6 +653,27 @@ class WAgent(Agent):
                                 log.error(f"❌ {self._skipped_votes_in_a_row} votes in a row could not be read: "
                                           f"the voting pipeline is likely broken (check the guests' processors "
                                           f"and the vote form round-trip)")
+
+                            # A vote that expressed nothing is still a data point: one record per votee
+                            # the voter was asked about, in its own stat, grouped like turing_vote by the
+                            # votee's unaid (the min-messages filter is NOT applied here: the counts are
+                            # stored, whoever reads decides)
+                            for fake_name, gt_pair in vote_dict["ground_truth"].items():
+                                self.stats.store_stat(
+                                    "turing_empty_vote",
+                                    {"voter": vote_dict["voter"],
+                                     "voter_fake_name": vote_dict.get("voter_fake_name"),
+                                     "voter_nature": vote_dict["voter_nature"],
+                                     "votee_fake_name": fake_name,
+                                     "ground_truth": gt_pair[0],
+                                     "VOTE_MSG": voter_words,
+                                     "reason": "EMPTY" if vote_was_empty else "UNREADABLE",
+                                     "session_id": vote_dict["session_id"],
+                                     "floor_manager": vote_dict["floor_manager"],
+                                     "hotel_manager": vote_dict["hotel_manager"],
+                                     "msgs_from_votee": vote_dict["msgs_from_votee"].get(fake_name),
+                                     "msgs_from_voter": vote_dict["msgs_from_voter"].get(fake_name)},
+                                    group_key=gt_pair[1], timestamp=int_timestamp)
                     else:
                         self._skipped_votes_in_a_row = 0
 
@@ -665,7 +690,7 @@ class WAgent(Agent):
                             continue
 
                         _vote_dict_ = copy.deepcopy(vote_dict)
-                        _vote_dict_["VOTE_MSG"] = vote_dict["vote"]  # We also save the original vote message
+                        _vote_dict_["VOTE_MSG"] = voter_words  # The words the voter wrote (the block's raw)
                         _vote_dict_["votee_fake_name"] = fake_name  # The votee's room alias: it makes the
                         #                                             VOTE_MSG (and the transcript) readable
                         _vote_dict_["vote"] = classification
