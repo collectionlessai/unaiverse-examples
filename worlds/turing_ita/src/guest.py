@@ -54,7 +54,9 @@ class WAgent(Agent):
       hands a model processor the form's instruction in place of the raw block), and the answer to it is
       collected as the vote — the names judged human, comma separated, or a whole-room shortcut (see
       Config.vote_instruction). An empty answer is not a vote: the framework asks a model again, and when
-      it insists on silence nothing travels.
+      it insists on silence nothing travels. A person at a terminal is held to the form too: an
+      unreadable line is told and withheld (never cast as an unreadable ballot), until they answer or
+      the booth times out.
     - Every delivered sample triggers one "process" turn. The text returned by the processor is sent to the
       room as the guest's message; returning an EMPTY string means "stay silent on this turn".
     - An anti-flooding COOLDOWN is enforced by the guest itself (Config.msg_cooldown seconds): whatever the

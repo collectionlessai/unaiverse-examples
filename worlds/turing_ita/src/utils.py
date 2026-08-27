@@ -571,6 +571,14 @@ def test_vote_gate_roundtrip(monkeypatch):
         assert False, "a vote naming somebody unknown, from a terminal person, must be withheld"
     except AnswerWithheld:
         pass
+
+    # And so is pure gibberish: the vote request is the last thing they were shown, their next line IS
+    # the vote, and one that cannot be read is told and withheld, never cast as an unreadable ballot
+    try:
+        run(HumanModule(), "asdkj qwerty blorp", remembered=True)
+        assert False, "an unreadable vote from a terminal person must be withheld, never cast"
+    except AnswerWithheld:
+        pass
     out = run(HumanModule(), "Pax, Ada", remembered=True)
     assert read_vote(out, form) == {"Pax": VOTE_HUMAN, "Ada": VOTE_HUMAN, "Roy": VOTE_AI}
 
