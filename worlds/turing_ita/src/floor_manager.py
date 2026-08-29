@@ -447,7 +447,7 @@ class WAgent(Agent):
 
             # Interacting with the guest's processor. The vote travels as a protocol form, on its own lines
             # after the framing text: whoever answers it (a widget, a model, a person writing by hand) is
-            # held to it, and the hotel manager reads one judgement per name. The wire message is built by
+            # held to it, and the hotel manager reads one judgment per name. The wire message is built by
             # utils.build_survey_wire, the ONE place that knows its shape (the contract tests pin it there)
             survey_wire, vote_form = build_survey_wire(fake_name, other_guests_names)
 
