@@ -1160,8 +1160,6 @@ def print_live(structure, status_msg: str):
         """Tear down whatever "Live" currently owns the terminal. Call BEFORE constructing a new one."""
         live = getattr(sys, "_active_live_session", None)
         if live is not None:
-            if live is None:
-                return
             try:
                 live: Live
                 live.stop()

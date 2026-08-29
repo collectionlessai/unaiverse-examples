@@ -104,11 +104,17 @@ class WAgent(Agent):
         # Tell everybody in the room that this agent disconnected
         if self.floor is not None and self.floor.is_in_a_room(peer_id):
             room = self.floor.get_room_of(peer_id)
+            disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
+
+            # The archive records EVERY disconnection of a room member, whatever his status: it must
+            # close every stored 'joined' (or a replayer, like the website presence, keeps the guest
+            # "in the room" forever), and the extra cases are honest data too (a 'disconnected' with
+            # no 'joined' is a guest who never made it to the table, one after a 'left' is a voter
+            # who dropped without delivering his vote)
+            self.__store_event_chunk(room, peer_id, "disconnected", disconnected_message)
 
             # Send this message only if the agent was chatting (i.e., not if he was in the voting booth)
             if room.get_status(peer_id) in {GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE, GuestStatus.AT_ROUND_TABLE}:
-                disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
-                self.__store_event_chunk(room, peer_id, "disconnected", disconnected_message)
                 others = [g for g in list(room.get_guests()) if g != peer_id]
 
                 # Do not check if this fails: if you do, and then you disconnect when it fails,

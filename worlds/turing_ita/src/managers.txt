@@ -14,3 +14,4 @@ hotel,jolly-mayer/HotelManager-TuringHotelItaly
 floor,jolly-mayer/FloorManager-TuringHotelItaly
 hotel,masaccio/HotelManager-TuringHotelItaly
 floor,masaccio/FloorManager-TuringHotelItaly
+hotel,jolly-mayer/HotelManager-TuringHotelItalyx
