@@ -313,3 +313,6 @@ tr.flash td { animation:flash-bg 1.8s ease-out }
 .ctrl-check { display:inline-flex; align-items:center; gap:6px; font-size:.75rem;
               color:var(--text-secondary); cursor:pointer; user-select:none; margin-right:6px }
 .ctrl-check input { accent-color:var(--primary); width:14px; height:14px; cursor:pointer }
+
+/* ── empty (unparsable) votes: the null outcome mark ────── */
+.out-empty { color:var(--text-muted); font-weight:700 }

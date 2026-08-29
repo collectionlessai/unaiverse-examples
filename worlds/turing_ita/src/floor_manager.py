@@ -407,7 +407,7 @@ class WAgent(Agent):
                 start_message = Config.start_message
             start_message = (start_message.
                              replace("<YOUR_NAME>", room.fake_name_of(guest)).
-                             replace("<OTHER_NAMES>", ", ".join(other_guests_names)))
+                             replace("<OTHER_NAMES>", "\n".join(f"- **{name}**" for name in other_guests_names)))
 
             sent = False
             if not await self.send(action_name="get_status_msg",
@@ -495,7 +495,7 @@ class WAgent(Agent):
                     reminder_message = Config.reminder_message
                 reminder_message = (reminder_message.replace("<TIME_LEFT>", str(time_left)).
                                     replace("<YOUR_NAME>", room.fake_name_of(guest)).
-                                    replace("<OTHER_NAMES>", ", ".join(other_guests_names)))
+                                    replace("<OTHER_NAMES>", "\n".join(f"- **{name}**" for name in other_guests_names)))
                 if not await self.send(action_name="get_status_msg",
                                        action_kwargs={"msg": format_message(Config.manager_fake_name,
                                                                             reminder_message)},

@@ -89,6 +89,22 @@ try {
             echo json_encode($out);
             break;
 
+        case 'empty_votes':
+            // 'turing_empty_vote' rows: votes that could not be parsed/handled (their val_json carries
+            // a 'reason'). NEVER part of any performance computation: the site only DISPLAYS them
+            // (vote tables, bracketed counts), which is why they travel on their own endpoint
+            $st = $pdo->query("SELECT id, ts, peer_id, val_json FROM dynamic_stats " .
+                              "WHERE stat_name = 'turing_empty_vote' " .
+                              "AND peer_id NOT LIKE '%\\_SKIPPED' ORDER BY id");
+            $out = [];
+            foreach ($st as $row) {
+                $out[] = ['id' => (int)$row['id'], 'ts' => (int)$row['ts'],
+                          'votee' => $row['peer_id'], 'v' => json_decode($row['val_json'], true),
+                          'empty' => true];
+            }
+            echo json_encode($out);
+            break;
+
         case 'sessions':
             // Conversations are grouped by the session_id INSIDE the chunk (see src/stats.py: the DB
             // group key of a chunk is a different string, "<room.uuid>:<activation_ts>")

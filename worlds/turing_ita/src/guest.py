@@ -106,7 +106,7 @@ class WAgent(Agent):
 
         # Checking if we lost connection to the hotel manager
         if self.__hotel_manager is not None and await self.disconnected(agent=self.__hotel_manager):
-            log.user("❌ Ops! Lost connection to the hotel manager!")
+            log.user("❌ Ops! Ho perso la connessione con il manager dell'hotel!")
             self.__hotel_manager = None  # Clearing
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 
@@ -115,7 +115,7 @@ class WAgent(Agent):
 
         # Checking if we lost connection to the floor manager
         elif self.__floor_manager is not None and await self.disconnected(agent=self.__floor_manager):
-            log.user("❌ Arg! Lost connection to the floor manager!")
+            log.user("❌ Arg! Ho perso la connessione con il manager del piano a cui ero salito!")
             self.__floor_manager = None
             await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
 
@@ -126,7 +126,7 @@ class WAgent(Agent):
         state = self.behav.get_state()
         if ((state is None or state.name != "init") and
                 self.behav.get_time_spent_in_current_state() > Config.max_time_in_every_state):
-            log.user("❌ Uhm! Too much time passed without interactions, better get out of the hotel")
+            log.user("❌ Uhm! E' passato troppo tempo senza interazioni, meglio uscire per un po' dall'hotel")
             await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 

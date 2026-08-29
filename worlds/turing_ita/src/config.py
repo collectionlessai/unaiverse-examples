@@ -72,8 +72,8 @@ class Config:
                     f"<a href='<FORM_LINK>'>Clicca qui!</a>"
                     f"<br/><br/>Mi accorgerò di quando avrai finito e ti farò entrare 😀")
     start_message = (f"[START_MSG] Benvenuto/a, ti chiami **<YOUR_NAME>** e gli "
-                     f"altri ospiti sono "
-                     f"**<OTHER_NAMES>**. "
+                     f"altri ospiti sono:\n\n"
+                     f"<OTHER_NAMES>\n\n"
                      f"La conversazione dura al massimo {test_duration} secondi e puoi scrivere "
                      f"'{exit_trigger_message}' in qualunque "
                      f"momento per lasciare subito la stanza. Alla fine ti chiederò di votare: dovrai "
@@ -94,7 +94,7 @@ class Config:
                         f"'{exit_trigger_message}' "
                         f"quando vuoi "
                         f"per lasciare subito la stanza e dare il tuo voto! "
-                        f"Gli altri presenti in questo preciso momento sono **<OTHER_NAMES>**.")
+                        f"Gli altri presenti in questo preciso momento sono\n\n<OTHER_NAMES>")
     reminder_message_nobody = (f"[GEN_MSG] Il tuo nome è **<YOUR_NAME>** e resterai in questa stanza "
                                f"per <TIME_LEFT> secondi, ma puoi scrivere "
                                f"'{exit_trigger_message}' "
@@ -113,18 +113,18 @@ class Config:
     vote_ai_label = "Artificiale"
     vote_all_humans_shortcut = "tutti"  # Everybody was a person
     vote_all_ai_shortcut = "nessuno"  # Nobody was a person
-    vote_instruction = (f"Scrivi solo i nomi di quelli che secondo te erano **persone vere**, separati da "
-                        f"virgola (ad esempio 'Roy, Pax'). Chi non nomini conterà come {vote_ai_label}. "
-                        f"Se pensi che fossero **tutte persone vere** scrivi solo "
-                        f"**'{vote_all_humans_shortcut}'**; se pensi che nessuno lo fosse scrivi solo "
-                        f"**'{vote_all_ai_shortcut}'**. Non aggiungere spiegazioni o altro testo. "
-                        f"I nomi su cui esprimerti: <OTHER_NAMES>.")
-    survey_message = (f"[VOTE_REQ_MSG] \n### Caro/a **<YOUR_NAME>**, hai interagito con **<OTHER_NAMES>**. "
+    vote_instruction = (f"Devi individuare le persone vere tra le seguenti: <OTHER_NAMES>. "
+                        f"Scrivi solo i nomi di quelle che secondo te erano persone vere, separati da "
+                        f"virgola. "
+                        f"Se pensi che fossero tutte persone vere puoi anche scrivere solo "
+                        f"'{vote_all_humans_shortcut}'; se pensi che nessuno fosse una persona vera scrivi "
+                        f"'{vote_all_ai_shortcut}'. Non aggiungere spiegazioni o altro testo.")
+    survey_message = (f"[VOTE_REQ_MSG] \nCaro/a **<YOUR_NAME>**, hai interagito con **<OTHER_NAMES>**. "
                       f"Ognuno di loro era un **{vote_human_label}** in carne e ossa oppure un agente "
                       f"**{vote_ai_label}** (potrebbero anche essere stati tutti umani, "
                       f"o tutti artificiali). "
-                      f"<br/><br/><strong>DI' CHI ERA CHI.</strong> "
-                      f"<br/>Hai al massimo {survey_reply_time} secondi per rispondere.")
+                      f"E' il momento di esprimere la tua opinione! "
+                      f"Hai al massimo {survey_reply_time} secondi per rispondere.")
     survey_message_nobody = (f"[VOTE_REQ_MSG] Caro/a **<YOUR_NAME>**, purtroppo non hai interagito con "
                              f"nessuno. "
                              f"Scrivi un messaggio qualsiasi per continuare (hai {survey_reply_time} secondi).")

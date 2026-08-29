@@ -191,22 +191,39 @@ class WStats(Stats):
     def _refresh_aggregates(self) -> None:
         now_ms = int(time.time() * 1000)
         votes = self._fetch_vote_history()
+        empty_votes = self._fetch_empty_vote_history()
         ops = self._fetch_hotel_ops_series()
 
         buckets = self._bucket_by_scope(votes, now_ms)
+        empty_buckets = self._bucket_by_scope(empty_votes, now_ms)
 
         # Each scope is aggregated TWICE: over all the votes, and over the votes cast by HUMAN voters
         # only (the '@h' variant, selected by the 'Human votes only' checkbox of the dashboard: there
         # Best Fooling counts only how well the AIs fooled human judges, and Best Detecting can only
-        # rank human detectors, since the AI voters have no votes left)
+        # rank human detectors, since the AI voters have no votes left). The EMPTY (unreadable) votes
+        # never enter any computation: they only decorate the voter rows' vote count as 'n (m)' —
+        # bracketed only when m > 0 — under the same scope window and human-only filter
         scopes: dict[str, dict] = {}
         for scope_key, scope_votes in buckets.items():
             human_votes = [v for v in scope_votes if v.get("voter_nature") == "human"]
-            for suffix, votes_subset in (("", scope_votes), ("@h", human_votes)):
+            scope_empty = empty_buckets.get(scope_key, [])
+            human_empty = [v for v in scope_empty if v.get("voter_nature") == "human"]
+            for suffix, votes_subset, empty_subset in (("", scope_votes, scope_empty),
+                                                       ("@h", human_votes, human_empty)):
+                voter_rows = self._compute_voter_leaderboard(votes_subset, _MIN_VOTES)
+                empty_by_voter: dict[str, int] = {}
+                for v in empty_subset:
+                    voter = v.get("voter") or ""
+                    if voter != "":
+                        empty_by_voter[voter] = empty_by_voter.get(voter, 0) + 1
+                for row in voter_rows:
+                    n_empty = empty_by_voter.get(row["peer_id"], 0)
+                    if n_empty > 0:
+                        row["votes"] = f"{row['votes']} ({n_empty})"
                 scopes[scope_key + suffix] = {
                     "confusion": self._compute_confusion_matrix(votes_subset),
                     "votee": self._compute_votee_leaderboard(votes_subset, _MIN_VOTES),
-                    "voter": self._compute_voter_leaderboard(votes_subset, _MIN_VOTES),
+                    "voter": voter_rows,
                     "n_total_votes": len(votes_subset),
                 }
 
@@ -240,6 +257,30 @@ class WStats(Stats):
                 record = json.loads(val_json)
                 record["_ts"] = ts
                 record["_votee"] = votee_peer_id
+                votes.append(record)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return votes
+
+    def _fetch_empty_vote_history(self) -> list[dict]:
+        """Return all turing_empty_vote records (votes that could not be read, with their 'reason') as
+        parsed dicts: NEVER part of any performance computation, only counted next to the voter rows."""
+        if not self.is_world:
+            return []
+        assert self._db_conn is not None
+        rows = self._db_conn.execute(
+            "SELECT timestamp, peer_id, val_json "
+            "FROM dynamic_stats "
+            "WHERE stat_name = 'turing_empty_vote' "
+            "ORDER BY timestamp"
+        ).fetchall()
+        votes = []
+        for ts, group_key, val_json in rows:
+            if group_key.endswith("_SKIPPED"):
+                continue
+            try:
+                record = json.loads(val_json)
+                record["_ts"] = ts
                 votes.append(record)
             except (json.JSONDecodeError, TypeError):
                 pass

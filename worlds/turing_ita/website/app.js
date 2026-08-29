@@ -122,7 +122,7 @@ try {
 } catch (e) { /* keep dark */ }
 
 /* ─── data ─────────────────────────────────────────────── */
-const DB = { ops: null, votes: [], sessions: [], floors: null, loaded: false, error: null,
+const DB = { ops: null, votes: [], emptyVotes: [], sessions: [], floors: null, loaded: false, error: null,
              info: {} };  // info: per-nature sheet data, see loadSheets()
 
 /* ── participant info from the Google Spreadsheets (view-by-link) ──────
@@ -204,10 +204,12 @@ window.showUserInfo = (unaidSeg) => {
 
 async function loadAll() {
   loadSheets();  // In parallel, never blocking: the maps fill as soon as the sheets answer
-  const [ops, votes, sessions] = await Promise.all([
-    getJSON(API + "?q=ops"), getJSON(API + "?q=votes"), getJSON(API + "?q=sessions")]);
+  const [ops, votes, sessions, emptyVotes] = await Promise.all([
+    getJSON(API + "?q=ops"), getJSON(API + "?q=votes"), getJSON(API + "?q=sessions"),
+    getJSON(API + "?q=empty_votes")]);
   DB.ops = ops;
-  DB.votes = votes;
+  DB.votes = votes;  // VALID votes only: everything performance-related aggregates THIS array
+  DB.emptyVotes = emptyVotes;  // Unparsable votes ('reason' inside): DISPLAY-only, never aggregated
   DB.sessions = sessions;
 
   // Floors -> rooms, from the votes (session_id = "<floor id>:<room id>") and the logged conversations
@@ -218,7 +220,7 @@ async function loadAll() {
     const [fid, rid] = parts;
     if (!floors.has(fid)) floors.set(fid, new Map());
     const rooms = floors.get(fid);
-    if (!rooms.has(rid)) rooms.set(rid, { session, votes: [], convo: null, last_ts: 0,
+    if (!rooms.has(rid)) rooms.set(rid, { session, votes: [], emptyVotes: [], convo: null, last_ts: 0,
                                           participants: new Set() });
     return rooms.get(rid);
   };
@@ -229,6 +231,13 @@ async function loadAll() {
       room.last_ts = Math.max(room.last_ts, rec.ts);
       if (rec.v.voter) room.participants.add(rec.v.voter);
       if (rec.votee) room.participants.add(rec.votee);
+    }
+  }
+  for (const rec of emptyVotes) {  // Shown in the room's votes table (and presence traces), no more
+    const room = roomOf(rec.v && rec.v.session_id);
+    if (room) {
+      room.emptyVotes.push(rec);
+      if (rec.v.voter) room.participants.add(rec.v.voter);
     }
   }
   for (const s of sessions) {
@@ -715,18 +724,23 @@ async function pageRoom(session, pairA, pairB, fakeA, fakeB, voteTs) {
     }
   }
 
-  const votes = room ? room.votes : [];
+  // Valid and EMPTY votes are shown together, in time order; the empty ones (unparsable, see their
+  // 'reason') exist only here and in the counts-in-brackets: no aggregation ever sees them
+  const votes = room ? room.votes.concat(room.emptyVotes).sort((a, b) => a.ts - b.ts) : [];
   ROOM.votes = votes;  // Used by the vote <-> departure-event cross links
   const voteRows = votes.map((rec) => {
     const ok = rec.v.vote === rec.v.ground_truth;
+    const voteCell = rec.empty ? `empty (${rec.v.reason || "?"})` : rec.v.vote;
+    const outCell = rec.empty ? `<span class="out-empty">∅</span>`
+      : `<span class="${ok ? "out-ok" : "out-ko"}">${ok ? "✓" : "✗"}</span>`;
     return `<tr id="vote-row-${rec.id}">` +
       `<td class="arrow-col"><button class="evt-arrow" onclick="voteToEvent(${rec.id})" ` +
       `title="${esc(L.vote_to_event_tip)}">⬅️</button></td>` +
       `<td class="user-col">${peerLink(rec.v.voter)}</td><td>${esc(natureLabel(rec.v.voter_nature))}</td>` +
       `<td>${esc(rec.v.voter_fake_name || "-")}</td>` +
       `<td>${esc(rec.v.votee_fake_name || "-")}</td>` +
-      `<td>${esc(rec.v.vote)}</td><td>${esc(rec.v.ground_truth)}</td>` +
-      `<td><span class="${ok ? "out-ok" : "out-ko"}">${ok ? "✓" : "✗"}</span></td>` +
+      `<td>${esc(voteCell)}</td><td>${esc(rec.v.ground_truth)}</td>` +
+      `<td>${outCell}</td>` +
       `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td>` +
       `<td>${esc(fmtTs(rec.ts))}</td></tr>`;
   }).join("");
@@ -748,10 +762,11 @@ async function pageRoom(session, pairA, pairB, fakeA, fakeB, voteTs) {
 }
 
 function usersIndex() {
-  const users = new Map();  // unaid -> {nature, cast, received, last_ts}
+  const users = new Map();  // unaid -> {nature, cast, emptyCast, received, last_ts}
   const touch = (unaid) => {
     if (!unaid) return null;
-    if (!users.has(unaid)) users.set(unaid, { nature: "-", cast: 0, received: 0, last_ts: 0 });
+    if (!users.has(unaid)) users.set(unaid, { nature: "-", cast: 0, emptyCast: 0, received: 0,
+                                              last_ts: 0 });
     return users.get(unaid);
   };
   for (const rec of DB.votes) {
@@ -762,12 +777,20 @@ function usersIndex() {
     if (votee) { votee.received += 1; votee.last_ts = Math.max(votee.last_ts, rec.ts);
       if (rec.v.ground_truth) votee.nature = rec.v.ground_truth; }
   }
+  for (const rec of DB.emptyVotes) {  // Only the bracketed counter: never part of any score
+    const voter = touch(rec.v.voter);
+    if (voter) { voter.emptyCast += 1; voter.last_ts = Math.max(voter.last_ts, rec.ts);
+      if (rec.v.voter_nature) voter.nature = rec.v.voter_nature; }
+  }
   return users;
 }
 
+// '48 (3)' = 48 valid votes cast plus 3 empty (unparsable) ones; no brackets when no empty votes
+const fmtCast = (valid, empty) => empty > 0 ? `${valid} (${empty})` : `${valid}`;
+
 function pageUsers() {
   const data = [...usersIndex().entries()].map(([unaid, u]) =>
-    [unaid, natureLabel(u.nature), u.cast, u.received, u.last_ts]);
+    [unaid, natureLabel(u.nature), fmtCast(u.cast, u.emptyCast), u.received, u.last_ts]);
   setTimeout(() => {
     const el = document.getElementById("users-grid");
     if (!el) return;
@@ -782,15 +805,21 @@ function pageUsers() {
 }
 
 function pageUser(unaid) {
-  const cast = DB.votes.filter((r) => r.v.voter === unaid);
+  // 'Votes cast' also SHOWS the empty (unparsable) ones, in time order; the confusion matrix and
+  // every count-that-scores stay on the valid votes only
+  const castValid = DB.votes.filter((r) => r.v.voter === unaid);
+  const cast = castValid.concat(DB.emptyVotes.filter((r) => r.v.voter === unaid))
+    .sort((a, b) => a.ts - b.ts);
   const received = DB.votes.filter((r) => r.votee === unaid);
   const u = usersIndex().get(unaid);
   const row = (rec, other) => `<tr><td class="user-col">${peerLink(other)}</td>` +
     `<td>${esc(rec.v.voter_fake_name || "-")}</td>` +
-    `<td>${esc(rec.v.votee_fake_name || "-")}</td><td>${esc(rec.v.vote)}</td>` +
+    `<td>${esc(rec.v.votee_fake_name || "-")}</td>` +
+    `<td>${esc(rec.empty ? `empty (${rec.v.reason || "?"})` : rec.v.vote)}</td>` +
     `<td>${esc(rec.v.ground_truth)}</td>` +
-    `<td><span class="${rec.v.vote === rec.v.ground_truth ? "out-ok" : "out-ko"}">` +
-    `${rec.v.vote === rec.v.ground_truth ? "✓" : "✗"}</span></td>` +
+    (rec.empty ? `<td><span class="out-empty">∅</span></td>`
+               : `<td><span class="${rec.v.vote === rec.v.ground_truth ? "out-ok" : "out-ko"}">` +
+                 `${rec.v.vote === rec.v.ground_truth ? "✓" : "✗"}</span></td>`) +
     `<td class="vote-msg" title="${esc(rec.v.VOTE_MSG || "")}">${esc(rec.v.VOTE_MSG || "-")}</td>` +
     `<td><a href="#/room/${seg(rec.v.session_id)}?a=${seg(rec.v.voter)}&b=${seg(rec.votee)}` +
     `&af=${seg(rec.v.voter_fake_name || "")}&bf=${seg(rec.v.votee_fake_name || "")}&t=${rec.ts}" ` +
@@ -825,7 +854,8 @@ function pageUser(unaid) {
     `<div class="ctrl-bar">${btns}</div>` +
     `<div class="panel"><h3>${esc(isCast ? L.user_votes_cast : L.user_votes_received)} ` +
     `${esc(shortId(unaid))}</h3>` +
-    table(votes.map((r) => row(r, isCast ? r.votee : r.v.voter))) + `</div>` + miniCm(votes);
+    table(votes.map((r) => row(r, isCast ? r.votee : r.v.voter))) + `</div>` +
+    miniCm(isCast ? castValid : received);  // The matrix scores VALID votes only
 }
 window.setUserTab = (k) => { STATE.userTab = k; route(); };
 
@@ -885,9 +915,19 @@ function pageLeaderboard() {
     : [{ name: "#", width: "52px" }, { name: L.voter_cols.peer, formatter: (c) => gridjs.html(peerLink(c)) },
        L.voter_cols.nature, L.voter_cols.votes, L.voter_cols.precision, L.voter_cols.recall,
        L.voter_cols.f1, L.voter_cols.detection];
+  // Empty (unparsable) votes never enter the scores, but the 'Votes cast' column brackets how many
+  // each voter produced, under the same scope window and human-only filter
+  const now = Date.now();
+  const emptyByVoter = new Map();
+  for (const r of DB.emptyVotes) {
+    if ((now - r.ts) > SCOPES[STATE.scope]) continue;
+    if (STATE.humanOnly && r.v.voter_nature !== "human") continue;
+    if (r.v.voter) emptyByVoter.set(r.v.voter, (emptyByVoter.get(r.v.voter) || 0) + 1);
+  }
   const data = rows.slice(0, 100).map((r, i) => fooling
     ? [i + 1, r.peer_id, r.votes, r.fooling_rate, r.avg_msgs, r.turing_score]
-    : [i + 1, r.peer_id, natureLabel(r.nature), r.votes, r.precision ?? "-", r.recall ?? "-",
+    : [i + 1, r.peer_id, natureLabel(r.nature), fmtCast(r.votes, emptyByVoter.get(r.peer_id) || 0),
+       r.precision ?? "-", r.recall ?? "-",
        r.f1 ?? "-", r.detection_score ?? "-"]);
   setTimeout(() => {
     const el = document.getElementById("lb-grid");

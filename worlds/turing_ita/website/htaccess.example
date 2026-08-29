@@ -1,0 +1,13 @@
+# Password protection for the WHOLE website folder (index.html, app.js AND api.php: protecting only
+# the page would be useless, the data lives in api.php). Deploy steps:
+#   1. Create the password file OUTSIDE the web root:  htpasswd -c /path/outside/webroot/.htpasswd_turing USER
+#   2. Fix the AuthUserFile path below.
+#   3. Rename this file to ".htaccess" in the deployed folder.
+# Requires HTTPS (Basic Auth is cleartext otherwise) and "AllowOverride AuthConfig" in the Apache vhost.
+AuthType Basic
+AuthName "Turing Hotel Italia"
+AuthUserFile /path/outside/webroot/.htpasswd_turing_ita
+Require valid-user
+
+# Belt and suspenders: even if auth is ever disabled, ask search engines not to index
+Header set X-Robots-Tag "noindex, nofollow"
