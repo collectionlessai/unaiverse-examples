@@ -6,6 +6,8 @@
 //   ?q=votes                      -> validated turing_vote rows  [{ts, votee, v}, ...] (the *_SKIPPED
 //                                    reason groups are excluded, like in src/stats.py)
 //   ?q=sessions                   -> logged-conversation sessions [{session, n, first_ts, last_ts, authors}, ...]
+//   ?q=presence                   -> who is in each room now      {session: [{author, fake_name, nature,
+//                                    since_ts}, ...]} (from the recent join/left/disconnected events)
 //   ?q=events&session=S           -> the 'kind: event' chunks only [{id, ts, m}, ...] (join/left/disconnected)
 //   ?q=conversation&session=S     -> a PAGE of the session transcript: {rows: [{id, ts, m}, ...], more: bool}
 //        Room transcripts are UNBOUNDED (rooms never close), so this endpoint never returns them whole:
@@ -129,6 +131,46 @@ try {
             echo json_encode($out);
             break;
 
+        case 'presence':
+            // Who is in each room RIGHT NOW (as of the last mirror sync): replay of the recent
+            // 'kind: event' chunks — an identity (author unaid + fake name: rooms are reused) whose
+            // LAST event is a 'joined' is still at the round table (moving to the voting booth logs a
+            // 'left', a disconnection logs 'left' or 'disconnected': every exit path leaves an event).
+            // Only the last PRESENCE_WINDOW_MS of events are replayed: guests cycle rooms every few
+            // minutes, so the join of anyone actually present is always recent — and a guest seated
+            // when the world was restarted (whose exit event was therefore never written) lives in a
+            // session of the PREVIOUS run (new run = new floor id), which app.js hides as stale.
+            // 'author_nature' ("human"/"ai") entered the chunks later than the other fields: rows
+            // stored before that change simply have no nature (null here, "-" on the site)
+            define('PRESENCE_WINDOW_MS', 48 * 3600 * 1000);
+            define('PRESENCE_MAX_ROWS', 20000);
+            $cutoff = (int)(microtime(true) * 1000) - PRESENCE_WINDOW_MS;
+            $st = $pdo->prepare("SELECT id, ts, val_json FROM dynamic_stats " .
+                                "WHERE stat_name = 'conversation_chunk' AND g_kind = 'event' " .
+                                "AND ts >= ? ORDER BY id LIMIT " . PRESENCE_MAX_ROWS);
+            $st->execute([$cutoff]);
+            $last = [];  // "<session>\x00<author>\x00<fake>" -> last event record of that identity
+            foreach ($st as $row) {
+                $m = json_decode($row['val_json'], true);
+                if (!is_array($m) || ($m['session_id'] ?? '') === '' || ($m['author'] ?? '') === '') {
+                    continue;
+                }
+                $key = $m['session_id'] . "\x00" . $m['author'] . "\x00" . ($m['author_fake_name'] ?? '');
+                $last[$key] = ['session' => $m['session_id'], 'event' => $m['event'] ?? '',
+                               'author' => $m['author'], 'fake_name' => $m['author_fake_name'] ?? '',
+                               'nature' => $m['author_nature'] ?? null, 'since_ts' => (int)$row['ts']];
+            }
+            $out = [];  // session -> [{author, fake_name, nature, since_ts}, ...]
+            foreach ($last as $rec) {
+                if ($rec['event'] !== 'joined') {
+                    continue;
+                }
+                $out[$rec['session']][] = ['author' => $rec['author'], 'fake_name' => $rec['fake_name'],
+                                           'nature' => $rec['nature'], 'since_ts' => $rec['since_ts']];
+            }
+            echo json_encode((object)$out);
+            break;
+
         case 'events':
             $session = $_GET['session'] ?? '';
             if ($session === '') {
@@ -184,7 +226,8 @@ try {
             break;
 
         default:
-            fail(400, "Unknown endpoint '$q' (use: ops, votes, sessions, events, conversation)");
+            fail(400, "Unknown endpoint '$q' (use: ops, votes, empty_votes, sessions, presence, " .
+                      "events, conversation)");
     }
 } catch (Throwable $e) {  // PDO errors AND any other PHP error: always a JSON reply, never a white page
     fail(500, 'Query failed' . detail($e));

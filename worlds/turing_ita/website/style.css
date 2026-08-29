@@ -130,6 +130,15 @@ a.circle-card:hover { border-color:var(--border-strong); text-decoration:none }
 .badge-no { background:rgba(255,59,48,.14); color:#FF3B30 }
 .badge-none { background:var(--hover-bg); color:var(--text-muted) }
 
+/* ── "In the room now" block on the Floors room cards ─── */
+.room-present { margin-top:8px; padding-top:6px; border-top:1px dashed var(--border) }
+.room-present-title { font-size:.64rem; font-weight:600; text-transform:uppercase;
+                      letter-spacing:.04em; color:var(--text-muted); margin-bottom:4px }
+.present-row { display:flex; align-items:center; gap:6px; min-width:0; margin-top:2px }
+.present-row b { font-size:.76rem; color:var(--text-primary); flex-shrink:0 }
+.present-id { font-family:'JetBrains Mono',monospace; font-size:.66rem; color:var(--text-muted);
+              overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0 }
+
 /* ── controls (same classes as the dashboard) ─────────── */
 .ctrl-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:10px 0 }
 .ctrl-btn {

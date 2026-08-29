@@ -695,6 +695,7 @@ class WAgent(Agent):
                                "kind": "event", "event": event,
                                "author": room.get_unaid_of(guest),
                                "author_fake_name": room.fake_name_of(guest),
+                               "author_nature": room.get_ground_truth_of(guest),
                                "text": text,
                                "ts": ts},
                               group_key=room.id, timestamp=ts)
@@ -754,6 +755,7 @@ class WAgent(Agent):
                                           {"session_id": self.floor.id + ":" + room.id,
                                            "author": room.get_unaid_of(guest),
                                            "author_fake_name": fake_name,
+                                           "author_nature": room.get_ground_truth_of(guest),
                                            "text": msg,
                                            "ts": ts},
                                           group_key=room.id, timestamp=ts)

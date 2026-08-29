@@ -13,6 +13,9 @@ const MIN_VOTES = 1;             // src/stats.py: _MIN_VOTES
 const K_TURING = 5;              // src/stats.py: _K of the votee (fooling) leaderboard
 const K_DETECTION = 10;          // src/stats.py: _K of the voter (detection) leaderboard
 const SCOPES = { max: 30 * 864e5, "7d": 7 * 864e5, "24h": 864e5 };  // src/stats.py: _SCOPE_WINDOWS_MS
+const PRESENCE_LIVE_MS = 20 * 60e3;  // A room with no activity for this long is idle/stale: its
+                                     // "in the room now" list is hidden (covers the guests seated at
+                                     // a world restart, whose exit events were never written)
 const OPS_STATS = ["hotel_n_floors_active", "hotel_n_rooms_active", "hotel_n_rooms_overbooked",
                    "hotel_n_agents_present", "hotel_n_agents_waiting"];
 const OPS_PALETTE = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f"];  // src/stats.py: _PALETTE
@@ -34,12 +37,15 @@ const L = {
   overview_title: "Overview", overview_chart: "Operational activity over time",
   floors_title: "Floors and rooms — present and past",
   floors_note: "Everything the archive knows: the rooms where votes were recorded and the logged " +
-               "conversations.",
+               "conversations. Rooms with recent activity also show who is at their round table " +
+               "right now (as of the last sync of the archive).",
   floor_label: "Floor", room_label: "Room", rooms_label: "rooms",
   no_floors: "No recorded activity yet.",
   room_votes_badge_one: "1 vote", room_votes_badge: "<N> votes",
   room_msgs_badge_one: "1 message", room_msgs_badge: "<N> messages",
   room_people_badge_one: "1 participant", room_people_badge: "<N> participants",
+  room_now_badge_one: "1 in the room now", room_now_badge: "<N> in the room now",
+  room_now_title: "In the room now",
   card_messages: "Messages logged", card_participants: "Participants seen",
   room_conversation: "Conversation", room_votes: "Votes cast in this room",
   room_not_logged: "The conversation of this room was not logged.",
@@ -204,9 +210,9 @@ window.showUserInfo = (unaidSeg) => {
 
 async function loadAll() {
   loadSheets();  // In parallel, never blocking: the maps fill as soon as the sheets answer
-  const [ops, votes, sessions, emptyVotes] = await Promise.all([
+  const [ops, votes, sessions, emptyVotes, presence] = await Promise.all([
     getJSON(API + "?q=ops"), getJSON(API + "?q=votes"), getJSON(API + "?q=sessions"),
-    getJSON(API + "?q=empty_votes")]);
+    getJSON(API + "?q=empty_votes"), getJSON(API + "?q=presence")]);
   DB.ops = ops;
   DB.votes = votes;  // VALID votes only: everything performance-related aggregates THIS array
   DB.emptyVotes = emptyVotes;  // Unparsable votes ('reason' inside): DISPLAY-only, never aggregated
@@ -221,7 +227,7 @@ async function loadAll() {
     if (!floors.has(fid)) floors.set(fid, new Map());
     const rooms = floors.get(fid);
     if (!rooms.has(rid)) rooms.set(rid, { session, votes: [], emptyVotes: [], convo: null, last_ts: 0,
-                                          participants: new Set() });
+                                          participants: new Set(), present: [] });
     return rooms.get(rid);
   };
   for (const rec of votes) {
@@ -246,6 +252,13 @@ async function loadAll() {
       room.convo = s;
       room.last_ts = Math.max(room.last_ts, s.last_ts);
       for (const a of (s.authors || [])) room.participants.add(a);
+    }
+  }
+  for (const [session, guests] of Object.entries(presence || {})) {
+    const room = roomOf(session);  // Who is at the round table now (see api.php ?q=presence);
+    if (room) {                    // pageFloors only shows it while the room is actually alive
+      room.present = guests.slice().sort((a, b) => String(a.fake_name).localeCompare(String(b.fake_name)));
+      for (const g of guests) if (g.author) room.participants.add(g.author);
     }
   }
   DB.floors = floors;
@@ -402,16 +415,30 @@ function pageFloors() {
     const roomCards = [...rooms.entries()].sort((a, b) => b[1].last_ts - a[1].last_ts).map(([rid, r]) => {
       const badge = (n, one, many, cls) => n > 0 &&
         `<span class="badge ${cls}">${esc(n === 1 ? one : fill(many, { N: n }))}</span>`;
+      // The current occupants come from the event replay (api.php ?q=presence): shown only while
+      // the room is alive (recent activity), because the guests seated at a world RESTART never got
+      // their exit event — their old-run sessions go quiet and this hides them (see PRESENCE_LIVE_MS)
+      const alive = r.present.length > 0 && (Date.now() - r.last_ts) <= PRESENCE_LIVE_MS;
       const badges = [
+        badge(alive ? r.present.length : 0, L.room_now_badge_one, L.room_now_badge, "badge-yes"),
         badge(r.votes.length, L.room_votes_badge_one, L.room_votes_badge, "badge-past"),
         badge(r.convo ? r.convo.n : 0, L.room_msgs_badge_one, L.room_msgs_badge, "badge-live"),
         badge(r.participants.size, L.room_people_badge_one, L.room_people_badge, "badge-open"),
       ].filter(Boolean);
+      const present = !alive ? "" :
+        `<div class="room-present"><div class="room-present-title">${esc(L.room_now_title)}</div>` +
+        r.present.map((g) =>
+          `<div class="present-row"><b>${esc(g.fake_name || "?")}</b>` +
+          `<span class="badge ${g.nature === "human" ? "badge-open" :
+                                (g.nature === "ai" ? "badge-sched" : "badge-none")}">` +
+          `${esc(natureLabel(g.nature))}</span>` +
+          `<span class="present-id" title="${esc(g.author)}">${esc(g.author)}</span></div>`).join("") +
+        `</div>`;
       return `<a class="circle-card" href="#/room/${seg(r.session)}">` +
         `<div class="circle-head"><span class="circle-code">${esc(short8(rid))}</span>` +
         `<span class="circle-occ">${esc(fmtTs(r.last_ts))}</span></div>` +
         `<div class="circle-name">${esc(L.room_label)} ${esc(short8(rid))}</div>` +
-        `<div class="circle-topics">${badges.join(" ")}</div></a>`;
+        `<div class="circle-topics">${badges.join(" ")}</div>${present}</a>`;
     }).join("");
     html += `<div class="sector-card"><div class="sector-head">` +
       `<h3>${esc(L.floor_label)} ${esc(short8(fid))}</h3>` +
