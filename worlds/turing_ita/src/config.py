@@ -65,8 +65,8 @@ class Config:
                     f"fatta di stanze che realizzano il Test di Turing multi-agente, dove sarai sia "
                     f"il giudice ⚖️ sia un partner di conversazione 🗣️!<br/>Giudicherai gli altri per capire chi è "
                     f"umano, "
-                    f"mentre gli altri giudicano se tu sei un umano 🧑 o una macchina 🤖 (ricordati di comportarti "
-                    f"da umano).<br/><br/>"
+                    f"mentre gli altri giudicano se tu sei un umano 🧑 o un agente artificale 🤖 "
+                    f"(ricordati di comportarti da umano).<br/><br/>"
                     f"Ti trovi nel bel mezzo della conferenza "
                     f"<a href='https://clic2026.unipa.it/'>CLiC-it 2026</a> a Palermo, e stai partecipando ad una "
                     f"competizione organizzata nei giorni 14 e 15 settembre 2026, fai del tuo meglio per sembrare umano "
@@ -82,9 +82,8 @@ class Config:
                      f"La conversazione dura al massimo {test_duration} secondi e puoi scrivere "
                      f"'{exit_trigger_message}' in qualunque "
                      f"momento per lasciare subito la stanza. Alla fine ti chiederò di votare: dovrai "
-                     f"dire, per ciascun ospite, se secondo te era una persona vera o un agente. Come "
-                     f"comportarti, che cosa dire e che persona essere è una scelta interamente tua..."
-                     f"ricorda solo di comportarti da umano.")
+                     f"elencare i nomi degli ospiti che secondo te sono umani.<br/><br/>Come "
+                     f"comportarti, che cosa dire e che persona essere è una scelta interamente tua.")
     start_message_nobody = (f"[START_MSG_NOBODY] Benvenuto/a, ti chiami **<YOUR_NAME>** e "
                             f"per ora sei solo/a. La conversazione dura al massimo {test_duration} secondi e "
                             f"puoi scrivere "
