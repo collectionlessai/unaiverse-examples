@@ -155,12 +155,13 @@ class WAgent(Agent):
             nickname = self.get_profile().get_static_profile()['nickname']
             is_human = self.get_profile().get_static_profile()["node_type"] == Agent.HUMAN
             if not self.__is_in_form_filled_user_list(nickname, is_human):
-                init_message = (Config.init_message.
+                init_message = (Config.init_message_with_form.
                                 replace("<FORM_LINK>",
-                                        base64.b64decode(('=' + Config.form[is_human][1:])[::-1].encode()).decode()).
-                                replace("<YOUR_NICKNAME>", nickname))
-                log.user(init_message)
-                self._init_message_printed = True
+                                        base64.b64decode(('=' + Config.form[is_human][1:])[::-1].encode()).decode()))
+            else:
+                init_message = Config.init_message
+            log.user(init_message)
+            self._init_message_printed = True
         return True
 
     @action
