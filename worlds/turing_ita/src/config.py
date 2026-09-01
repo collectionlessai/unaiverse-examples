@@ -60,29 +60,29 @@ class Config:
     # It is the ASCII RECORD SEPARATOR, a character no chat message can contain (the guest strips it from
     # every event before batching), so events keep their internal newlines and splitting is lossless
     event_separator = "\x1e"
-    init_message = (f"BENVENUTO AL TURING HOTEL ITALIA 🏨<br/><br/>"
+    init_message = (f"BENVENUTO AL TURING HOTEL ITALIA 🏨\n\n"
                     f"È una destinazione unica, "
                     f"fatta di stanze che realizzano il Test di Turing multi-agente, dove sarai sia "
-                    f"il giudice ⚖️ sia un partner di conversazione 🗣️!<br/>Giudicherai gli altri per capire chi è "
-                    f"umano, "
-                    f"mentre gli altri giudicano se tu sei un umano 🧑 o un agente artificale 🤖 "
-                    f"(ricordati di comportarti da umano).<br/><br/>"
+                    f"il giudice ⚖️ sia un partner di conversazione 🗣️!\nGiudicherai gli altri per capire chi è "
+                    f"umano in base a come interagiscono con te e tra di loro, "
+                    f"mentre gli altri giudicano se tu sei un umano 🧑 o un agente artificiale 🤖 "
+                    f"(ricordati di comportarti da umano).\n\n"
                     f"Ti trovi nel bel mezzo della conferenza "
                     f"<a href='https://clic2026.unipa.it/'>CLiC-it 2026</a> a Palermo, e stai partecipando ad una "
-                    f"competizione organizzata nei giorni 14 e 15 settembre 2026, fai del tuo meglio per sembrare umano "
-                    f"e scovare gli altri umani.")
-    init_message_with_form = init_message + (f"<br/><br/>"
+                    f"competizione organizzata nei giorni 14 e 15 settembre 2026. Fai del tuo meglio per sembrare umano"
+                    f" e scovare gli altri umani.")
+    init_message_with_form = init_message + (f"\n\n"
                                              f"<strong>Hai già completato il form di adesione? (obbligatorio)</strong>"
                                              f" Basta farlo una volta sola: "
                                              f"<a href='<FORM_LINK>'>Clicca qui!</a>"
-                                             f"<br/><br/>Mi accorgerò di quando avrai finito e ti farò entrare 😀")
+                                             f"\n\nMi accorgerò di quando avrai finito e ti farò entrare 😀")
     start_message = (f"[START_MSG] Benvenuto/a, ti chiami **<YOUR_NAME>** e gli "
-                     f"altri ospiti sono:<br/><br/>"
-                     f"<OTHER_NAMES><br/><br/>"
+                     f"altri ospiti sono:\n\n"
+                     f"<OTHER_NAMES>\n\n"
                      f"La conversazione dura al massimo {test_duration} secondi e puoi scrivere "
                      f"'{exit_trigger_message}' in qualunque "
                      f"momento per lasciare subito la stanza. Alla fine ti chiederò di votare: dovrai "
-                     f"elencare i nomi degli ospiti che secondo te sono umani.<br/><br/>Come "
+                     f"elencare i nomi degli ospiti che secondo te sono umani.\n\nCome "
                      f"comportarti, che cosa dire e che persona essere è una scelta interamente tua.")
     start_message_nobody = (f"[START_MSG_NOBODY] Benvenuto/a, ti chiami **<YOUR_NAME>** e "
                             f"per ora sei solo/a. La conversazione dura al massimo {test_duration} secondi e "
@@ -99,7 +99,7 @@ class Config:
                         f"'{exit_trigger_message}' "
                         f"quando vuoi "
                         f"per lasciare subito la stanza e dare il tuo voto! "
-                        f"Gli altri presenti in questo preciso momento sono<br/><br/><OTHER_NAMES>")
+                        f"Gli altri presenti in questo preciso momento sono\n\n<OTHER_NAMES>")
     reminder_message_nobody = (f"[GEN_MSG] Il tuo nome è **<YOUR_NAME>** e resterai in questa stanza "
                                f"per <TIME_LEFT> secondi, ma puoi scrivere "
                                f"'{exit_trigger_message}' "
@@ -135,7 +135,7 @@ class Config:
                              f"Scrivi un messaggio qualsiasi per continuare (hai {survey_reply_time} secondi).")
     # A violation has its own tag: it must reach whoever is playing even BEFORE any room started (a
     # generic [GEN_MSG] would be swallowed by the guest's pre-room ignore gate, and the reason lost)
-    violation_message = ("[VIOLATION_MSG] Il tuo ingresso è stato segnalato dal direttore dell'hotel, mi dispiace ma "
+    violation_message = ("[VIOLATION_MSG] Sei stato segnalato dal direttore dell'hotel, mi dispiace ma "
                          "devo disconnetterti")
     # Messages sent to the AUTHOR of a filtered message (the other guests only see the masked text)
     filter_mask_message = ("[GEN_MSG] Ho oscurato una parte del tuo messaggio prima di mostrarlo agli altri "

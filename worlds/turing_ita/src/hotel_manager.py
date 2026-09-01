@@ -436,6 +436,11 @@ class WAgent(Agent):
                         violations[floor.id] = []
                     violations[floor.id].append(guest)
 
+                # Check also the ban file to augment the violations list
+                # TODO ... violations[floor.id].append(guest)
+                # We need a file (banned.txt) with the UNAID of the banned user (they will also be kicked immediately)
+                # self.hotel.get_profile_of(guest)['nickname'] + nodename (UNAID)
+
                 # Aligning expectations with the hotel status communicated by the floor: it is up to the floor to
                 # decide whether to eject the guest or not (the hotel manager goes Ponzio Pilato)
                 if hotel_manager == self.get_peer_id() and not expected_guest_of_this_floor:

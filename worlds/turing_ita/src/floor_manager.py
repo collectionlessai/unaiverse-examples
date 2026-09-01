@@ -99,7 +99,10 @@ class WAgent(Agent):
         self.update_streams_in_profile()
 
     async def remove_agent(self, peer_id: str):
-        await super().remove_agent(peer_id)
+        try:
+            await super().remove_agent(peer_id)
+        except Exception as e:
+            log.error(f"Error while removing agent {peer_id} [{e}]")
 
         # Tell everybody in the room that this agent disconnected
         if self.floor is not None and self.floor.is_in_a_room(peer_id):
@@ -183,11 +186,9 @@ class WAgent(Agent):
             assert interaction is not None
             guest = interaction.target[0]
             callback_from_process_vote = True
-        log.user(f"==> GUEST BACK TO HALL, guest={_guest}, callback_from_process_vote={callback_from_process_vote}")
 
         # Safety
         if not self.floor.is_in_a_room(guest):
-            log.user(f"NOT IN A ROOM! Return True - not expected")
             return True  # Return true to complete the action and hence burn the interaction
 
         # Getting info
