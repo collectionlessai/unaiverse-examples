@@ -47,6 +47,14 @@ class WAgent(Agent):
         # Floor updates identifier
         self._floor_update_tags = {}
 
+        # Guests ejected from the local reconstruction OUT OF BAND, i.e., not by the floor-updates
+        # stream: a direct "guest_back_to_hall" message, or a lost connection (remove_agent). They are
+        # remembered (guest -> room id at eject time) until the floor manager's own updates acknowledge
+        # the ejection, so that the coherence checks in update_hotel can tell "the packet does not know
+        # yet" apart from a real incoherence (without this, every end-of-conversation wave would race
+        # the 3-seconds update cadence and reset the floor)
+        self._ejected_ahead = {}
+
         # Agents fake names
         self.fake_names = Room.make_fake_names(letters=Config.use_letter_names)
 
@@ -75,8 +83,25 @@ class WAgent(Agent):
             if floor.id in self._floor_update_tags:
                 del self._floor_update_tags[floor.id]
 
+            # Removing (or recreating) a floor resyncs the reconstruction to the packets' own view, so
+            # the "the packet does not know yet" memos about its rooms are obsolete: from here on, any
+            # leftover ghost is owned by the unknown-guests mechanism of the recreation
+            room_ids = {room.id for room in floor.get_rooms()}
+            self._ejected_ahead = {g: r for g, r in self._ejected_ahead.items() if r not in room_ids}
+
             # Removing manager and floor
             self.hotel.remove_floor(floor.id)  # This will also remove the floor manager
+
+    def __eject_ahead_of_updates(self, guest: str):
+        """Eject a guest from the local reconstruction OUT OF BAND (not because the floor-updates stream
+        said so): his room is remembered in _ejected_ahead until the floor manager's own updates
+        acknowledge the ejection (see the coherence checks in update_hotel)."""
+        floor = self.hotel.get_floor_of(guest)
+        if floor is not None and floor.is_in_a_room(guest):
+            room = floor.get_room_of(guest)
+            if room is not None:
+                self._ejected_ahead[guest] = room.id
+        self.hotel.eject(guest)
 
     async def add_agent(self, peer_id: str, profile: NodeProfile,
                         add_proc_streams: bool = True, add_env_streams: bool = True,
@@ -91,7 +116,7 @@ class WAgent(Agent):
 
         if peer_id in self.hotel.get_floor_managers():
             self.remove_floor_by_floor_manager(peer_id)
-        self.hotel.eject(peer_id)
+        self.__eject_ahead_of_updates(peer_id)
 
     @action
     async def discover_floor_managers(self):
@@ -225,6 +250,13 @@ class WAgent(Agent):
 
             # Handling new ejections of guests
             for (_room_id, _guest) in _update_dict["ejected_guests"]:
+
+                # The floor is acknowledging an ejection this manager already applied OUT OF BAND
+                # (guest back to hall, connection lost): nothing left to do, and the guest might even
+                # be legitimately checked in somewhere else by now
+                if self._ejected_ahead.get(_guest) == _room_id:
+                    del self._ejected_ahead[_guest]
+                    continue
                 if not self.hotel.is_in_a_floor(_guest):
                     if len(unk_guests) > 0:
                         _guest = unk_guests.pop(0)
@@ -352,6 +384,9 @@ class WAgent(Agent):
                         if not _update_floor(floor_id, update_dict):
 
                             # Some issue were found while trying to update the floor, let's kill it
+                            log.error(f"Floor manager {floor_manager} (floor {floor_id}) sent guest "
+                                      f"insertions/ejections that do not match the local reconstruction, "
+                                      f"resetting floor")
                             _create_or_recreate_floor(floor_manager, update_dict, update_tag,
                                                       _consider_guest_updates=True, _fill_floor=True)
                         else:
@@ -364,11 +399,17 @@ class WAgent(Agent):
                 assert floor is not None
                 for room_id, guest_count in update_dict["floor_status"]:
 
-                    # Discrepancies
-                    if floor.get_room(room_id).count_guests() != guest_count:
+                    # Discrepancies. The packet's count still includes the guests of that room this
+                    # manager ejected OUT OF BAND after the packet was published (back to hall, lost
+                    # connections): the reconstruction is coherent when it matches the communicated
+                    # count MINUS those pending ejections (acknowledged, and forgotten, in _update_floor)
+                    pending = sum(1 for r in self._ejected_ahead.values() if r == room_id)
+                    if floor.get_room(room_id).count_guests() + pending != guest_count:
                         log.error(f"Floor manager {floor_manager} (floor {floor.id}) "
                                   f"communicated {guest_count} in room {room_id}, that is not coherent with the "
-                                  f"local reconstruction ({floor.get_room(room_id).count_guests()}), resetting floor")
+                                  f"local reconstruction ({floor.get_room(room_id).count_guests()}"
+                                  + (f" + {pending} pending out-of-band ejections" if pending > 0 else "")
+                                  + "), resetting floor")
                         _create_or_recreate_floor(floor_manager, update_dict, update_tag,
                                                   _consider_guest_updates=True, _fill_floor=True)
                         floor = self.hotel.get_floor(floor_id)  # Refresh this reference, since the floor was recreated
@@ -709,5 +750,5 @@ class WAgent(Agent):
     @action
     async def guest_back_to_hall(self, guest: str | None = None):
         assert guest is not None
-        self.hotel.eject(guest)
+        self.__eject_ahead_of_updates(guest)
         return True
