@@ -66,7 +66,7 @@ class Config:
                     f"il giudice ⚖️ sia un partner di conversazione 🗣️!\n"
                     f"Verrai inviato in una stanza dove incontrerai altri sconosciuti "
                     f"(sia umani 🧑 che artificiali 🤖, ma magari anche tutti umani 🧑🧑 o nessuno umano 🤖🤖) "
-                    f"con cui potrai interagire."
+                    f"con cui potrai interagire.\n\n"
                     f"Alla fine, ti verrà chiesto di esprimere il tuo voto per scovare chi sono gli umani. "
                     f"Deciderai in base a come i partner della conversazione interagiscono con te e tra di loro. "
                     f"Attenzione perché anche gli altri giudicheranno se tu sei un umano 🧑 o un agente artificiale 🤖 "
