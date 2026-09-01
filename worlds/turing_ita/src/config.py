@@ -49,7 +49,7 @@ class Config:
     send_reminder_every = 65  # Reminder on how to exit the room and vote
     skipped_votes_alarm = 3  # Unreadable votes in a row (hotel-wide) that trip the pipeline alarm in the logs
     send_floor_updates_every = 3  # From floor manager to hotel manager
-    decompression_time = 60
+    decompression_time = 90
     disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
     exit_trigger_message = "exit"  # The message that an agent can write to early stop the conversation and vote
     manager_fake_name = "MANAGER"

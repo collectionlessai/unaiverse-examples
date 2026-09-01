@@ -24,7 +24,7 @@ from unaiverse.custom import Custom
 from unaiverse.streams import Stream
 from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
-from unaiverse.interaction import Interaction
+from unaiverse.interaction import Interaction, CompletionReason
 from unaiverse.streams.dataprops import DataProps
 from concurrent.futures import ThreadPoolExecutor
 from .filter import RuleBasedFilter
@@ -181,9 +181,15 @@ class WAgent(Agent):
         # Let's distinguish if we are in the context of a callback from a vote-process-operation-completed,
         # or if we are just calling the method somewhere else
         callback_from_process_vote = False
-        _guest = guest # TODO
+        _guest = guest  # TODO
         if guest is None:
             assert interaction is not None
+
+            # If the guest did not vote, the "process" interaction ends up being timed out, and this might happen
+            # in a moment in which the agent is already talking in another room, so let's burn it!
+            if interaction.completion_reason == CompletionReason.TIMEOUT:
+                return True  # Burning
+
             guest = interaction.target[0]
             callback_from_process_vote = True
 
