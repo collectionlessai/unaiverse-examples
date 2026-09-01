@@ -16,6 +16,12 @@ const SCOPES = { max: 30 * 864e5, "7d": 7 * 864e5, "24h": 864e5 };  // src/stats
 const PRESENCE_LIVE_MS = 20 * 60e3;  // A room with no activity for this long is idle/stale: its
                                      // "in the room now" list is hidden (covers the guests seated at
                                      // a world restart, whose exit events were never written)
+const PRESENCE_MAX_AGE_S = window.PRESENCE_MAX_AGE_S || 320;  // A 'joined' with no exit event after this
+                                     // many seconds is a ghost and is NOT shown as present: conversations
+                                     // last 300s (+20 of safety), so nobody legitimately sits at the round
+                                     // table longer — and with broadcast_when_no_humans off, the exit of
+                                     // a guest in a human-less room is never logged. Overridable without
+                                     // editing this file: set window.PRESENCE_MAX_AGE_S in index.html
 const OPS_STATS = ["hotel_n_floors_active", "hotel_n_rooms_active", "hotel_n_rooms_overbooked",
                    "hotel_n_agents_present", "hotel_n_agents_waiting"];
 const OPS_PALETTE = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f"];  // src/stats.py: _PALETTE
@@ -133,8 +139,8 @@ const DB = { ops: null, votes: [], emptyVotes: [], sessions: [], floors: null, l
 
 /* ── participant info from the Google Spreadsheets (view-by-link) ──────
    TWO registration forms feed two sheets, one for AI agents and one for HUMAN agents (similar but
-   not identical structure: same B/D/E/F columns, F has a different header — each popup line uses the
-   header of ITS OWN sheet). Loaded at startup through the 'gviz' JSON endpoint (works on link-shared
+   not identical structure: same B/C/D/E/F columns (C is the email), F has a different header — each
+   popup line uses the header of ITS OWN sheet). Loaded at startup through the 'gviz' JSON endpoint (works on link-shared
    sheets, CORS enabled). Row 1 is the header; column D ("UNaIVERSE nickname") is the key of each
    associative map — the nickname is the part of the UNaID BEFORE the '/' (UNaID = nickname/agent
    name). An agent is looked up in the sheet of its NATURE (from the votes), falling back to the
@@ -146,7 +152,7 @@ const SHEETS = {
 const sheetUrl = (kind) => (window.SHEET_URL_OVERRIDES || {})[kind] ||
   `https://docs.google.com/spreadsheets/d/${SHEETS[kind]}/gviz/tq?tqx=out:json&headers=1`;
 const INFO_KEY_COL = 3;       // Column D
-const INFO_SHOW_COLS = [1, 4, 5];  // Columns B, E, F
+const INFO_SHOW_COLS = [1, 2, 4, 5];  // Columns B, C (email), E, F
 
 async function loadSheet(kind) {
   try {
@@ -202,7 +208,8 @@ window.showUserInfo = (unaidSeg) => {
     `${esc(v || "-")}</div>`).join("");
   const back = document.createElement("div");
   back.className = "modal-back";
-  back.innerHTML = `<div class="modal panel"><div class="modal-head"><h3>${esc(shortId(unaid))}</h3>` +
+  back.innerHTML = `<div class="modal panel"><div class="modal-head">` +
+    `<div><h3>${esc(shortId(unaid))}</h3><div class="modal-unaid">${esc(unaid)}</div></div>` +
     `<button class="ctrl-btn" onclick="this.closest('.modal-back').remove()">✕</button></div>${body}</div>`;
   back.addEventListener("click", (ev) => { if (ev.target === back) back.remove(); });
   document.body.appendChild(back);
@@ -254,10 +261,12 @@ async function loadAll() {
       for (const a of (s.authors || [])) room.participants.add(a);
     }
   }
+  const presenceNow = Date.now();
   for (const [session, guests] of Object.entries(presence || {})) {
     const room = roomOf(session);  // Who is at the round table now (see api.php ?q=presence);
     if (room) {                    // pageFloors only shows it while the room is actually alive
-      room.present = guests.slice().sort((a, b) => String(a.fake_name).localeCompare(String(b.fake_name)));
+      room.present = guests.filter((g) => (presenceNow - g.since_ts) <= PRESENCE_MAX_AGE_S * 1000)
+        .sort((a, b) => String(a.fake_name).localeCompare(String(b.fake_name)));
       for (const g of guests) if (g.author) room.participants.add(g.author);
     }
   }
@@ -522,7 +531,8 @@ function buildChat(rows) {
     return `<div class="msg" id="chunk-${ch.id}"><div class="msg-author" ` +
       `style="color:hsl(${hueOf(m.author_fake_name)} 60% var(--author-l))">` +
       `${esc(m.author_fake_name || "?")}` +
-      `<span class="msg-unaid">${esc(shortId(m.author || ""))}</span></div>` +
+      (m.author ? `<a class="msg-unaid" href="#/user/${seg(m.author)}">${esc(m.author)}</a>` : "") +
+      `</div>` +
       `<div class="msg-text">${esc(m.text || "")}</div>` +
       `<div class="msg-time">${fmtTs(m.ts || ch.ts)}</div></div>`;
   }).join("") + "</div>";
