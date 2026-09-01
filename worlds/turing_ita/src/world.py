@@ -40,14 +40,33 @@ class WWorld(World):
         # Tracking changes to file "managers".txt (to update the lists when the file changes)
         self.managers_file_tracker = FileTracker(folder=world_folder, ext=".txt", prefix="managers.txt")
 
+        # Banned agents: a set of UNaIDs ("<nickname>/<node_name>") dynamically updated from file
+        # "banned.txt" (same folder of "managers.txt"; a missing file means nobody is banned). A banned
+        # agent is refused at join time (see assign_role below), while the ones already inside are
+        # disconnected by the run_w.py hook, which polls the file through refresh_banned_list()
+        self.banned_agents = set()
+        self.banned_sweep_needed = False  # Raised whenever the set changes, lowered by the run_w.py
+        self.load_banned_from_file()      # hook once it swept the connected agents (whoever reloads
+                                          # the file, joins included, the sweep is never missed)
+
+        # Tracking changes to file "banned.txt" (same facility used for "managers.txt")
+        self.banned_file_tracker = FileTracker(folder=world_folder, ext=".txt", prefix="banned.txt")
+
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
 
         # If "managers.txt" changed, reload file
         if self.managers_file_tracker.something_changed():
             self.load_managers_from_file()
 
-        # Role is assigned in function of the contents of the lists of hotel and floor managers
+        # If "banned.txt" changed, reload it; a banned agent gets no role at all: returning None makes
+        # the node disconnect him right away
+        self.refresh_banned_list()
         unaid = build_unaid(profile)
+        if unaid in self.banned_agents:
+            log.user(f"Refusing banned agent: {unaid}")
+            return None
+
+        # Role is assigned in function of the contents of the lists of hotel and floor managers
         if unaid in self.hotel_managers:
             log.user(f"Assigning role of hotel manager to: {unaid}")
             return "hotel_manager"
@@ -76,6 +95,28 @@ class WWorld(World):
                     self.hotel_managers.add(_unaid.strip())
                 else:
                     log.error(f"Invalid line in managers.txt file (skipping): {manager}")
+
+    def refresh_banned_list(self) -> bool:
+        """Reload the banned UNaIDs when "banned.txt" changed since the last check (True if reloaded)."""
+        if not self.banned_file_tracker.something_changed():
+            return False
+        self.load_banned_from_file()
+        return True
+
+    def load_banned_from_file(self):
+        """Load the set of banned UNaIDs from file "banned.txt" (one "<nickname>/<node_name>" per line;
+        a missing file means nobody is banned)."""
+        assert self.world_folder is not None
+        banned_file = os.path.join(self.world_folder, "banned.txt")
+        banned = set()
+        if os.path.exists(banned_file):
+            with open(banned_file, "r") as f:
+                banned = {line.strip() for line in f if line.strip() != ""}
+        if banned != self.banned_agents:
+            log.user(f"Banned agents: {len(banned)} UNaID(s)"
+                     + (" -> " + ", ".join(sorted(banned)) if len(banned) > 0 else ""))
+            self.banned_sweep_needed = True
+        self.banned_agents = banned
 
     def create_behav_files(self):
         """Create role-behavior JSON files."""

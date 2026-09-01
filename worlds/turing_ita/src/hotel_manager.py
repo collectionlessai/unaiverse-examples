@@ -423,6 +423,7 @@ class WAgent(Agent):
 
         for guest in self.hotel.get_managed_guests():
             floor = self.hotel.get_floor_of(guest)
+
             if floor is not None:
                 hotel_manager = floor.get_hotel_manager_of(guest)
                 expected_guest_of_this_floor = floor.is_expected_guest(guest)
@@ -435,11 +436,6 @@ class WAgent(Agent):
                     if floor.id not in violations:
                         violations[floor.id] = []
                     violations[floor.id].append(guest)
-
-                # Check also the ban file to augment the violations list
-                # TODO ... violations[floor.id].append(guest)
-                # We need a file (banned.txt) with the UNAID of the banned user (they will also be kicked immediately)
-                # self.hotel.get_profile_of(guest)['nickname'] + nodename (UNAID)
 
                 # Aligning expectations with the hotel status communicated by the floor: it is up to the floor to
                 # decide whether to eject the guest or not (the hotel manager goes Ponzio Pilato)

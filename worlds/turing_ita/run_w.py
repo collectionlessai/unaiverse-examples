@@ -1,6 +1,8 @@
 import os
+import asyncio
 from src.world import WWorld
 from unaiverse.utils.logger import log
+from unaiverse.utils.misc import build_unaid
 from unaiverse.networking.node.node import Node
 from src.mirror import make_mirror_hook, MirrorMySQLTarget
 
@@ -29,8 +31,22 @@ if MIRROR_PERIOD > 0:
 # in one gesture)
 RESET_SENTINEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src", "RESET_STATS")
 
+# BAN LIST: src/banned.txt holds the UNaIDs ("<nickname>/<node_name>") of the banned agents, one per
+# line (a missing file means nobody is banned). New joins of banned agents are refused by
+# WWorld.assign_role; the check below completes the picture for the agents ALREADY in the world: when
+# the file changes it is reloaded (WWorld.refresh_banned_list, tracked like managers.txt), and every
+# known agent found in the list is disconnected (scheduled on the node loop, where this hook runs)
+
 
 def run_hook(node):  # noqa (the Node passes itself)
+    world.refresh_banned_list()
+    if world.banned_sweep_needed and world.node_purge_fcn is not None:
+        world.banned_sweep_needed = False
+        for peer_id, profile in {**world.world_masters, **world.world_agents}.items():
+            unaid = build_unaid(profile)
+            if unaid in world.banned_agents:
+                log.user(f"Disconnecting banned agent: {unaid}")
+                asyncio.get_running_loop().create_task(world.node_purge_fcn(peer_id))
     if os.path.exists(RESET_SENTINEL):
         try:
             os.remove(RESET_SENTINEL)  # Removed FIRST: even a failed reset must not loop forever
