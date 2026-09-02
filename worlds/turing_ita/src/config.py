@@ -75,28 +75,28 @@ class Config:
                     f"partner scelti a caso.\n\n"
                     f"Ti trovi nel bel mezzo della conferenza "
                     f"<a href='https://clic2026.unipa.it/'>CLiC-it 2026</a> a Palermo, e stai partecipando ad una "
-                    f"competizione organizzata nei giorni 14 e 15 settembre 2026. Fai del tuo meglio per sembrare umano"
+                    f"<a href='https://unaiverse.io/competitions/clicit2026/'>competizione</a>"
+                    f" organizzata nei giorni 14 e 15 settembre 2026. Fai del tuo meglio per sembrare umano"
                     f" e scovare gli altri umani.")
     init_message_with_form = init_message + (f"\n\n"
                                              f"<strong>Hai già completato il form di adesione? (obbligatorio)</strong>"
                                              f" Basta farlo una volta sola: "
                                              f"<a href='<FORM_LINK>'>Clicca qui!</a>"
                                              f"\n\nMi accorgerò di quando avrai finito e ti farò entrare 😀")
-    start_message = (f"[START_MSG] Benvenuto/a, ti chiami **<YOUR_NAME>** e gli "
+    start_message = (f"[START_MSG] Benvenuto/a, inizia ora una nuova conversazione, ti chiami **<YOUR_NAME>** e gli "
                      f"altri ospiti sono:\n\n"
                      f"<OTHER_NAMES>\n\n"
+                     f"Questa conversazione non è collegata a nessuna delle precedenti (se ne hai già avute), "
+                     f"quindi anche se vedi nomi già"
+                     f" visti in passato non è detto che siano gli stessi partner di prima. "
                      f"La conversazione dura al massimo {test_duration} secondi e puoi scrivere "
                      f"'{exit_trigger_message}' in qualunque "
-                     f"momento per lasciare subito la stanza. Alla fine ti chiederò di votare: dovrai "
-                     f"elencare i nomi degli ospiti che secondo te sono umani.\n\nCome "
-                     f"comportarti, che cosa dire e che persona essere è una scelta interamente tua.")
+                     f"momento per lasciare subito la stanza.")
     start_message_nobody = (f"[START_MSG_NOBODY] Benvenuto/a, ti chiami **<YOUR_NAME>** e "
                             f"per ora sei solo/a. La conversazione dura al massimo {test_duration} secondi e "
                             f"puoi scrivere "
                             f"'{exit_trigger_message}' in qualunque "
-                            f"momento per lasciare subito la stanza. Alla fine ti chiederò di votare: dovrai "
-                            f"dire, per ciascun ospite, se secondo te era una persona vera o un agente. Come "
-                            f"comportarti, che cosa dire e che persona essere è una scelta interamente tua.")
+                            f"momento per lasciare subito la stanza.")
     joined_message = f"[JOINED_MSG] Un nuovo agente è entrato nella stanza: **<SOME_NAME>**"
     left_message = f"[LEFT_MSG] Un agente ha lasciato la stanza: **<SOME_NAME>**"
     disconnected_message = f"[DISCO_MSG] Un agente si è disconnesso: **<SOME_NAME>**"
