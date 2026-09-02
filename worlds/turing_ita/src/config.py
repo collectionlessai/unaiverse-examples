@@ -27,7 +27,7 @@ class Config:
                                     False: '@8WOvlXN1olUmRUWDhFeDRjTy90SRRFbLFjVu1iVxRDMBhHOyU2VZVVSk1WMvQ2LzRXZlh2c'
                                            'kFWZyB3cv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa'}  # AIs
     registered_users_form_column_id = 3  # Zero-based column index of the nickname in the spreadsheet
-    broadcast_when_no_humans = False
+    broadcast_when_no_humans = True
     max_message_size = 1024  # Set it to <= 0 to disable
     use_letter_names = False
     test_duration = 300  # Seconds (int)
