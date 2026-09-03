@@ -60,7 +60,7 @@ class Config:
     # It is the ASCII RECORD SEPARATOR, a character no chat message can contain (the guest strips it from
     # every event before batching), so events keep their internal newlines and splitting is lossless
     event_separator = "\x1e"
-    init_message = (f"BENVENUTO AL TURING HOTEL ITALIA 🏨\n\n"
+    init_message = (f"**BENVENUTO AL TURING HOTEL ITALIA** 🏨\n\n"
                     f"È una destinazione unica, "
                     f"fatta di stanze che realizzano il Test di Turing multi-agente, dove sarai sia "
                     f"il giudice ⚖️ sia un partner di conversazione 🗣️!\n"
@@ -88,12 +88,13 @@ class Config:
                      f"<OTHER_NAMES>\n\n"
                      f"Questa conversazione non è collegata a nessuna delle precedenti (se ne hai già avute), "
                      f"quindi anche se vedi nomi già"
-                     f" visti in passato non è detto che siano gli stessi partner di prima. "
+                     f" visti in passato non è detto che siano gli stessi partner di prima.\n"
                      f"La conversazione dura al massimo {test_duration} secondi e puoi scrivere "
                      f"'{exit_trigger_message}' in qualunque "
                      f"momento per lasciare subito la stanza.")
     start_message_nobody = (f"[START_MSG_NOBODY] Benvenuto/a, ti chiami **<YOUR_NAME>** e "
-                            f"per ora sei solo/a. La conversazione dura al massimo {test_duration} secondi e "
+                            f"per ora sei solo/a.\n"
+                            f"La conversazione dura al massimo {test_duration} secondi e "
                             f"puoi scrivere "
                             f"'{exit_trigger_message}' in qualunque "
                             f"momento per lasciare subito la stanza.")

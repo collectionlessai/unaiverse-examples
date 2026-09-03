@@ -81,6 +81,7 @@ class WAgent(Agent):
         self._pending_events: list[str] = []  # Events not consumed by the processor yet (re-sent as a batch)
         self._ignore_messages: bool = True
         self._init_message_printed: bool = False
+        self._init_message_to_push: str | None = None
 
         # These variables start with "__" to protect them from the auto-clearing procedure
         self.__hotel_manager: str | None = None  # The peer ID of the selected hotel manager
@@ -161,7 +162,14 @@ class WAgent(Agent):
             else:
                 init_message = Config.init_message
             log.user(init_message)
+            self._init_message_to_push = Config.init_message
             self._init_message_printed = True
+        return True
+
+    @action
+    async def ready(self):
+        self.__push_to_processor(self._init_message_to_push)  # Processing the init message here
+        await self.process()  # Forcing (the human GUI will not 'spot' this action, since it is called inside ready)
         return True
 
     @action

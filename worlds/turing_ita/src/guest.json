@@ -18,7 +18,7 @@
             "time_to_wait_before_acting": 0.0
         },
         "ready": {
-            "action": null,
+            "action": "ready",
             "action_kwargs": {},
             "msg": "&#128279; Connessione a un hotel manager scelto a caso",
             "blocking": true,
@@ -27,7 +27,7 @@
         "wait_for_ready": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9203; In attesa fuori (resterai fuori per 60 secondi per riprenderti)",
+            "msg": "&#9203; In attesa fuori (resterai fuori per 90 secondi per riprenderti)",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
@@ -397,7 +397,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "delay": 60
+                    "delay": 90
                 },
                 "goto": "ready"
             }
@@ -427,7 +427,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "delay": 60
+                    "delay": 90
                 },
                 "goto": "hall"
             }

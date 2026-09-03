@@ -204,7 +204,8 @@ class WWorld(World):
         behav.set_welcome_message("Benvenuto al Turing Hotel 🏨, è bellissimo avere un nuovo ospite!")
 
         behav.add_state("init", action="init", blocking=False)
-        behav.add_state("ready", blocking=True, msg="🔗 Connessione a un hotel manager scelto a caso")
+        behav.add_state("ready", blocking=True, msg="🔗 Connessione a un hotel manager scelto a caso",
+                        action="ready")
         behav.add_state("wait_for_ready", blocking=False,
                         msg=f"⏳ In attesa fuori (resterai fuori per {Config.decompression_time} secondi "
                             f"per riprenderti)")
