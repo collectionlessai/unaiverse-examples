@@ -725,7 +725,8 @@ class WAgent(Agent):
             fake_name = self.floor.get_room_of(guest).fake_name_of(guest)
             room = self.floor.get_room_of(guest)
 
-            if msg.strip().lower() == Config.exit_trigger_message.lower():
+            trigger = Config.exit_trigger_message.lower()
+            if any(line.strip().lower() == trigger for line in msg.splitlines()):
                 self._wants_to_exit.add(guest)
                 return True
 

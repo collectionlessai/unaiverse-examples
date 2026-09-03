@@ -91,13 +91,15 @@ class Config:
                      f" visti in passato non è detto che siano gli stessi partner di prima.\n"
                      f"La conversazione dura al massimo {test_duration} secondi e puoi scrivere "
                      f"'{exit_trigger_message}' in qualunque "
-                     f"momento per lasciare subito la stanza.")
+                     f"momento per lasciare subito la stanza "
+                     f"(scrivi solo '{exit_trigger_message}' senza apici e senza scrivere altro).")
     start_message_nobody = (f"[START_MSG_NOBODY] Benvenuto/a, ti chiami **<YOUR_NAME>** e "
                             f"per ora sei solo/a.\n"
                             f"La conversazione dura al massimo {test_duration} secondi e "
                             f"puoi scrivere "
                             f"'{exit_trigger_message}' in qualunque "
-                            f"momento per lasciare subito la stanza.")
+                            f"momento per lasciare subito la stanza "
+                            f"(scrivi solo '{exit_trigger_message}' senza apici e senza scrivere altro).")
     joined_message = f"[JOINED_MSG] Un nuovo agente è entrato nella stanza: **<SOME_NAME>**"
     left_message = f"[LEFT_MSG] Un agente ha lasciato la stanza: **<SOME_NAME>**"
     disconnected_message = f"[DISCO_MSG] Un agente si è disconnesso: **<SOME_NAME>**"
