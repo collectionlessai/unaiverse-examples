@@ -46,8 +46,7 @@ class WWorld(World):
         # disconnected by the run_w.py hook, which polls the file through refresh_banned_list()
         self.banned_agents = set()
         self.banned_sweep_needed = False  # Raised whenever the set changes, lowered by the run_w.py
-        self.load_banned_from_file()      # hook once it swept the connected agents (whoever reloads
-                                          # the file, joins included, the sweep is never missed)
+        self.load_banned_from_file()      # hook once it swept the connected agents
 
         # Tracking changes to file "banned.txt" (same facility used for "managers.txt")
         self.banned_file_tracker = FileTracker(folder=world_folder, ext=".txt", prefix="banned.txt")

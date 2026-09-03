@@ -1,0 +1,184 @@
+{
+    "machine": {
+        "role": "student",
+        "initial_state": "init",
+        "msg": "Welcome to our tutorial at CoLLAs 2026! Your role: **student**",
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
+        }
+    },
+    "states": {
+        "init": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "teacher_found": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "in_class": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "done_learning": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "done_exam": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "wait_to_recover": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        }
+    },
+    "transitions": {
+        "init": [
+            {
+                "on": {
+                    "action": "connect_by_role",
+                    "action_kwargs": {
+                        "role": "teacher",
+                        "filter_fcn": "one_at_random"
+                    },
+                    "msg": "Connecting to a randomly selected teacher (if any)...",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "teacher_found"
+            }
+        ],
+        "teacher_found": [
+            {
+                "on": {
+                    "action": "connected",
+                    "action_kwargs": {
+                        "handshake_completed": true
+                    },
+                    "msg": "Waiting for teacher's approval...",
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "in_class"
+            }
+        ],
+        "in_class": [
+            {
+                "on": {
+                    "action": "learn",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "done_learning"
+            },
+            {
+                "on": {
+                    "action": "process",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "done_exam"
+            }
+        ],
+        "wait_to_recover": [],
+        "done_learning": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "in_class"
+            }
+        ],
+        "done_exam": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "in_class"
+            }
+        ]
+    },
+    "teleports": {
+        "teacher_found": [
+            {
+                "on": {
+                    "action": "disconnected",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "wait_to_recover"
+            }
+        ],
+        "wait_to_recover": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 60
+                },
+                "goto": "init"
+            }
+        ]
+    }
+}
