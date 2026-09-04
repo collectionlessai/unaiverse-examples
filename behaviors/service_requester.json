@@ -110,7 +110,7 @@
         "request_sent_to_available_providers": [
             {
                 "on": {
-                    "action": "received_some_asked_data",
+                    "action": "on_received",
                     "action_kwargs": {
                         "processing_fcn": "<providers_data_processing_fcn>"
                     },

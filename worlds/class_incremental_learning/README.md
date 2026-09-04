@@ -6,7 +6,7 @@
 > students learn online and are examined on every class seen so far after each lesson, so the per-class
 > accuracy table makes catastrophic forgetting visible in real time.
 >
-> Action names (`learn`, `process`, `all_sent_completed`, `received_some_asked_data`, ...) are
+> Action names (`learn`, `process`, `all_sent_completed`, `on_received`, ...) are
 > explained inline and in full in the [Actions and Behaviors reference](../../behaviors/README.md).
 
 ---
@@ -54,7 +54,7 @@ Why it is a good teacher:
    `all_sent_completed(action_name="learn")` is true.
 6. Exam (cumulative). After each lesson `send_exam` fans `process` out over `images@eval` for
    `20 * (number of classes seen)` samples, testing every class so far, with a 120-second timeout.
-7. Collect and score. `received_some_asked_data(processing_fcn="collect_predictions")` gathers each
+7. Collect and score. `on_received(processing_fcn="collect_predictions")` gathers each
    student's predicted class index; `score_exam` computes overall and per-class accuracy and prints a
    colored table (green at or above 90 percent, yellow at or above 70, orange at or above 50, red
    below).
@@ -121,7 +121,7 @@ wildcards; step counts are passed at runtime via `num_steps` in the teacher's `s
 Teacher (`init` to `wait_for_students` to `brainstorm` to lesson or exam): `brainstorm` branches on
 `_current_intent` (`building_lesson` versus `building_evaluation`). `lesson_in_progress` (a blocking
 state) exits on `all_sent_completed(action_name="learn")`. `exam_in_progress` self-loops on
-`received_some_asked_data(processing_fcn="collect_predictions")` to drain replies, then
+`on_received(processing_fcn="collect_predictions")` to drain replies, then
 `all_sent_completed(action_name="process")` moves to `scoring` and back to `wait_for_students`.
 
 Student, almost entirely reactive (`"ready": false` means wait for the teacher to trigger it):
@@ -129,7 +129,7 @@ Student, almost entirely reactive (`"ready": false` means wait for the teacher t
 training, an incoming `process` triggers inference and emits predictions, then back to `wait`.
 
 The fan-out plus completion plus collect idiom (`send(..., timeout=...)`, `all_sent_completed(...)`, and
-a self-looping state with `received_some_asked_data(processing_fcn=...)`) is documented in the
+a self-looping state with `on_received(processing_fcn=...)`) is documented in the
 [Actions reference](../../behaviors/README.md#asking-others-to-do-work-and-sending-data).
 
 ---

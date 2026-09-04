@@ -135,7 +135,7 @@ Signatures below are simplified to the arguments you actually set in behaviors.
   fan-out of work.
 - **`all_asked_finished()`**: predicate based on confirmations: `True` when every agent you asked has
   reported done.
-- **`received_some_asked_data(processing_fcn=None, data_type=None)`**: predicate that also collects:
+- **`on_received(processing_fcn=None, data_type=None)`**: predicate that also collects:
   `True` if any agent you asked has sent a stream sample back. If you pass `processing_fcn` (the name
   of a method on you), it is called as `fcn(agent, props, data, data_tag)` for each received sample,
   which is how a requester drains and stores incoming results (for example, collecting students'

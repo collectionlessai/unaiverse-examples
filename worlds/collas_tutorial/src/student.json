@@ -49,7 +49,7 @@
             "action": null,
             "action_kwargs": {},
             "msg": null,
-            "blocking": true,
+            "blocking": false,
             "time_to_wait_before_acting": 0.0
         }
     },
@@ -124,7 +124,7 @@
                     "action": "nop",
                     "action_kwargs": {},
                     "msg": null,
-                    "ready": false,
+                    "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
@@ -139,7 +139,7 @@
                     "action": "nop",
                     "action_kwargs": {},
                     "msg": null,
-                    "ready": false,
+                    "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,

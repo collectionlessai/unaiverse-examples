@@ -13,36 +13,36 @@
         "init": {
             "action": "reset_status",
             "action_kwargs": {},
-            "msg": "Ready",
+            "msg": "Checking if students connected...",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "in_class": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
+            "msg": "In class, thinking about what to do next",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "lecture_in_progress": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
+            "msg": "Lecture in progress...",
+            "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "exam_in_progress": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
+            "msg": "Exam in progress...",
+            "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "feedback_time": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
+            "msg": "Waiting for feedback...",
+            "blocking": true,
             "time_to_wait_before_acting": 0.0
         }
     },
@@ -55,7 +55,7 @@
                         "role": "student",
                         "handshake_completed": true
                     },
-                    "msg": "Checking if students connected...",
+                    "msg": null,
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
@@ -70,7 +70,7 @@
                 "on": {
                     "action": "teach_next_lecture",
                     "action_kwargs": {},
-                    "msg": "Lecture in progress...",
+                    "msg": null,
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
@@ -83,7 +83,7 @@
                 "on": {
                     "action": "start_exam",
                     "action_kwargs": {},
-                    "msg": "Exam in progress...",
+                    "msg": null,
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
@@ -134,6 +134,22 @@
                     "delay": 0.0
                 },
                 "goto": "in_class"
+            },
+            {
+                "on": {
+                    "action": "on_data",
+                    "action_kwargs": {
+                        "stream_group": "exam",
+                        "data_type": "text"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "exam_in_progress"
             }
         ],
         "feedback_time": [
@@ -149,6 +165,21 @@
                     "delay": 0.0
                 },
                 "goto": "init"
+            },
+            {
+                "on": {
+                    "action": "on_data",
+                    "action_kwargs": {
+                        "stream_group": "feedback"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "feedback_time"
             }
         ]
     },

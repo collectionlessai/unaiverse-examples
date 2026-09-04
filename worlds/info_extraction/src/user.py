@@ -32,7 +32,7 @@ class WAgent(Agent):
         # agent we are modeling here.
         self.__exploited_extractors = set()
 
-        # Information accumulated by handle_received_data() (called by 'received_some_asked_data').
+        # Information accumulated by handle_received_data() (called by 'on_received').
         # Fine if they get cleared on world leave.
         self._extracted_info = {}
         self._first_check = True
@@ -85,7 +85,7 @@ class WAgent(Agent):
         return filtered_addrs, filtered_peer_ids
 
     def handle_received_data(self, agent: str, props: DataProps, data: torch.Tensor | str | Image, data_tag: int):
-        """This part of action received_some_asked_data: record one piece of extracted information from 'agent'."""
+        """This is part of action on_received: record one piece of extracted information from 'agent'."""
 
         # Guard
         if agent not in self.all_agents:

@@ -166,7 +166,7 @@
         "exam_in_progress": [
             {
                 "on": {
-                    "action": "received_some_asked_data",
+                    "action": "on_received",
                     "action_kwargs": {"processing_fcn": "collect_predictions"},
                     "msg": null,
                     "ready": true,

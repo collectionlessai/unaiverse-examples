@@ -7,7 +7,7 @@
 > collects every extractor's feedback into a single JSON file. New extractors can join on the fly and
 > are discovered and used automatically.
 >
-> Action names (`connect_by_role`, `send_engage`, `received_some_asked_data`, ...) are explained inline
+> Action names (`connect_by_role`, `send_engage`, `on_received`, ...) are explained inline
 > and in full in the [Actions and Behaviors reference](../../behaviors/README.md).
 
 ---
@@ -141,7 +141,7 @@ Built in `create_behav_files()` and saved to [`user.json`](./src/user.json) /
 **User** (a service requester): `ready` (runs `check_status`) connects to extractors
 (`connect_by_role(role="extractor", filter_fcn="filter_addresses")`), engages them, sends `process`
 over the stream, then drains replies with
-`received_some_asked_data(processing_fcn="handle_received_data")` until `all_sent_completed`. The
+`on_received(processing_fcn="handle_received_data")` until `all_sent_completed`. The
 template is specialized with wildcards:
 
 ```python
@@ -167,7 +167,7 @@ All three live in [`src/user.py`](./src/user.py):
   "reset" signal that re-enables all extractors.
 - `filter_addresses` is a `connect_by_role` callback that drops extractors already used in a previous
   round, giving the no-double-use behavior.
-- `handle_received_data` is the `processing_fcn` for `received_some_asked_data`: it converts each reply
+- `handle_received_data` is the `processing_fcn` for `on_received`: it converts each reply
   to text (`props.to_text(...)`), records it under the sender's node id, marks that extractor as used,
   and flags that new info should be persisted.
 
@@ -207,7 +207,7 @@ re-run all extractors.
 2. **Reusable templates plus wildcards build a protocol.** The generic `service_requester` /
    `service_provider` templates are specialized per world with `add_wildcards` and per agent with
    `add_behav_wildcard`.
-3. **Custom actions are just methods named in transitions.** `received_some_asked_data(processing_fcn=...)`
+3. **Custom actions are just methods named in transitions.** `on_received(processing_fcn=...)`
    and `connect_by_role(filter_fcn=...)` are the hook points for injecting your logic into built-in actions.
 4. **One stream, many parallel observers, aggregated results.** Heterogeneous extractors process the
    same stream concurrently and the user merges their feedback, with bookkeeping to avoid re-using the

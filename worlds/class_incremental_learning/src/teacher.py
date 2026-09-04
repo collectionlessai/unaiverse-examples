@@ -36,7 +36,7 @@ class WAgent(Agent):
       3. lesson     — fan-out `learn` to every student for one class, then wait for completion
                       via `all_sent_completed(action_name="learn")`.
       4. exam       — fan-out `process` to every student, collect predictions via
-                      `received_some_asked_data(processing_fcn="collect_predictions")`,
+                      `on_received(processing_fcn="collect_predictions")`,
                       then score once `all_sent_completed(action_name="process")` is true.
     """
     EVAL_PER_CLASS = 20
@@ -306,7 +306,7 @@ class WAgent(Agent):
         return True
 
     def collect_predictions(self, agent: str, props: DataProps, data, data_tag: int):  # noqa
-        """`received_some_asked_data` processing function: append each student's class prediction.
+        """`on_received` processing function: append each student's class prediction.
 
         The student's processor output declares `proc_to_stream_transforms=lambda x: argmax(x, dim=1)`
         (see run_2.py), so what arrives here is already a class index — a long tensor of shape
