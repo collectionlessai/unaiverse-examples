@@ -13,6 +13,7 @@
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
 import os
+import re
 import sys
 import json
 from collections import defaultdict
@@ -28,12 +29,16 @@ class WAgent(Agent):
     """Teacher agent."""
 
     # Configuration (current data has 6 classes in total, divided into folders with data from 2 classes in each of them)
-    LECTURE_SAMPLES = 6
-    LECTURE_MAX_DURATION = 20.
-    EXAM_SAMPLES = 6
-    EXAM_MAX_DURATION = 30.
+    LECTURE_SAMPLES = 1  # 6
+    LECTURE_DELTA = 6.0
+    LECTURE_MAX_DURATION = LECTURE_DELTA * LECTURE_SAMPLES + 10.
+    EXAM_SAMPLES = 2
+    EXAM_DELTA = 10.0
+    EXAM_MAX_DURATION = EXAM_DELTA * EXAM_SAMPLES + 10.
     FEEDBACK_SAMPLES = 2  # Unlabeled samples
-    FEEDBACK_MAX_DURATION = 30.
+    FEEDBACK_DELTA = EXAM_DELTA
+    FEEDBACK_MAX_DURATION = FEEDBACK_SAMPLES * FEEDBACK_DELTA + 10.
+    MAX_WAIT_FOR_RESPONSE = 3.  # Student completes an interaction => sends its response => it takes time to travel
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -46,6 +51,7 @@ class WAgent(Agent):
         self.current_students: set[str] = set()  # Students participating in the current exam or feedback
         self.sent_samples: dict[int, list] = {}  # Samples sent (tag: [image, class_name], where class_name can be None)
         self.received_samples: dict[int, dict[str, str]] = {}  # Samples received (tag: {student: class_name})
+        self.last_data_sent_at = -1.  # The time at which the last data sample was sent
 
         # Estimated quality of every student, moving average in [0.0,1.0] (this will not be reset)
         self.student_quality: dict[str, float] = {}
@@ -57,13 +63,19 @@ class WAgent(Agent):
         self.class_name_to_lecture_streams: dict[str, list[ImageFileStream | StringStream]] = \
             {}  # class_name: {stream_name: stream_object}
 
-        # Printing facilities
-        self.prev_printed_lines = 0
+        # Printing/terminal facilities
+        self.prev_print_time = 0
+        self.prev_print_string = ""
+        self.kb_ready = False
+        self.paused = False
 
     def accept_new_role(self, role: int):
         """This is called when the agent accepts the role of teacher (it builds streams once the role is assigned)."""
         super().accept_new_role(role)
-        data_path = os.environ.get("TEACHER_DATA_PATH", os.path.dirname(os.path.abspath(__file__)))
+
+        data_path = os.environ.get("TEACHER_DATA_PATH", None)
+        if data_path is None:
+            log.critical("Environment variable TEACHER_DATA_PATH not set (without it, I cannot find my own data)!")
 
         # Utility: reading file names in folder "data/lectures" (and subfolders "1", "2", "3")
         def collect_file_names_and_class_names(_folder: str) -> tuple[list[str], list[str]]:
@@ -74,7 +86,8 @@ class WAgent(Agent):
                 if not _file_name.lower().endswith(".jpg"):
                     continue
                 if "_" in _file_name:
-                    _class_name = _file_name.rsplit("_", 1)[1]  # "012_Empoleon.jpg" -> "Empoleon"
+                    # "012_Empoleon.jpg" -> "Empoleon.jpg" -> "Empoleon"
+                    _class_name = _file_name.rsplit("_", 1)[1].split('.')[0]
                 else:
                     _class_name = "unknown"
                 _file_names.append(_file_name)
@@ -93,12 +106,14 @@ class WAgent(Agent):
                                group="lecture" + str(i),
                                name="images",
                                pubsub=False,
-                               delta=2.0),
+                               public=False,
+                               delta=self.LECTURE_DELTA),
                  Stream.create(stream=StringStream(class_names, circular=True),
                                group="lecture" + str(i),
                                name="class_names",
                                pubsub=False,
-                               delta=2.0)
+                               public=False,
+                               delta=self.LECTURE_DELTA)
                  ])
 
             # Mapping class name to the associated streams (stream of images, stream of class names)
@@ -114,12 +129,14 @@ class WAgent(Agent):
                                         group="exam",
                                         name="images",
                                         pubsub=False,
-                                        delta=2.0),
+                                        public=False,
+                                        delta=self.EXAM_DELTA),
                           Stream.create(stream=StringStream(class_names, circular=True),
                                         group="exam",
                                         name="class_names",
                                         pubsub=False,
-                                        delta=2.0)])
+                                        public=False,
+                                        delta=self.EXAM_DELTA)])
 
         # Reading feedback (unlabeled) files
         folder = os.path.join(str(data_path), "feedback")
@@ -130,31 +147,80 @@ class WAgent(Agent):
                                         group="feedback",
                                         name="images",
                                         pubsub=False,
-                                        delta=2.0),
+                                        public=False,
+                                        delta=self.FEEDBACK_DELTA),
                           Stream.create(stream=StringStream(class_names, circular=True),
                                         group="feedback",
                                         name="class_names",
                                         pubsub=False,
-                                        delta=2.0)])
+                                        public=False,
+                                        delta=self.FEEDBACK_DELTA)])
 
         # Refresh streams in profile (this way, the agents connecting to this agent will 'see' these streams)
         self.update_streams_in_profile()
 
     async def on_tick(self):
         await super().on_tick()
-        if self.prev_printed_lines > 0:
-            sys.stdout.write(f"\x1b[{self.prev_printed_lines}A")
-        students = self.get_agents_by_role('student')
-        log.user(f"\r\x1b[2KState: {self.behav.get_state()}")
-        log.user(f"\r\x1b[2KAction: {self.behav.get_action()}")
-        log.user(f"\r\x1b[2KKnown students: {len(students)}")
-        for student in students:
-            log.user(f"\r\x1b[2K- {build_unaid(self.world_agents[student])}, "
-                     f"last exam "
-                     f"{self.student_last_exam_scores[student] if student in self.student_last_exam_scores else '?'}, "
-                     f"quality "
-                     f"{self.student_quality[student] if student in self.student_quality else '?'}")
-        self.prev_printed_lines = 3 + len(students) + 1
+
+        # If there are no students connected, be sure we go back to the initial state
+        if len(self.get_agents_by_role("student")) == 0 and self.behav.get_state_name() != "init":
+            await self.behav.act_ghost_transition("init")
+
+        # If the terminal supports it, we check the space bar to pause/resume the teacher
+        # Notice: one-time terminal setup (per process), no-enter key delivery, restored at exit
+        if sys.stdin is not None and sys.stdin.isatty():
+
+            # Activating the keyboard listener
+            # Lazy imports (keep them lazy, otherwise they would block Windows students, since this is Linux only)
+            if not self.kb_ready:
+                import tty
+                import atexit
+                import termios
+                fd = sys.stdin.fileno()
+                old_tty = termios.tcgetattr(fd)
+                atexit.register(lambda: termios.tcsetattr(fd, termios.TCSADRAIN, old_tty))
+                tty.setcbreak(fd)  # Chars arrive without Enter; Ctrl+C still works; echo is off
+                self.kb_ready = True
+
+            # Non-blocking poll: drain whatever was typed since the last tick
+            # Lazy import: keep it here (see the note above)
+            import select
+            while select.select([sys.stdin], [], [], 0)[0]:
+                if sys.stdin.read(1) == ' ':
+                    was_paused = self.paused
+                    self.paused = not self.paused
+                    if was_paused:
+                        log.user("▶️ Resumed!")
+
+        if self.paused:
+            self.behav.enable(False)
+            log.user("⏸️ Paused! (finishing the current activity first)")
+
+        if not self.paused and self.prev_print_time > 0 and (self.clock.get_time() - self.prev_print_time) >= 3.:
+            students = self.get_agents_by_role('student')
+            scores = self.student_last_exam_scores
+            quality = self.student_quality
+            state = self.behav.get_state_name(consider_limbo=True)
+            if "lecture" in state:
+                s = f"   Activity: teaching lecture #{self.current_lecture_num}"
+            elif "exam" in state:
+                s = f"   Activity: running exam"
+            elif "feedback" in state:
+                s = f"   Activity: asking for feedback"
+            else:
+                s = f"   Activity: misc"
+            s += f"\n   State:    {state}"
+            s += f"\n   Students: {len(students)}"
+            for student in students:
+                s += f"\n             {build_unaid(self.world_agents[student])}, "
+                s += f"last exam "
+                s += f"{scores[student] if student in scores else '?'}, "
+                s += f"quality "
+                s += f"{quality[student] if student in quality else '?'}"
+            if s != self.prev_print_string:
+                log.user(s)
+                self.prev_print_string = s
+            self.prev_print_time = self.clock.get_time()
 
     @action
     async def reset_status(self):
@@ -165,14 +231,12 @@ class WAgent(Agent):
         self.current_students = set()
         self.sent_samples = {}
         self.received_samples = {}
+        self.prev_print_time = self.clock.get_time()
+        self.last_data_sent_at = -1.
         return True
 
     @action
-    async def no_students(self) -> bool:
-        return len(self.get_agents_by_role("student")) == 0
-
-    @action
-    async def teach_next_lecture(self) -> bool:
+    async def give_next_lecture(self):
 
         # If the teacher already streamed all the lectures, this action must fail
         if self.current_lecture_num > 3:
@@ -181,29 +245,31 @@ class WAgent(Agent):
         # Resetting mark
         self.current_lecture_finished = False
 
-        # If there are no students, well, nothing to do
-        students = self.get_agents_by_role("student")
-        if len(students) == 0:
-            return False
+        # Telling the students
+        return await self.send(action_name="print",
+                               action_kwargs={"msg": f"**Lecture {self.current_lecture_num}/{3}**\n\n"
+                                                     "*Check the following pictures and learn!*\n\n"
+                                                     "You are expected to learn to associate pictures with their "
+                                                     "category name, provided right after the pictures."},
+                               from_state="in_class",
+                               target=self.get_agents_by_role("student"),
+                               volatile=True)
+
+    @action
+    async def teach(self) -> bool:
 
         # If there are students, let's ask them to 'learn'!
-        sending_went_ok = await self.send(action_name="learn",
-                                          from_state="in_class",
-                                          target=students,
-                                          streams={
-                                              "stdin": [f"images@lecture{self.current_lecture_num}"],
-                                              "stdtar": [f"class_names@lecture{self.current_lecture_num}"]
-                                          },
-                                          num_steps=self.LECTURE_SAMPLES,
-                                          timeout=self.LECTURE_MAX_DURATION,
-                                          callback="mark_lecture_as_finished")
-
-        # If the request was fine, we move the index to the next lecture
-        if sending_went_ok:
-            self.current_lecture_num += 1  # Moving to the next lecture
-            return True
-        else:
-            return False
+        return await self.send(action_name="learn",
+                               from_state="in_class",
+                               forced_uuid=f"lecture{self.current_lecture_num}_uuid",
+                               target=self.get_agents_by_role("student"),
+                               streams={
+                                   "stdin": [f"images@lecture{self.current_lecture_num}"],
+                                   "stdtar": [f"class_names@lecture{self.current_lecture_num}"]
+                               },
+                               num_steps=self.LECTURE_SAMPLES,
+                               timeout=self.LECTURE_MAX_DURATION,
+                               callback="mark_lecture_as_finished")
 
     @action
     async def mark_lecture_as_finished(self, interaction: Interaction | None = None) -> bool:
@@ -219,6 +285,9 @@ class WAgent(Agent):
 
         # Marking
         self.current_lecture_finished = True
+
+        # Moving to the next lecture
+        self.current_lecture_num += 1
         return True
 
     @action
@@ -226,7 +295,7 @@ class WAgent(Agent):
         return self.current_lecture_finished
 
     @action
-    async def start_exam(self) -> bool:
+    async def start_exam_session(self) -> bool:
 
         # Avoid repeating multiple exams, unless the state is reset first
         if self.current_exam_finished:
@@ -235,26 +304,35 @@ class WAgent(Agent):
         # Resetting marks
         self.sent_samples = {}
         self.received_samples = {}
+        self.current_students = set()
 
-        # If there are no students, well, nothing to do
-        students = self.get_agents_by_role("student")
-        if len(students) == 0:
-            return False
+        # Telling the students
+        return await self.send(action_name="print",
+                               action_kwargs={"msg": "**Exam time**\n\n*Let's see if you are good at "
+                                                     "classifying the following pictures!*\n\nGood luck!"},
+                               from_state="in_class",
+                               target=self.get_agents_by_role("student"),
+                               volatile=True)
+
+    @action
+    async def hand_out_exam(self) -> bool:
 
         # If there are students, let's ask them to 'process', in order to make predictions on the exam data!
         await self.send(action_name="process",
                         from_state="in_class",
-                        target=students,
+                        forced_uuid=f"exam_uuid",
+                        target=self.get_agents_by_role("student"),
                         streams={
                             "stdin": [f"images@exam"],
-                            "stdtar": [f"class_names@exam"]
+                            "stdext": [f"class_names@exam"]
                         },
                         num_steps=self.EXAM_SAMPLES,
                         timeout=self.EXAM_MAX_DURATION,
                         callback="mark_exam_as_finished")
 
         # Saving
-        self.current_students = set(self.get_last_sent_interaction().target)
+        self.current_students = set(self.get_last_sent_interaction().target) \
+            if self.get_last_sent_interaction() else set()
 
         return len(self.current_students) > 0
 
@@ -299,70 +377,30 @@ class WAgent(Agent):
         return self.current_exam_finished
 
     @action
-    async def on_data(self, stream_group: str, data_type: str = "both") -> bool:
-        uuid = self.get_last_sent_interaction().uuid
-
-        def on_sending() -> bool:
-            if data_type == "both" or data_type == "text":
-                stream = self.get_stream(stream_group, data_type="text")
-                data = stream.get("on_sending", uuid=uuid)
-                if data is None:
-                    return False
-
-                tag = stream.get_tag(uuid=uuid)
-                if tag not in self.sent_samples:
-                    self.sent_samples[tag] = [None, None]
-                self.sent_samples[tag][1] = data
-
-            if data_type == "both" or data_type == "img":
-                stream = self.get_stream(stream_group, data_type="img")
-                data = stream.get("on_sending", uuid=uuid)
-                if data is None:
-                    return False
-
-                tag = stream.get_tag(uuid=uuid)
-                if tag not in self.sent_samples:
-                    self.sent_samples[tag] = [None, None]
-                self.sent_samples[tag][0] = data
-            return True
-
-        def on_receiving():
-            at_least_one_received = False
-            for student in self.current_students:
-                student_stream = self.get_stream("processor", student, data_type="text")
-                class_name = student_stream.get("on_receiving", uuid=uuid)
-                if class_name is not None:
-                    at_least_one_received = True
-                else:
-                    continue
-
-                tag = student_stream.get_tag(uuid=uuid)
-                if tag not in self.received_samples:
-                    self.received_samples[tag]: dict[str, str] = {}
-                self.received_samples[tag][student] = class_name
-            return at_least_one_received
-
-        sent = on_sending()
-        recv = on_receiving()
-        return sent or recv
-
-    @action
-    async def ask_feedback(self) -> bool:
+    async def ask_for_feedback(self) -> bool:
 
         # Resetting marks
         self.current_feedback_provided = False
         self.sent_samples = {}
         self.received_samples = {}
+        self.current_students = set()
 
-        # If there are no students, well, nothing to do
-        students = self.get_agents_by_role("student")
-        if len(students) == 0:
-            return False
+        # Telling the students
+        return await self.send(action_name="print",
+                               action_kwargs={"msg": "**Feedback time**\n\n*I need your support to categorize "
+                                                     "some unlabeled pictures!*\n\nHelp me!"},
+                               from_state="in_class",
+                               target=self.get_agents_by_role("student"),
+                               volatile=True)
 
-        # If there are students, let's ask them to 'process', in order to make predictions on the exam data!
+    @action
+    async def send_requests(self) -> bool:
+
+        # If there are students, let's ask them to 'process', in order to make predictions on the feedback data!
         await self.send(action_name="process",
                         from_state="in_class",
-                        target=students,
+                        forced_uuid=f"feedback_uuid",
+                        target=self.get_agents_by_role("student"),
                         streams={
                             "stdin": [f"images@feedback", f"class_names@feedback"],
                         },
@@ -371,7 +409,9 @@ class WAgent(Agent):
                         callback="mark_feedback_as_provided")
 
         # Saving
-        self.current_students = set(self.get_last_sent_interaction().target)
+        self.current_students = set(self.get_last_sent_interaction().target) \
+            if self.get_last_sent_interaction() else set()
+
         return len(self.current_students) > 0
 
     @action
@@ -393,9 +433,10 @@ class WAgent(Agent):
     @action
     async def augment_lectures(self) -> bool:
         if self.current_feedback_provided:
-            data_path = os.environ.get("TEACHER_DATA_PATH", os.path.dirname(os.path.abspath(__file__)))
+            data_path = os.environ.get("TEACHER_DATA_PATH")
 
             # Computing agreement of the feedbacks
+            i = 1
             for tag, (img, _) in self.sent_samples.items():
                 agreement: dict[str, int] = {}
                 max_agreement_score = 0
@@ -414,6 +455,9 @@ class WAgent(Agent):
 
                 # Augmenting lecture material
                 if agreed_class_name is not None:
+                    log.user(f"**There was an agreement for image number {i}!**\n\n"
+                             f"It was marked as belonging to category **{agreed_class_name}**")
+
                     if agreed_class_name in self.class_name_to_lecture_streams:
 
                         # Determining the name of the file to add to the lecture data
@@ -426,31 +470,120 @@ class WAgent(Agent):
 
                         # Saving file and adding to the stream source
                         img.save(file_name)
+                        log.user(f"Adding image to lecture {lecture_w_id}!")
                         self.class_name_to_lecture_streams[agreed_class_name][0].add(file_name)
                         self.class_name_to_lecture_streams[agreed_class_name][1].add(agreed_class_name)
+                else:
+                    log.user(f"*Unfortunately, feedbacks were not robust enough to decide on image number {i}*")
+                i += 1
 
         return self.current_feedback_provided
 
+    @action
+    async def on_data(self, stream_group: str) -> bool:
+        uuid = self.get_last_sent_interaction().uuid
+
+        def on_sending() -> bool:
+            stream = self.get_stream(stream_group, data_type="text")
+            data = stream.get("on_sending", uuid=uuid)
+            if data is None:
+                return False
+
+            tag = stream.get_tag(uuid=uuid)
+            if tag not in self.sent_samples:
+                self.sent_samples[tag] = [None, None]
+            self.sent_samples[tag][1] = data
+
+            stream = self.get_stream(stream_group, data_type="img")
+            data = stream.get("on_sending", uuid=uuid)
+            if data is None:
+                return False
+
+            if tag != stream.get_tag(uuid=uuid):
+                log.error("Unexpected tag!")
+                return False
+
+            if tag not in self.sent_samples:
+                self.sent_samples[tag] = [None, None]
+            self.sent_samples[tag][0] = data
+
+            log.user(f"   >>> Sent data with tag {tag}")
+            return True
+
+        def on_receiving():
+            at_least_one_received = False
+            for student in self.current_students:
+                student_stream = self.get_stream("processor", student, data_type="text")
+                msg = student_stream.get("on_receiving", uuid=uuid)
+                class_name = None
+                tag = -1
+                if msg is not None:
+                    at_least_one_received = True
+
+                    # Parsing UAI response, getting the class name from the 'raw' field
+                    if not msg.startswith("```"):
+                        class_name = msg
+                        tag = student_stream.get_tag(uuid=uuid)
+                    else:
+                        for line in msg.splitlines():
+                            line = line.strip()
+                            if not line.startswith("{"):
+                                continue
+                            try:
+                                data = json.loads(line)
+                            except json.JSONDecodeError:
+                                continue
+                            raw = data.get("raw") or []
+                            text = " ".join(raw) if isinstance(raw, list) else str(raw)
+                            class_name = re.sub(r"^[\s:\-–—]+", "", text).strip()
+                            try:
+                                tag = int((data.get("to") or "").split("-")[-1])
+                            except Exception:
+                                continue
+                            break
+                    if class_name is None:
+                        continue
+                else:
+                    continue
+
+                if tag not in self.received_samples:
+                    self.received_samples[tag]: dict[str, str] = {}
+                self.received_samples[tag][student] = class_name
+                log.user(f"   <<< Received prediction '{class_name}' for data with tag {tag} "
+                         f"from student {build_unaid(self.world_agents[student])}")
+            return at_least_one_received
+
+        sent = on_sending()
+        recv = on_receiving()
+
+        if sent:
+            self.last_data_sent_at = self.clock.get_time()
+        return sent or recv or (self.clock.get_time() - self.last_data_sent_at) < self.MAX_WAIT_FOR_RESPONSE
+
     def hook_before_sending_sample(self, data, data_tag: int, net_hash: str, stream_name: str, _: str | None):
+        if data is None:
+            return data
+
         stream_group = Stream.name_or_group_from_net_hash(net_hash)
-        if stream_group in {"exam", "feedback"} and stream_name == "class_names":
+        if stream_group in {"exam", "feedback"} and stream_name.split("@")[0] == "class_names":
             class_names = self.class_name_to_lecture_streams.keys()
             block = {
                 "v": 1,
                 "type": "form",
-                "id": f"catform-{stream_name}-{data_tag}",
-                "name": "categorization",
+                "id": f"catform-{stream_group}-{data_tag}",
+                "name": "What is the category of the picture above?",
                 "lang": "en",
                 "fields": [{
                     "name": "scelta",
                     "type": "select",
-                    "label": "class",
                     "required": True,
-                    "options": [{"value": f"opt{i}", "label": lab[:120]} for i, lab in enumerate(class_names)],
+                    "label": "",
+                    "options": [{"value": lab, "label": lab} for lab in class_names],
                     "ui": "buttons"
                 }],
-                "alt": f"Answer by only writing the class name ({', '.join(lab[:120] for lab in class_names)})"
+                "alt": f"Answer by only writing the class name ({', '.join(lab for lab in class_names)})"
             }
-            return f"What is the category of this picture?\n\n```uai\n{json.dumps(block, ensure_ascii=False)}\n```"
+            title = "**Exercise**" if stream_group == "exam" else "**Feedback Request** (Help!)"
+            return f"{title}\n\n```uai\n{json.dumps(block, ensure_ascii=False)}\n```"
         else:
             return data

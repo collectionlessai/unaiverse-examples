@@ -11,7 +11,7 @@
     },
     "states": {
         "init": {
-            "action": null,
+            "action": "init",
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
@@ -20,8 +20,8 @@
         "teacher_found": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
+            "msg": "*Connected, waiting for teacher's approval...*",
+            "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "in_class": {
@@ -34,21 +34,21 @@
         "done_learning": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
+            "msg": "*Done following the lecture!*",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
-        "done_exam": {
+        "done_exam_or_feedback": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
+            "msg": "*Finished providing responses!*",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "wait_to_recover": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
+            "msg": "*Recovering...*",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         }
@@ -62,7 +62,7 @@
                         "role": "teacher",
                         "filter_fcn": "one_at_random"
                     },
-                    "msg": "Connecting to a randomly selected teacher (if any)...",
+                    "msg": null,
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
@@ -79,7 +79,7 @@
                     "action_kwargs": {
                         "handshake_completed": true
                     },
-                    "msg": "Waiting for teacher's approval...",
+                    "msg": null,
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
@@ -92,13 +92,26 @@
         "in_class": [
             {
                 "on": {
-                    "action": "learn",
+                    "action": "print",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "in_class"
+            },
+            {
+                "on": {
+                    "action": "learn",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 10.0,
                     "delay": 0.0
                 },
                 "goto": "done_learning"
@@ -111,10 +124,10 @@
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 0.0,
+                    "retry_timeout": 15,
                     "delay": 0.0
                 },
-                "goto": "done_exam"
+                "goto": "done_exam_or_feedback"
             }
         ],
         "wait_to_recover": [],
@@ -133,7 +146,7 @@
                 "goto": "in_class"
             }
         ],
-        "done_exam": [
+        "done_exam_or_feedback": [
             {
                 "on": {
                     "action": "nop",
@@ -151,6 +164,21 @@
     },
     "teleports": {
         "teacher_found": [
+            {
+                "on": {
+                    "action": "disconnected",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 3.0
+                },
+                "goto": "wait_to_recover"
+            }
+        ],
+        "in_class": [
             {
                 "on": {
                     "action": "disconnected",

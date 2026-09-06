@@ -2,7 +2,7 @@
     "machine": {
         "role": "teacher",
         "initial_state": "init",
-        "msg": "Welcome to our tutorial at CoLLAs 2026! Your role: **teacher**",
+        "msg": "Welcome to our tutorial at **CoLLAs 2026**!\nYour role: **teacher**",
         "options": {
             "highlight_blocking_states_in_messages": false,
             "show_action_ticks_after_messages": false,
@@ -13,16 +13,23 @@
         "init": {
             "action": "reset_status",
             "action_kwargs": {},
-            "msg": "Checking if students connected...",
+            "msg": "Waiting for students...",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "in_class": {
             "action": null,
             "action_kwargs": {},
-            "msg": "In class, thinking about what to do next",
+            "msg": "In class...",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
+        },
+        "ready_for_lecture": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "Ready for lecture...",
+            "blocking": false,
+            "time_to_wait_before_acting": 5.0
         },
         "lecture_in_progress": {
             "action": null,
@@ -31,12 +38,26 @@
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
+        "ready_for_exam": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "Ready for the exam session...",
+            "blocking": false,
+            "time_to_wait_before_acting": 5.0
+        },
         "exam_in_progress": {
             "action": null,
             "action_kwargs": {},
             "msg": "Exam in progress...",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
+        },
+        "ready_for_feedback": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "Ready to send requests...",
+            "blocking": false,
+            "time_to_wait_before_acting": 5.0
         },
         "feedback_time": {
             "action": null,
@@ -68,7 +89,48 @@
         "in_class": [
             {
                 "on": {
-                    "action": "teach_next_lecture",
+                    "action": "give_next_lecture",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "ready_for_lecture"
+            },
+            {
+                "on": {
+                    "action": "start_exam_session",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "ready_for_exam"
+            },
+            {
+                "on": {
+                    "action": "ask_for_feedback",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "ready_for_feedback"
+            }
+        ],
+        "ready_for_lecture": [
+            {
+                "on": {
+                    "action": "teach",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
@@ -78,32 +140,6 @@
                     "delay": 0.0
                 },
                 "goto": "lecture_in_progress"
-            },
-            {
-                "on": {
-                    "action": "start_exam",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "exam_in_progress"
-            },
-            {
-                "on": {
-                    "action": "ask_feedback",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "feedback_time"
             }
         ],
         "lecture_in_progress": [
@@ -121,7 +157,37 @@
                 "goto": "in_class"
             }
         ],
+        "ready_for_exam": [
+            {
+                "on": {
+                    "action": "hand_out_exam",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "exam_in_progress"
+            }
+        ],
         "exam_in_progress": [
+            {
+                "on": {
+                    "action": "on_data",
+                    "action_kwargs": {
+                        "stream_group": "exam"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "exam_in_progress"
+            },
             {
                 "on": {
                     "action": "evaluate_results",
@@ -134,28 +200,12 @@
                     "delay": 0.0
                 },
                 "goto": "in_class"
-            },
-            {
-                "on": {
-                    "action": "on_data",
-                    "action_kwargs": {
-                        "stream_group": "exam",
-                        "data_type": "text"
-                    },
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "exam_in_progress"
             }
         ],
-        "feedback_time": [
+        "ready_for_feedback": [
             {
                 "on": {
-                    "action": "augment_lectures",
+                    "action": "send_requests",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
@@ -164,8 +214,10 @@
                     "retry_timeout": 0.0,
                     "delay": 0.0
                 },
-                "goto": "init"
-            },
+                "goto": "feedback_time"
+            }
+        ],
+        "feedback_time": [
             {
                 "on": {
                     "action": "on_data",
@@ -180,14 +232,10 @@
                     "delay": 0.0
                 },
                 "goto": "feedback_time"
-            }
-        ]
-    },
-    "teleports": {
-        "in_class": [
+            },
             {
                 "on": {
-                    "action": "no_students",
+                    "action": "augment_lectures",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
@@ -199,5 +247,6 @@
                 "goto": "init"
             }
         ]
-    }
+    },
+    "teleports": {}
 }

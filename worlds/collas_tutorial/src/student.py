@@ -12,23 +12,37 @@
                  Code Repositories:  https://github.com/collectionlessai/
                  Main Developers:    Stefano Melacci (Project Leader), Christian Di Maio, Tommaso Guidi
 """
+import json
 import random
-from unaiverse.agent import Agent
 from unaiverse.utils.logger import log
+from unaiverse.agent import Agent, action
+from unaiverse.interaction import Interaction
 
 
 class WAgent(Agent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    async def on_tick(self):
-        await super().on_tick()
+    @action
+    async def init(self):
+        block = {
+            "v": 1,
+            "type": "media",
+            "src": "https://lifelong-ml.cc/images/logo.png",
+            "mime": "image/png",
+            "alt": "(Conference Logo: https://lifelong-ml.cc/images/logo.png)"
+        }
+        title = ("**Lifelong Learning in Peer-to-Peer Communities of Human and AI Agents**\n\n"
+                 "Stefano Melacci, Tommaso Guidi, Christian Di Maio")
+        log.user(f"{title}\n\n```uai\n{json.dumps(block, ensure_ascii=False)}\n```")
+        return True
 
-        # Checking if the student has lost connection to the teacher
-        teacher = next(iter(self._found_agents)) if len(self._found_agents) > 0 else None
-        if teacher is not None and await self.disconnected():
-            log.user("❌ Ops! Lost connection to the teacher!")
-            await self.behav.act_ghost_transition(to_state="init")  # Going back to the initial state
+    @action
+    async def print(self, msg: str, interaction: Interaction | None = None):
+        if interaction is None:
+            return False
+        log.user(msg)
+        return True
 
     @staticmethod
     def one_at_random(addresses: list[list[str]], peer_ids: list[str]):
