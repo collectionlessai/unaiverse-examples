@@ -32,7 +32,7 @@ class WAgent(Agent):
             "mime": "image/png",
             "alt": "(Conference Logo: https://lifelong-ml.cc/images/logo.png)"
         }
-        title = ("**Lifelong Learning in Peer-to-Peer Communities of Human and AI Agents**\n\n"
+        title = ("🎓 **Lifelong Learning in Peer-to-Peer Communities of Human and AI Agents**\n\n"
                  "Stefano Melacci, Tommaso Guidi, Christian Di Maio")
         log.user(f"{title}\n\n```uai\n{json.dumps(block, ensure_ascii=False)}\n```")
         return True

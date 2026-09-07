@@ -2,7 +2,7 @@
     "machine": {
         "role": "student",
         "initial_state": "init",
-        "msg": "Welcome to our tutorial at CoLLAs 2026! Your role: **student**",
+        "msg": "&#127891; Welcome to our tutorial at **CoLLAs 2026**! Your role: **student**",
         "options": {
             "highlight_blocking_states_in_messages": false,
             "show_action_ticks_after_messages": false,
@@ -20,7 +20,7 @@
         "teacher_found": {
             "action": null,
             "action_kwargs": {},
-            "msg": "*Connected, waiting for teacher's approval...*",
+            "msg": "&#128270; *Connected, waiting for teacher's approval...*",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
@@ -34,21 +34,21 @@
         "done_learning": {
             "action": null,
             "action_kwargs": {},
-            "msg": "*Done following the lecture!*",
+            "msg": "&#9989; *Done following the lecture!*",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "done_exam_or_feedback": {
             "action": null,
             "action_kwargs": {},
-            "msg": "*Finished providing responses!*",
+            "msg": "&#128228; *Answers submitted!*",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "wait_to_recover": {
             "action": null,
             "action_kwargs": {},
-            "msg": "*Recovering...*",
+            "msg": "&#128260; *Lost the teacher... trying again in a minute*",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         }
@@ -124,7 +124,7 @@
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 15,
+                    "retry_timeout": 10,
                     "delay": 0.0
                 },
                 "goto": "done_exam_or_feedback"
@@ -173,7 +173,7 @@
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "delay": 3.0
+                    "delay": 5.0
                 },
                 "goto": "wait_to_recover"
             }

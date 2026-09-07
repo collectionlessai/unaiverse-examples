@@ -2,7 +2,7 @@
     "machine": {
         "role": "teacher",
         "initial_state": "init",
-        "msg": "Welcome to our tutorial at **CoLLAs 2026**!\nYour role: **teacher**",
+        "msg": "&#127891; Welcome to our tutorial at CoLLAs 2026! Your role: teacher",
         "options": {
             "highlight_blocking_states_in_messages": false,
             "show_action_ticks_after_messages": false,
@@ -13,56 +13,56 @@
         "init": {
             "action": "reset_status",
             "action_kwargs": {},
-            "msg": "Waiting for students...",
+            "msg": "&#128336; Waiting for students to join the class...",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "in_class": {
             "action": null,
             "action_kwargs": {},
-            "msg": "In class...",
+            "msg": "&#127979; In class, deciding what to do next...",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "ready_for_lecture": {
             "action": null,
             "action_kwargs": {},
-            "msg": "Ready for lecture...",
+            "msg": "&#128218; Lecture about to start...",
             "blocking": false,
             "time_to_wait_before_acting": 5.0
         },
         "lecture_in_progress": {
             "action": null,
             "action_kwargs": {},
-            "msg": "Lecture in progress...",
+            "msg": "&#128218; Lecture in progress: streaming pictures and labels...",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "ready_for_exam": {
             "action": null,
             "action_kwargs": {},
-            "msg": "Ready for the exam session...",
+            "msg": "&#128221; Exam session about to start...",
             "blocking": false,
             "time_to_wait_before_acting": 5.0
         },
         "exam_in_progress": {
             "action": null,
             "action_kwargs": {},
-            "msg": "Exam in progress...",
+            "msg": "&#128221; Exam in progress...",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "ready_for_feedback": {
             "action": null,
             "action_kwargs": {},
-            "msg": "Ready to send requests...",
+            "msg": "&#128587; About to ask students for help...",
             "blocking": false,
             "time_to_wait_before_acting": 5.0
         },
         "feedback_time": {
             "action": null,
             "action_kwargs": {},
-            "msg": "Waiting for feedback...",
+            "msg": "&#128587; Waiting for feedback on unlabeled pictures...",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         }

@@ -41,16 +41,19 @@ class WWorld(World):
         dummy_agent = WAgentTeacher(proc=None)
         behav = HybridStateMachine(dummy_agent)
         behav.set_role("teacher")
-        behav.set_welcome_message("Welcome to our tutorial at **CoLLAs 2026**!\nYour role: **teacher**")
+        behav.set_welcome_message("🎓 Welcome to our tutorial at CoLLAs 2026! Your role: teacher")
 
-        behav.add_state("init", action="reset_status", blocking=False, msg="Waiting for students...")
-        behav.add_state("in_class", blocking=False, msg="In class...")
-        behav.add_state("ready_for_lecture", waiting_time=5.0, blocking=False, msg="Ready for lecture...")
-        behav.add_state("lecture_in_progress", blocking=True, msg="Lecture in progress...")
-        behav.add_state("ready_for_exam", waiting_time=5.0, blocking=False, msg="Ready for the exam session...")
-        behav.add_state("exam_in_progress", blocking=True, msg="Exam in progress...")
-        behav.add_state("ready_for_feedback", waiting_time=5.0, blocking=False, msg="Ready to send requests...")
-        behav.add_state("feedback_time", blocking=True, msg="Waiting for feedback...")
+        behav.add_state("init", action="reset_status", blocking=False,
+                        msg="🕐 Waiting for students to join the class...")
+        behav.add_state("in_class", blocking=False, msg="🏫 In class, deciding what to do next...")
+        behav.add_state("ready_for_lecture", waiting_time=5.0, blocking=False, msg="📚 Lecture about to start...")
+        behav.add_state("lecture_in_progress", blocking=True,
+                        msg="📚 Lecture in progress: streaming pictures and labels...")
+        behav.add_state("ready_for_exam", waiting_time=5.0, blocking=False, msg="📝 Exam session about to start...")
+        behav.add_state("exam_in_progress", blocking=True, msg="📝 Exam in progress...")
+        behav.add_state("ready_for_feedback", waiting_time=5.0, blocking=False,
+                        msg="🙋 About to ask students for help...")
+        behav.add_state("feedback_time", blocking=True, msg="🙋 Waiting for feedback on unlabeled pictures...")
 
         behav.add_transit("init", "in_class",
                           action="find_agents",
@@ -85,14 +88,14 @@ class WWorld(World):
         dummy_agent = WAgentStudent(proc=None)
         behav = HybridStateMachine(dummy_agent)
         behav.set_role("student")
-        behav.set_welcome_message("Welcome to our tutorial at CoLLAs 2026! Your role: **student**")
+        behav.set_welcome_message("🎓 Welcome to our tutorial at **CoLLAs 2026**! Your role: **student**")
 
         behav.add_state("init", blocking=False, action="init")
-        behav.add_state("teacher_found", blocking=True, msg="*Connected, waiting for teacher's approval...*")
+        behav.add_state("teacher_found", blocking=True, msg="🔎 *Connected, waiting for teacher's approval...*")
         behav.add_state("in_class", blocking=False)
-        behav.add_state("done_learning", blocking=False, msg="*Done following the lecture!*")
-        behav.add_state("done_exam_or_feedback", blocking=False, msg="*Finished providing responses!*")
-        behav.add_state("wait_to_recover", blocking=False, msg="*Recovering...*")
+        behav.add_state("done_learning", blocking=False, msg="✅ *Done following the lecture!*")
+        behav.add_state("done_exam_or_feedback", blocking=False, msg="📤 *Answers submitted!*")
+        behav.add_state("wait_to_recover", blocking=False, msg="🔄 *Lost the teacher... trying again in a minute*")
 
         behav.add_transit("init", "teacher_found",
                           action="connect_by_role",
@@ -101,7 +104,7 @@ class WWorld(World):
                           action="connected",
                           args={"handshake_completed": True})
         behav.add_transit("teacher_found", "wait_to_recover", action="disconnected",
-                          delay=3.0, teleport=True)
+                          delay=5.0, teleport=True)
         behav.add_transit("wait_to_recover", "init", action="nop", delay=60, teleport=True)
         behav.add_transit("in_class", "in_class", action="print", args={}, ready=False)
         behav.add_transit("in_class", "done_learning", action="learn", args={},

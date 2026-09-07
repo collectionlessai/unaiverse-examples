@@ -29,16 +29,17 @@ class WAgent(Agent):
     """Teacher agent."""
 
     # Configuration (current data has 6 classes in total, divided into folders with data from 2 classes in each of them)
-    LECTURE_SAMPLES = 1  # 6
-    LECTURE_DELTA = 6.0
+    LECTURE_SAMPLES = 6
+    LECTURE_DELTA = 8.0
     LECTURE_MAX_DURATION = LECTURE_DELTA * LECTURE_SAMPLES + 10.
     EXAM_SAMPLES = 2
     EXAM_DELTA = 10.0
     EXAM_MAX_DURATION = EXAM_DELTA * EXAM_SAMPLES + 10.
-    FEEDBACK_SAMPLES = 2  # Unlabeled samples
+    FEEDBACK_SAMPLES = 2
     FEEDBACK_DELTA = EXAM_DELTA
     FEEDBACK_MAX_DURATION = FEEDBACK_SAMPLES * FEEDBACK_DELTA + 10.
     MAX_WAIT_FOR_RESPONSE = 3.  # Student completes an interaction => sends its response => it takes time to travel
+    FEEDBACK_QUALITY_THRESHOLD = 0.0  # Feedback from students with a quality score lower than this will be discarded
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -55,9 +56,6 @@ class WAgent(Agent):
 
         # Estimated quality of every student, moving average in [0.0,1.0] (this will not be reset)
         self.student_quality: dict[str, float] = {}
-
-        # Results of the last done exam in [0.0,1.0] (this will not be reset)
-        self.student_last_exam_scores: dict[str, float] = {}
 
         # For every class involved in lectures, we have a stream of images and a stream of class names (labels)
         self.class_name_to_lecture_streams: dict[str, list[ImageFileStream | StringStream]] = \
@@ -194,29 +192,28 @@ class WAgent(Agent):
 
         if self.paused:
             self.behav.enable(False)
-            log.user("⏸️ Paused! (finishing the current activity first)")
+            log.user("⏸️ Paused — will hold after the current activity (space to resume)")
 
-        if not self.paused and self.prev_print_time > 0 and (self.clock.get_time() - self.prev_print_time) >= 3.:
+        if not self.paused:
             students = self.get_agents_by_role('student')
-            scores = self.student_last_exam_scores
             quality = self.student_quality
             state = self.behav.get_state_name(consider_limbo=True)
             if "lecture" in state:
-                s = f"   Activity: teaching lecture #{self.current_lecture_num}"
+                s = f"   [Activity] Teaching lecture #{self.current_lecture_num}"
             elif "exam" in state:
-                s = f"   Activity: running exam"
+                s = f"   [Activity] Running exam"
             elif "feedback" in state:
-                s = f"   Activity: asking for feedback"
+                s = f"   [Activity] Asking for feedback"
             else:
-                s = f"   Activity: misc"
-            s += f"\n   State:    {state}"
-            s += f"\n   Students: {len(students)}"
-            for student in students:
-                s += f"\n             {build_unaid(self.world_agents[student])}, "
-                s += f"last exam "
-                s += f"{scores[student] if student in scores else '?'}, "
-                s += f"quality "
-                s += f"{quality[student] if student in quality else '?'}"
+                s = f"   [Activity] Misc"
+            s += f"\n   [Students] "
+            for i, student in enumerate(students):
+                if i > 0:
+                    s += "\n             "
+                s += f"{build_unaid(self.world_agents[student])} "
+                if student in quality:
+                    q = quality[student]
+                    s += "★" * round(q * 5.) + "☆" * (5 - round(q * 5.)) + f" ({q:.0%})"
             if s != self.prev_print_string:
                 log.user(s)
                 self.prev_print_string = s
@@ -247,8 +244,8 @@ class WAgent(Agent):
 
         # Telling the students
         return await self.send(action_name="print",
-                               action_kwargs={"msg": f"**Lecture {self.current_lecture_num}/{3}**\n\n"
-                                                     "*Check the following pictures and learn!*\n\n"
+                               action_kwargs={"msg": f"📚 **Lecture {self.current_lecture_num}/{3}**\n\n"
+                                                     "*Watch the following pictures and learn!*\n\n"
                                                      "You are expected to learn to associate pictures with their "
                                                      "category name, provided right after the pictures."},
                                from_state="in_class",
@@ -268,6 +265,7 @@ class WAgent(Agent):
                                    "stdtar": [f"class_names@lecture{self.current_lecture_num}"]
                                },
                                num_steps=self.LECTURE_SAMPLES,
+                               num_samples_to_stream=self.LECTURE_SAMPLES,
                                timeout=self.LECTURE_MAX_DURATION,
                                callback="mark_lecture_as_finished")
 
@@ -292,6 +290,10 @@ class WAgent(Agent):
 
     @action
     async def lecture_finished(self) -> bool:
+        if self.current_lecture_finished:
+            if self.last_data_sent_at < 0:
+                self.last_data_sent_at = self.clock.get_time()
+            return (self.clock.get_time() - self.last_data_sent_at) > self.MAX_WAIT_FOR_RESPONSE
         return self.current_lecture_finished
 
     @action
@@ -308,8 +310,8 @@ class WAgent(Agent):
 
         # Telling the students
         return await self.send(action_name="print",
-                               action_kwargs={"msg": "**Exam time**\n\n*Let's see if you are good at "
-                                                     "classifying the following pictures!*\n\nGood luck!"},
+                               action_kwargs={"msg": "📝 **Exam time!**\n\n*Let's see if you are good at "
+                                                     "classifying the following pictures!*\n\nGood luck! 🍀"},
                                from_state="in_class",
                                target=self.get_agents_by_role("student"),
                                volatile=True)
@@ -327,6 +329,7 @@ class WAgent(Agent):
                             "stdext": [f"class_names@exam"]
                         },
                         num_steps=self.EXAM_SAMPLES,
+                        num_samples_to_stream=self.EXAM_SAMPLES,
                         timeout=self.EXAM_MAX_DURATION,
                         callback="mark_exam_as_finished")
 
@@ -357,22 +360,43 @@ class WAgent(Agent):
         if self.current_exam_finished:
 
             # Computing exam scores
-            self.student_last_exam_scores = {student: 0. for student in self.current_students}
-            for tag, (_, ground_truth) in self.sent_samples.items():
+            student_last_exam_scores = {student: 0. for student in self.current_students}
+            student_last_exam_detailed_results = {student: ["·"] * len(self.sent_samples)
+                                                  for student in self.current_students}
+            for i, (tag, (_, ground_truth)) in enumerate(self.sent_samples.items()):
                 if tag in self.received_samples:
                     for student, answer in self.received_samples[tag].items():
-                        self.student_last_exam_scores[student] += (
-                            float(answer.strip().lower() == ground_truth.strip().lower()))
-            for student, score in self.student_last_exam_scores.items():
-                self.student_last_exam_scores[student] = float(score) / max(len(self.sent_samples), 1)
+                        correct = answer.strip().lower() == ground_truth.strip().lower()
+                        student_last_exam_detailed_results[student][i] = "✓" if correct else "✗"
+                        student_last_exam_scores[student] += float(correct)
+            for student, score in student_last_exam_scores.items():
+                student_last_exam_scores[student] = float(score) / max(len(self.sent_samples), 1)
 
             # Estimating student average quality (moving average)
-            # Initial value, assumed to be max 0.5, to avoid having had a first lucky shot
-            for student, score in self.student_last_exam_scores.items():
+            # Initial value is biased by a first lucky shot, but it is fine for the tutorial
+            for student, score in student_last_exam_scores.items():
                 if student not in self.student_quality:
-                    self.student_quality[student] = min(score, 0.5)
+                    self.student_quality[student] = score  # We could initialize this in many ways (fine for tutorial)
                 else:
                     self.student_quality[student] = self.student_quality[student] * 0.5 + score * 0.5
+
+            # Printing
+            s = "   [Results]  "
+            for i, (student, detailed_result) in enumerate(student_last_exam_detailed_results.items()):
+                if i > 0:
+                    s += "\n             "
+                s += f"{build_unaid(self.world_agents[student])} " + (" ".join(detailed_result)) + " "
+                q = student_last_exam_scores[student]
+                s += "★" * round(q * 5.) + "☆" * (5 - round(q * 5.)) + f" ({q:.0%})"
+            log.user(s)
+
+            # Communicating results to every student
+            for student, score in student_last_exam_scores.items():
+                await self.send(action_name="print",
+                                action_kwargs={"msg": f"🎯 Your exam result: **{score:.0%}**"},
+                                from_state="in_class",
+                                target=student,
+                                volatile=True)
 
         return self.current_exam_finished
 
@@ -387,7 +411,7 @@ class WAgent(Agent):
 
         # Telling the students
         return await self.send(action_name="print",
-                               action_kwargs={"msg": "**Feedback time**\n\n*I need your support to categorize "
+                               action_kwargs={"msg": "🙋 **Feedback time**\n\n*I need your support to categorize "
                                                      "some unlabeled pictures!*\n\nHelp me!"},
                                from_state="in_class",
                                target=self.get_agents_by_role("student"),
@@ -405,6 +429,7 @@ class WAgent(Agent):
                             "stdin": [f"images@feedback", f"class_names@feedback"],
                         },
                         num_steps=self.FEEDBACK_SAMPLES,
+                        num_samples_to_stream=self.FEEDBACK_SAMPLES,
                         timeout=self.FEEDBACK_MAX_DURATION,
                         callback="mark_feedback_as_provided")
 
@@ -444,7 +469,7 @@ class WAgent(Agent):
 
                 if tag in self.received_samples:
                     for student, answer in self.received_samples[tag].items():
-                        if self.student_quality[student] > 0.8:
+                        if self.student_quality[student] >= self.FEEDBACK_QUALITY_THRESHOLD:
                             answer = answer.strip().capitalize()
                             if answer not in agreement:
                                 agreement[answer] = 0
@@ -455,8 +480,8 @@ class WAgent(Agent):
 
                 # Augmenting lecture material
                 if agreed_class_name is not None:
-                    log.user(f"**There was an agreement for image number {i}!**\n\n"
-                             f"It was marked as belonging to category **{agreed_class_name}**")
+                    log.user(f"🤝 Agreement on picture {i}/{len(self.sent_samples)}: "
+                             f"it belongs to category '{agreed_class_name}'")
 
                     if agreed_class_name in self.class_name_to_lecture_streams:
 
@@ -466,49 +491,46 @@ class WAgent(Agent):
                         nums = [int(f.split("_")[0]) for f in os.listdir(folder)
                                 if f.endswith(".jpg") and f.split("_")[0].isdigit()]
                         last = max(nums, default=0)
-                        file_name = os.path.join(folder, f"{last + 1:03d}_{agreed_class_name}.jpg")
+                        file_name_only = f"{last + 1:03d}_{agreed_class_name}.jpg"
+                        file_name = os.path.join(folder, file_name_only)
 
                         # Saving file and adding to the stream source
                         img.save(file_name)
-                        log.user(f"Adding image to lecture {lecture_w_id}!")
+                        log.user(f"📈 Adding image {file_name_only} to lecture {lecture_w_id}!")
                         self.class_name_to_lecture_streams[agreed_class_name][0].add(file_name)
                         self.class_name_to_lecture_streams[agreed_class_name][1].add(agreed_class_name)
                 else:
-                    log.user(f"*Unfortunately, feedbacks were not robust enough to decide on image number {i}*")
+                    log.user(f"🤷 No robust agreement on picture {i}/{len(self.sent_samples)}")
                 i += 1
 
         return self.current_feedback_provided
 
     @action
     async def on_data(self, stream_group: str) -> bool:
-        uuid = self.get_last_sent_interaction().uuid
+        interaction = self.get_last_sent_interaction()
+        uuid = interaction.uuid
 
         def on_sending() -> bool:
-            stream = self.get_stream(stream_group, data_type="text")
-            data = stream.get("on_sending", uuid=uuid)
-            if data is None:
+            if len(self.sent_samples) >= interaction.num_samples_to_stream:
                 return False
 
-            tag = stream.get_tag(uuid=uuid)
-            if tag not in self.sent_samples:
-                self.sent_samples[tag] = [None, None]
-            self.sent_samples[tag][1] = data
+            img_stream = self.get_stream(stream_group, data_type="img")
+            img_tag = img_stream.get_tag(uuid=uuid)
 
-            stream = self.get_stream(stream_group, data_type="img")
-            data = stream.get("on_sending", uuid=uuid)
-            if data is None:
+            text_stream = self.get_stream(stream_group, data_type="text")
+            text_tag = text_stream.get_tag(uuid=uuid)
+
+            if img_tag is not None and text_tag is not None and img_tag == text_tag:
+                img = img_stream.get("on_sending", uuid=uuid)
+                text = text_stream.get("on_sending", uuid=uuid)
+
+                if img is None or text is None:
+                    return False
+
+                self.sent_samples[img_tag] = [img, text]
+                return True
+            else:
                 return False
-
-            if tag != stream.get_tag(uuid=uuid):
-                log.error("Unexpected tag!")
-                return False
-
-            if tag not in self.sent_samples:
-                self.sent_samples[tag] = [None, None]
-            self.sent_samples[tag][0] = data
-
-            log.user(f"   >>> Sent data with tag {tag}")
-            return True
 
         def on_receiving():
             at_least_one_received = False
@@ -546,11 +568,13 @@ class WAgent(Agent):
                 else:
                     continue
 
-                if tag not in self.received_samples:
-                    self.received_samples[tag]: dict[str, str] = {}
-                self.received_samples[tag][student] = class_name
-                log.user(f"   <<< Received prediction '{class_name}' for data with tag {tag} "
-                         f"from student {build_unaid(self.world_agents[student])}")
+                if tag in self.sent_samples:
+                    if tag not in self.received_samples:
+                        self.received_samples[tag]: dict[str, str] = {}
+                    self.received_samples[tag][student] = class_name
+                    img_num = list(self.sent_samples).index(tag) + 1
+                    log.user(f"   📩 {build_unaid(self.world_agents[student])}: '{class_name}' "
+                             f"(picture {img_num}/{len(self.sent_samples)})")
             return at_least_one_received
 
         sent = on_sending()
@@ -571,7 +595,7 @@ class WAgent(Agent):
                 "v": 1,
                 "type": "form",
                 "id": f"catform-{stream_group}-{data_tag}",
-                "name": "What is the category of the picture above?",
+                "name": "What is the category of this picture?",
                 "lang": "en",
                 "fields": [{
                     "name": "scelta",
@@ -583,7 +607,7 @@ class WAgent(Agent):
                 }],
                 "alt": f"Answer by only writing the class name ({', '.join(lab for lab in class_names)})"
             }
-            title = "**Exercise**" if stream_group == "exam" else "**Feedback Request** (Help!)"
+            title = "🧩 **Exercise**" if stream_group == "exam" else "🆘 **Feedback Request** (Help!)"
             return f"{title}\n\n```uai\n{json.dumps(block, ensure_ascii=False)}\n```"
         else:
             return data
