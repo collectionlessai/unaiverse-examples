@@ -3,6 +3,8 @@ from unaiverse.agent import Agent
 from unaiverse.networking.node.node import Node
 
 if __name__ == "__main__":
+
+    # The source from where the teacher will stream its data
     os.environ["TEACHER_DATA_PATH"] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
     # Agent

@@ -22,14 +22,14 @@
             "action_kwargs": {},
             "msg": "&#127979; In class, deciding what to do next...",
             "blocking": false,
-            "time_to_wait_before_acting": 0.0
+            "time_to_wait_before_acting": 3.0
         },
         "ready_for_lecture": {
             "action": null,
             "action_kwargs": {},
             "msg": "&#128218; Lecture about to start...",
             "blocking": false,
-            "time_to_wait_before_acting": 5.0
+            "time_to_wait_before_acting": 8.0
         },
         "lecture_in_progress": {
             "action": null,
@@ -43,7 +43,7 @@
             "action_kwargs": {},
             "msg": "&#128221; Exam session about to start...",
             "blocking": false,
-            "time_to_wait_before_acting": 5.0
+            "time_to_wait_before_acting": 8.0
         },
         "exam_in_progress": {
             "action": null,
@@ -57,7 +57,7 @@
             "action_kwargs": {},
             "msg": "&#128587; About to ask students for help...",
             "blocking": false,
-            "time_to_wait_before_acting": 5.0
+            "time_to_wait_before_acting": 8.0
         },
         "feedback_time": {
             "action": null,

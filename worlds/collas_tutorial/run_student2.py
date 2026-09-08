@@ -3,12 +3,13 @@ from unaiverse.agent import Agent
 from run_student1 import LightCNUNetwork
 from unaiverse.streams import StreamType
 from unaiverse.networking.node.node import Node
-from unaiverse.modules.utils import transforms_factory
+from unaiverse.modules.utils import transforms_factory, set_seed
 
 if __name__ == "__main__":
+    set_seed(42)
 
     # Network
-    net = LightCNUNetwork()
+    net = LightCNUNetwork()  # Same as student 1, just differently initialized
 
     # Agent
     agent = Agent(proc=net,
@@ -17,7 +18,7 @@ if __name__ == "__main__":
                   proc_outputs=[StreamType(data_type="text",
                                            stream_to_proc_transforms=net.get_class_ids,
                                            proc_to_stream_transforms=net.get_class_names)],
-                  proc_opts={'optimizer': torch.optim.SGD(net.parameters(), lr=0.05),
+                  proc_opts={'optimizer': torch.optim.SGD(net.parameters(), lr=0.5),
                              'losses': [torch.nn.functional.cross_entropy]})
 
     # Node hosting the student agent

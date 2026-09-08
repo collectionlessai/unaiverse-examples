@@ -2,7 +2,7 @@
     "machine": {
         "role": "student",
         "initial_state": "init",
-        "msg": "&#127891; Welcome to our tutorial at **CoLLAs 2026**! Your role: **student**",
+        "msg": "&#127891; **Lifelong Learning in Peer-to-Peer Communities of Human and AI Agents**\n\nTutorial by Stefano Melacci, Tommaso Guidi, Christian Di Maio\n\n```uai\n\n{\"v\": 1, \"type\": \"media\", \"src\": \"https://lifelong-ml.cc/images/logo.png\", \"mime\": \"image/png\", \"alt\": \"(Conference Logo: https://lifelong-ml.cc/images/logo.png)\"}\n\n```",
         "options": {
             "highlight_blocking_states_in_messages": false,
             "show_action_ticks_after_messages": false,
@@ -11,11 +11,11 @@
     },
     "states": {
         "init": {
-            "action": "init",
+            "action": null,
             "action_kwargs": {},
             "msg": null,
             "blocking": false,
-            "time_to_wait_before_acting": 0.0
+            "time_to_wait_before_acting": 3.0
         },
         "teacher_found": {
             "action": null,
@@ -34,14 +34,14 @@
         "done_learning": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9989; *Done following the lecture!*",
+            "msg": null,
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "done_exam_or_feedback": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#128228; *Answers submitted!*",
+            "msg": null,
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
@@ -111,7 +111,7 @@
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 10.0,
+                    "retry_timeout": 10.5,
                     "delay": 0.0
                 },
                 "goto": "done_learning"
@@ -124,7 +124,7 @@
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 10,
+                    "retry_timeout": 15,
                     "delay": 0.0
                 },
                 "goto": "done_exam_or_feedback"
