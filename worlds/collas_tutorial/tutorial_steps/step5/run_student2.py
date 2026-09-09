@@ -22,7 +22,7 @@ if __name__ == "__main__":
                              'losses': [torch.nn.functional.cross_entropy]})
 
     # Node hosting the student agent
-    node = Node(node_name="CoLLAsStudent2", hosted=agent, hidden=True, clock_delta=1./50.)
+    node = Node(node_name="CoLLAsStudent2_", hosted=agent, hidden=True, clock_delta=1./50.)
 
     # Running node
-    node.run(join_world="CoLLAsTutorial")
+    node.run(join_world="CoLLAsTutorial_")

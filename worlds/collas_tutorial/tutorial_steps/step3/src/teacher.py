@@ -38,7 +38,7 @@ class WAgent(Agent):
     FEEDBACK_MAX_DURATION = FEEDBACK_SAMPLES * FEEDBACK_DELTA + 10.
 
     MAX_WAIT_FOR_RESPONSE = 3  # Student completes an interaction => sends its response => it takes time to travel
-    FEEDBACK_QUALITY_THRESHOLD = 0.8  # Feedback from students with a quality score lower than this will be discarded
+    FEEDBACK_QUALITY_THRESHOLD = 0.6  # Feedback from students with a quality score lower than this will be discarded
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
