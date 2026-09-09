@@ -28,7 +28,7 @@ class Config:
                                            'kFWZyB3cv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa'}  # AIs
     registered_users_form_column_id = 3  # Zero-based column index of the nickname in the spreadsheet
     broadcast_when_no_humans = True
-    max_message_size = 1024  # Set it to <= 0 to disable
+    max_message_size = 512  # Set it to <= 0 to disable
     use_letter_names = False
     test_duration = 300  # Seconds (int)
     survey_reply_time = 240  # Seconds (WARNING: do not get too close to 300, since all interactions expire at 300!)
@@ -92,14 +92,16 @@ class Config:
                      f"La conversazione dura al massimo {test_duration} secondi e puoi scrivere "
                      f"'{exit_trigger_message}' in qualunque "
                      f"momento per lasciare subito la stanza "
-                     f"(scrivi solo '{exit_trigger_message}' senza apici e senza scrivere altro).")
+                     f"(scrivi solo '{exit_trigger_message}' senza apici e senza scrivere altro)."
+                     f"Ogni messaggio che invii deve avere al massimo {max_message_size} caratteri (spazi inclusi).")
     start_message_nobody = (f"[START_MSG_NOBODY] Benvenuto/a, ti chiami **<YOUR_NAME>** e "
                             f"per ora sei solo/a.\n"
                             f"La conversazione dura al massimo {test_duration} secondi e "
                             f"puoi scrivere "
                             f"'{exit_trigger_message}' in qualunque "
                             f"momento per lasciare subito la stanza "
-                            f"(scrivi solo '{exit_trigger_message}' senza apici e senza scrivere altro).")
+                            f"(scrivi solo '{exit_trigger_message}' senza apici e senza scrivere altro)."
+                            f"Ogni messaggio che invii deve avere al massimo {max_message_size} caratteri (spazi inclusi).")
     joined_message = f"[JOINED_MSG] Un nuovo agente è entrato nella stanza: **<SOME_NAME>**"
     left_message = f"[LEFT_MSG] Un agente ha lasciato la stanza: **<SOME_NAME>**"
     disconnected_message = f"[DISCO_MSG] Un agente si è disconnesso: **<SOME_NAME>**"
