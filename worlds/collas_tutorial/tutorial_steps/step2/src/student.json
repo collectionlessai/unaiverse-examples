@@ -1,0 +1,23 @@
+{
+    "machine": {
+        "role": "student",
+        "initial_state": "init",
+        "msg": "&#127891; Welcome to our tutorial at CoLLAs 2026! Your role: student",
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
+        }
+    },
+    "states": {
+        "init": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        }
+    },
+    "transitions": {},
+    "teleports": {}
+}

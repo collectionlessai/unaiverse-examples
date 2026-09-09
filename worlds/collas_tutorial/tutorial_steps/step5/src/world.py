@@ -14,7 +14,6 @@
 """
 import os
 import sys
-from .stats import WStats
 from unaiverse.world import World
 from unaiverse.custom import Custom
 from unaiverse.hsm import HybridStateMachine
@@ -25,12 +24,7 @@ class WWorld(World):
 
     def __init__(self, **kwargs):
         world_folder = os.path.dirname(os.path.abspath(__file__))
-
-        # This world includes stats-manangent:
-        # some info are saved to a local DB and shown as HTML when joining the world (see stats.py)
-        stats = WStats(is_world=True, db_path=os.path.join(world_folder, "stats", "world_stats.db"))
-
-        super().__init__(world_folder=world_folder, stats=stats, **kwargs)
+        super().__init__(world_folder=world_folder, **kwargs)
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         """This method implements the criterion the world uses to assign a role to every joining agent."""

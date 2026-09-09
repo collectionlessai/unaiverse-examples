@@ -1,8 +1,8 @@
 {
     "machine": {
-        "role": "student",
+        "role": "teacher",
         "initial_state": "init",
-        "msg": "&#127891; **Lifelong Learning in Peer-to-Peer Communities of Human and AI Agents**\n\nTutorial by Stefano Melacci, Tommaso Guidi, Christian Di Maio\n\n```uai\n\n{\"v\": 1, \"type\": \"media\", \"src\": \"https://lifelong-ml.cc/images/logo.png\", \"mime\": \"image/png\", \"alt\": \"(Conference Logo: https://lifelong-ml.cc/images/logo.png)\"}\n\n```",
+        "msg": "&#127891; Welcome to our tutorial at CoLLAs 2026! Your role: teacher",
         "options": {
             "highlight_blocking_states_in_messages": false,
             "show_action_ticks_after_messages": false,
@@ -11,45 +11,59 @@
     },
     "states": {
         "init": {
-            "action": null,
+            "action": "reset_status",
             "action_kwargs": {},
-            "msg": null,
+            "msg": "&#128336; Waiting for students to join the class...",
             "blocking": false,
-            "time_to_wait_before_acting": 3.0
-        },
-        "teacher_found": {
-            "action": null,
-            "action_kwargs": {},
-            "msg": "&#128270; *Connected, waiting for teacher's approval...*",
-            "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "in_class": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
+            "msg": "&#127979; In class, deciding what to do next...",
             "blocking": false,
-            "time_to_wait_before_acting": 0.0
+            "time_to_wait_before_acting": 3.0
         },
-        "done_learning": {
+        "ready_for_lecture": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
+            "msg": "&#128218; Lecture about to start...",
             "blocking": false,
-            "time_to_wait_before_acting": 0.0
+            "time_to_wait_before_acting": 8.0
         },
-        "done_exam_or_feedback": {
+        "lecture_in_progress": {
             "action": null,
             "action_kwargs": {},
-            "msg": null,
-            "blocking": false,
+            "msg": "&#128218; Lecture in progress: streaming pictures and labels...",
+            "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
-        "wait_to_recover": {
+        "ready_for_exam": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#128260; *Lost the teacher... trying again in a minute*",
+            "msg": "&#128221; Exam session about to start...",
             "blocking": false,
+            "time_to_wait_before_acting": 8.0
+        },
+        "exam_in_progress": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128221; Exam in progress...",
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        },
+        "ready_for_feedback": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128587; About to ask students for help...",
+            "blocking": false,
+            "time_to_wait_before_acting": 8.0
+        },
+        "feedback_time": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128587; Waiting for feedback on unlabeled pictures...",
+            "blocking": true,
             "time_to_wait_before_acting": 0.0
         }
     },
@@ -57,26 +71,9 @@
         "init": [
             {
                 "on": {
-                    "action": "connect_by_role",
+                    "action": "find_agents",
                     "action_kwargs": {
-                        "role": "teacher",
-                        "filter_fcn": "one_at_random"
-                    },
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "teacher_found"
-            }
-        ],
-        "teacher_found": [
-            {
-                "on": {
-                    "action": "connected",
-                    "action_kwargs": {
+                        "role": "student",
                         "handshake_completed": true
                     },
                     "msg": null,
@@ -92,49 +89,63 @@
         "in_class": [
             {
                 "on": {
-                    "action": "print",
+                    "action": "give_next_lecture",
                     "action_kwargs": {},
                     "msg": null,
-                    "ready": false,
+                    "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
                     "delay": 0.0
                 },
-                "goto": "in_class"
+                "goto": "ready_for_lecture"
             },
             {
                 "on": {
-                    "action": "learn",
+                    "action": "start_exam_session",
                     "action_kwargs": {},
                     "msg": null,
-                    "ready": false,
+                    "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 17.5,
+                    "retry_timeout": 0.0,
                     "delay": 0.0
                 },
-                "goto": "done_learning"
+                "goto": "ready_for_exam"
             },
             {
                 "on": {
-                    "action": "process",
+                    "action": "ask_for_feedback",
                     "action_kwargs": {},
                     "msg": null,
-                    "ready": false,
+                    "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 25,
+                    "retry_timeout": 0.0,
                     "delay": 0.0
                 },
-                "goto": "done_exam_or_feedback"
+                "goto": "ready_for_feedback"
             }
         ],
-        "wait_to_recover": [],
-        "done_learning": [
+        "ready_for_lecture": [
             {
                 "on": {
-                    "action": "nop",
+                    "action": "teach",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "lecture_in_progress"
+            }
+        ],
+        "lecture_in_progress": [
+            {
+                "on": {
+                    "action": "lecture_finished",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
@@ -146,10 +157,40 @@
                 "goto": "in_class"
             }
         ],
-        "done_exam_or_feedback": [
+        "ready_for_exam": [
             {
                 "on": {
-                    "action": "nop",
+                    "action": "hand_out_exam",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "exam_in_progress"
+            }
+        ],
+        "exam_in_progress": [
+            {
+                "on": {
+                    "action": "on_data",
+                    "action_kwargs": {
+                        "stream_group": "exam"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "exam_in_progress"
+            },
+            {
+                "on": {
+                    "action": "evaluate_results",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
@@ -160,28 +201,11 @@
                 },
                 "goto": "in_class"
             }
-        ]
-    },
-    "teleports": {
-        "teacher_found": [
-            {
-                "on": {
-                    "action": "disconnected",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 5.0
-                },
-                "goto": "wait_to_recover"
-            }
         ],
-        "in_class": [
+        "ready_for_feedback": [
             {
                 "on": {
-                    "action": "disconnected",
+                    "action": "send_requests",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
@@ -190,23 +214,39 @@
                     "retry_timeout": 0.0,
                     "delay": 0.0
                 },
-                "goto": "wait_to_recover"
+                "goto": "feedback_time"
             }
         ],
-        "wait_to_recover": [
+        "feedback_time": [
             {
                 "on": {
-                    "action": "nop",
+                    "action": "on_data",
+                    "action_kwargs": {
+                        "stream_group": "feedback"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "feedback_time"
+            },
+            {
+                "on": {
+                    "action": "augment_lectures",
                     "action_kwargs": {},
                     "msg": null,
                     "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,
-                    "delay": 60
+                    "delay": 0.0
                 },
                 "goto": "init"
             }
         ]
-    }
+    },
+    "teleports": {}
 }

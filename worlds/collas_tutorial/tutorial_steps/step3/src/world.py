@@ -14,7 +14,6 @@
 """
 import os
 import sys
-from .stats import WStats
 from unaiverse.world import World
 from unaiverse.custom import Custom
 from unaiverse.hsm import HybridStateMachine
@@ -25,12 +24,7 @@ class WWorld(World):
 
     def __init__(self, **kwargs):
         world_folder = os.path.dirname(os.path.abspath(__file__))
-
-        # This world includes stats-manangent:
-        # some info are saved to a local DB and shown as HTML when joining the world (see stats.py)
-        stats = WStats(is_world=True, db_path=os.path.join(world_folder, "stats", "world_stats.db"))
-
-        super().__init__(world_folder=world_folder, stats=stats, **kwargs)
+        super().__init__(world_folder=world_folder, **kwargs)
 
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
         """This method implements the criterion the world uses to assign a role to every joining agent."""
@@ -104,12 +98,7 @@ class WWorld(World):
 
         # [Student] Marking the HSM with the role and with the welcome message displayed when joining the world
         behav.set_role("student")
-        behav.set_welcome_message('🎓 **Lifelong Learning in Peer-to-Peer Communities of Human and AI Agents**\n\n'
-                                  'Tutorial by Stefano Melacci, Tommaso Guidi, Christian Di Maio\n\n'
-                                  '```uai\n\n'
-                                  '{"v": 1, "type": "media", "src": "https://lifelong-ml.cc/images/logo.png", '
-                                  '"mime": "image/png", '
-                                  '"alt": "(Conference Logo: https://lifelong-ml.cc/images/logo.png)"}\n\n```')
+        behav.set_welcome_message("🎓 Welcome to our tutorial at CoLLAs 2026! Your role: student")
 
         # [Student] States
         behav.add_state("init", waiting_time=3.0, blocking=False)

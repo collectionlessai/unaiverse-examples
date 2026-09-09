@@ -14,7 +14,6 @@
 """
 import os
 import sys
-import json
 from collections import defaultdict
 from unaiverse.streams import Stream
 from unaiverse.utils.logger import log
@@ -391,21 +390,6 @@ class WAgent(Agent):
                 else:
                     self.student_quality[student] = self.student_quality[student] * 0.5 + score * 0.5
 
-            # Storing per-student exam stats (see stats.py) in the world
-            # (grouped by the student's UNaID, again, see stats.py)
-            if self.stats is not None:
-                timestamp = self.clock.get_time_ms(monotonic=True)
-                for student, score in student_last_exam_scores.items():
-                    if student not in self.world_agents:  # Safety guard
-                        continue
-                    unaid = build_unaid(self.world_agents[student])
-                    self.stats.store_stat("exam_result",
-                                          {"score": score,
-                                           "correct": student_last_exam_detailed_results[student].count("✓"),
-                                           "questions": self.EXAM_SAMPLES,
-                                           "quality": self.student_quality[student]},
-                                          group_key=unaid, timestamp=timestamp)
-
             # Printing on screen
             s = "   [Results]  "
             for i, (student, detailed_result) in enumerate(student_last_exam_detailed_results.items()):
@@ -585,35 +569,11 @@ class WAgent(Agent):
                 class_name: str | None = None
                 tag = -1
 
-                # The student's response can be either just the class name, or a UAI component
+                # The response of an AI student is simply the class name
                 if msg is not None:
                     at_least_one_received = True
-
-                    if not msg.startswith("```"):
-
-                        # Case 1: class name only
-                        class_name = msg
-                        tag = student_stream.get_tag(uuid=uuid)
-                    else:
-
-                        # Case 2: UAI. Parsing UAI response, getting the class name from the 'raw' field
-                        for line in msg.splitlines():
-                            line = line.strip()
-                            if not line.startswith("{"):
-                                continue
-                            try:
-                                data = json.loads(line)
-                            except json.JSONDecodeError:
-                                continue
-                            values = data.get("values") or {}
-                            class_name = values["choice"] if "choice" in values else None
-                            try:
-                                tag = int((data.get("to") or "").split("-")[-1])  # Data tag is encoded in the form ID
-                            except Exception:
-                                continue
-                            break
-                    if class_name is None:
-                        continue
+                    class_name = msg
+                    tag = student_stream.get_tag(uuid=uuid)
                 else:
                     continue
 
@@ -638,38 +598,3 @@ class WAgent(Agent):
             self.last_data_sent_at = self.clock.get_time()
         return sent or recv or (self.clock.get_time() - self.last_data_sent_at) < self.MAX_WAIT_FOR_RESPONSE
 
-    def hook_before_sending_sample(self, data, data_tag: int, net_hash: str, stream_name: str, _: str | None):
-        """This is customizable hook, called right before sending a data sample through the network.
-        In case of exams and feedback requests, we replace the class name with a UAI component, so that the human user
-        will get an interactive visualization."""
-
-        # Safety guard
-        if data is None:
-            return data
-
-        stream_group = Stream.name_or_group_from_net_hash(net_hash)
-        if stream_group in {"exam", "feedback"} and stream_name.split("@")[0] == "class_names":
-
-            # Creating the UAI component
-            class_names = self.class_name_to_lecture_streams.keys()
-            block = {
-                "v": 1,
-                "type": "form",
-                "id": f"catform-{stream_group}-{data_tag}",
-                "name": "What is the category of this picture?",
-                "lang": "en",
-                "fields": [{
-                    "name": "choice",
-                    "type": "select",
-                    "required": True,
-                    "label": "",
-                    "options": [{"value": lab, "label": lab} for lab in class_names],
-                    "ui": "buttons"
-                }],
-                "alt": f"Answer by only writing the class name ({', '.join(lab for lab in class_names)})"
-            }
-            num = len(self.sent_samples) + 1
-            title = f"🧩 **Exercise {num}**" if stream_group == "exam" else f"🆘 **Feedback Request {num}** (Help!)"
-            return f"{title}\n\n```uai\n{json.dumps(block, ensure_ascii=False)}\n```"
-        else:
-            return data

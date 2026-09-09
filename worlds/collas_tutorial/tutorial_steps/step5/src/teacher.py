@@ -391,21 +391,6 @@ class WAgent(Agent):
                 else:
                     self.student_quality[student] = self.student_quality[student] * 0.5 + score * 0.5
 
-            # Storing per-student exam stats (see stats.py) in the world
-            # (grouped by the student's UNaID, again, see stats.py)
-            if self.stats is not None:
-                timestamp = self.clock.get_time_ms(monotonic=True)
-                for student, score in student_last_exam_scores.items():
-                    if student not in self.world_agents:  # Safety guard
-                        continue
-                    unaid = build_unaid(self.world_agents[student])
-                    self.stats.store_stat("exam_result",
-                                          {"score": score,
-                                           "correct": student_last_exam_detailed_results[student].count("✓"),
-                                           "questions": self.EXAM_SAMPLES,
-                                           "quality": self.student_quality[student]},
-                                          group_key=unaid, timestamp=timestamp)
-
             # Printing on screen
             s = "   [Results]  "
             for i, (student, detailed_result) in enumerate(student_last_exam_detailed_results.items()):
