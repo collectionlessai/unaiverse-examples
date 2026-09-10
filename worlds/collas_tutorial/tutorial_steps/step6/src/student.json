@@ -1,0 +1,212 @@
+{
+    "machine": {
+        "role": "student",
+        "initial_state": "init",
+        "msg": "&#127891; **Lifelong Learning in Peer-to-Peer Communities of Human and AI Agents**\n\nTutorial by Stefano Melacci, Tommaso Guidi, Christian Di Maio\n\n```uai\n\n{\"v\": 1, \"type\": \"media\", \"src\": \"https://lifelong-ml.cc/images/logo.png\", \"mime\": \"image/png\", \"alt\": \"(Conference Logo: https://lifelong-ml.cc/images/logo.png)\"}\n\n```",
+        "options": {
+            "highlight_blocking_states_in_messages": false,
+            "show_action_ticks_after_messages": false,
+            "show_action_request_after_messages": false
+        }
+    },
+    "states": {
+        "init": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 3.0
+        },
+        "teacher_found": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128270; *Connected, waiting for teacher's approval...*",
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
+        },
+        "in_class": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "done_learning": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "done_exam_or_feedback": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        },
+        "wait_to_recover": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": "&#128260; *Lost the teacher... trying again in a minute*",
+            "blocking": false,
+            "time_to_wait_before_acting": 0.0
+        }
+    },
+    "transitions": {
+        "init": [
+            {
+                "on": {
+                    "action": "connect_by_role",
+                    "action_kwargs": {
+                        "role": "teacher",
+                        "filter_fcn": "one_at_random"
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "teacher_found"
+            }
+        ],
+        "teacher_found": [
+            {
+                "on": {
+                    "action": "connected",
+                    "action_kwargs": {
+                        "handshake_completed": true
+                    },
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "in_class"
+            }
+        ],
+        "in_class": [
+            {
+                "on": {
+                    "action": "print",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "in_class"
+            },
+            {
+                "on": {
+                    "action": "learn",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 17.5,
+                    "delay": 0.0
+                },
+                "goto": "done_learning"
+            },
+            {
+                "on": {
+                    "action": "process",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": false,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 25,
+                    "delay": 0.0
+                },
+                "goto": "done_exam_or_feedback"
+            }
+        ],
+        "wait_to_recover": [],
+        "done_learning": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "in_class"
+            }
+        ],
+        "done_exam_or_feedback": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "in_class"
+            }
+        ]
+    },
+    "teleports": {
+        "teacher_found": [
+            {
+                "on": {
+                    "action": "disconnected",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 5.0
+                },
+                "goto": "wait_to_recover"
+            }
+        ],
+        "in_class": [
+            {
+                "on": {
+                    "action": "disconnected",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 0.0
+                },
+                "goto": "wait_to_recover"
+            }
+        ],
+        "wait_to_recover": [
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 60
+                },
+                "goto": "init"
+            }
+        ]
+    }
+}
