@@ -158,7 +158,9 @@ class WAgent(Agent):
             if not self.__is_in_form_filled_user_list(nickname, is_human):
                 init_message = (Config.init_message_with_form.
                                 replace("<FORM_LINK>",
-                                        base64.b64decode(('=' + Config.form[is_human][1:])[::-1].encode()).decode()))
+                                        base64.b64decode(
+                                            ('=' + Config.form[is_human][1:])[::-1].encode()).decode().replace(
+                                            "<YOUR_NICKNAME>", nickname)))  # <YOUR_NICKNAME> is in the decoded msg
             else:
                 init_message = Config.init_message
             log.user(init_message)

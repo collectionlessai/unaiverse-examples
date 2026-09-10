@@ -488,7 +488,8 @@ class WAgent(Agent):
 
                 if tag in self.received_samples:
                     for student, answer in self.received_samples[tag].items():
-                        if self.student_quality[student] >= self.FEEDBACK_QUALITY_THRESHOLD:  # Only good students :)
+                        if (student in self.student_quality and
+                                self.student_quality[student] >= self.FEEDBACK_QUALITY_THRESHOLD):  # Only good one :)
                             answer = answer.strip().capitalize()
                             if answer not in agreement:
                                 agreement[answer] = 0

@@ -164,6 +164,12 @@ class WAgent(Agent):
         """This method is automatically called at every clock cycle, right before asking the HSM to work."""
         await super().on_tick()
 
+
+        s = "Agents:"
+        for i, (_, profile) in enumerate(self.all_agents.items()):
+            s += "\n  " + str(build_unaid(profile))
+        log.user(s)
+
         # If there are no students connected, be sure we go back to the initial state
         if len(self.get_agents_by_role("student")) == 0 and self.behav.get_state_name() != "init":
             await self.behav.act_ghost_transition("init")  # A transition that is temporarily added -> used -> removed
@@ -239,7 +245,7 @@ class WAgent(Agent):
     @action
     async def give_next_lecture(self):
         """This action prepares the teacher and tells students that the next lecture is going to start."""
-
+        
         # If the teacher already streamed all the lectures, this action must fail
         if self.current_lecture_num > 3:
             return False
@@ -503,7 +509,8 @@ class WAgent(Agent):
 
                 if tag in self.received_samples:
                     for student, answer in self.received_samples[tag].items():
-                        if self.student_quality[student] >= self.FEEDBACK_QUALITY_THRESHOLD:  # Only good students :)
+                        if (student in self.student_quality and
+                                self.student_quality[student] >= self.FEEDBACK_QUALITY_THRESHOLD):  # Only good one :)
                             answer = answer.strip().capitalize()
                             if answer not in agreement:
                                 agreement[answer] = 0
