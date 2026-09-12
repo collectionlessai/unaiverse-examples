@@ -1,3 +1,4 @@
+import os
 import torch
 from unaiverse.agent import Agent
 from run_student1 import LightCNUNetwork
@@ -7,6 +8,11 @@ from unaiverse.modules.utils import transforms_factory, set_seed
 
 if __name__ == "__main__":
     set_seed(42)
+
+    # Setting up debug-like env variables for local testing
+    os.environ["NODE_IGNORE_ALIVE"] = "1"
+    os.environ["NODE_IS_PUBLIC"] = "1"
+    os.environ["NODE_IS_ISOLATED"] = "1"
 
     # Network
     net = LightCNUNetwork()  # Same as student 1, just differently initialized

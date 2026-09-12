@@ -4,6 +4,11 @@ from unaiverse.networking.node.node import Node
 
 if __name__ == "__main__":
 
+    # Setting up debug-like env variables for local testing
+    os.environ["NODE_IGNORE_ALIVE"] = "1"
+    os.environ["NODE_IS_PUBLIC"] = "1"
+    os.environ["NODE_IS_ISOLATED"] = "1"
+
     # Clearing spurious data from previous runs (images added by the teacher's augmentation are numbered above 60)
     for i in range(1, 4):
         folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "lectures", str(i))
