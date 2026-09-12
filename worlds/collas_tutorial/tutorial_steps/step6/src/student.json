@@ -124,7 +124,7 @@
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
-                    "retry_timeout": 25,
+                    "retry_timeout": 25.0,
                     "delay": 0.0
                 },
                 "goto": "done_exam_or_feedback"

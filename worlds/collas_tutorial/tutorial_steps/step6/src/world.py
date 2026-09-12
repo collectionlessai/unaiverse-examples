@@ -132,12 +132,11 @@ class WWorld(World):
         behav.add_transit("in_class", "in_class", action="print", args={}, ready=False)
         behav.add_transit("in_class", "done_learning",
                           action="learn", args={},  # The 'learn' action is multistep (multi clock cycles)
-                          timeout=max(2.5 * WAgentTeacher.LECTURE_DELTA, Custom.DEFAULT_TIMEOUT),
+                          timeout=WAgentTeacher.LECTURE_RESPONSE_DELTA,
                           ready=False)  # It is not ready: it is triggered by an interaction from another agent
         behav.add_transit("in_class", "done_exam_or_feedback",
                           action="process", args={},  # The 'process' action is multistep (multi clock cycles)
-                          timeout=int(max(2.5 * WAgentTeacher.EXAM_DELTA, 2.5 * WAgentTeacher.FEEDBACK_DELTA,
-                                          Custom.DEFAULT_TIMEOUT)),
+                          timeout=WAgentTeacher.EXAM_OR_FEEDBACK_RESPONSE_DELTA,
                           ready=False)
         behav.add_transit("in_class", "wait_to_recover", action="disconnected", teleport=True)
         behav.add_transit("done_learning", "in_class", action="nop", args={})

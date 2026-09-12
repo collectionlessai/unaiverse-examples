@@ -30,17 +30,17 @@ class WAgent(Agent):
     # Configuration (current data has 6 classes in total, divided into lectures with data from 2 classes each)
     LECTURE_SAMPLES = 6  # Number of samples per lecture
     LECTURE_DELTA = 7.0  # Time between two consecutive samples
-    LECTURE_MAX_DURATION = LECTURE_DELTA * LECTURE_SAMPLES + 10.  # Used to handle timeouts
+    LECTURE_RESPONSE_DELTA = 2.5 * LECTURE_DELTA  # Time between two consecutive responses
+    LECTURE_MAX_DURATION = LECTURE_RESPONSE_DELTA * LECTURE_SAMPLES  # Used to handle timeouts
 
     EXAM_SAMPLES = 6
-    EXAM_DELTA = 10.0
-    EXAM_MAX_DURATION = EXAM_DELTA * EXAM_SAMPLES + 10.
+    EXAM_OR_FEEDBACK_DELTA = 10.0
+    EXAM_OR_FEEDBACK_RESPONSE_DELTA = 2.5 * EXAM_OR_FEEDBACK_DELTA
+    EXAM_MAX_DURATION = EXAM_OR_FEEDBACK_RESPONSE_DELTA * EXAM_SAMPLES
 
     FEEDBACK_SAMPLES = 2
-    FEEDBACK_DELTA = EXAM_DELTA
-    FEEDBACK_MAX_DURATION = FEEDBACK_SAMPLES * FEEDBACK_DELTA + 10.
+    FEEDBACK_MAX_DURATION = EXAM_OR_FEEDBACK_RESPONSE_DELTA * FEEDBACK_SAMPLES
 
-    MAX_WAIT_FOR_RESPONSE = 3  # Student completes an interaction => sends its response => it takes time to travel
     FEEDBACK_QUALITY_THRESHOLD = 0.6  # Feedback from students with a quality score lower than this will be discarded
 
     def __init__(self, *args, **kwargs) -> None:
@@ -118,8 +118,8 @@ class WAgent(Agent):
                  ])
 
             # Mapping class name to the associated streams (stream of images, stream of class names)
-            self.class_name_to_lecture_streams.update({class_name: list(streams[0].values())
-                                                       for class_name in list(set(class_names))})
+            self.class_name_to_lecture_streams.update({class_name: list(streams[0].values())  # noqa
+                                                       for class_name in class_names})
 
         # Reading exam files in data/exam
         folder = os.path.join(str(data_path), "exam")
@@ -131,13 +131,13 @@ class WAgent(Agent):
                                         name="images",
                                         pubsub=False,
                                         public=False,
-                                        delta=self.EXAM_DELTA),
+                                        delta=self.EXAM_OR_FEEDBACK_DELTA),
                           Stream.create(stream=StringStream(class_names, circular=True),
                                         group="exam",
                                         name="class_names",
                                         pubsub=False,
                                         public=False,
-                                        delta=self.EXAM_DELTA)])
+                                        delta=self.EXAM_OR_FEEDBACK_DELTA)])
 
         # Reading feedback (unlabeled) files
         folder = os.path.join(str(data_path), "feedback")
@@ -149,13 +149,13 @@ class WAgent(Agent):
                                         name="images",
                                         pubsub=False,
                                         public=False,
-                                        delta=self.FEEDBACK_DELTA),
+                                        delta=self.EXAM_OR_FEEDBACK_DELTA),
                           Stream.create(stream=StringStream(class_names, circular=True),
                                         group="feedback",
                                         name="class_names",
                                         pubsub=False,
                                         public=False,
-                                        delta=self.FEEDBACK_DELTA)])
+                                        delta=self.EXAM_OR_FEEDBACK_DELTA)])
 
         # Refresh streams in profile (this way, the agents connecting to this agent will 'see' these streams)
         self.update_streams_in_profile()
@@ -163,12 +163,6 @@ class WAgent(Agent):
     async def on_tick(self):
         """This method is automatically called at every clock cycle, right before asking the HSM to work."""
         await super().on_tick()
-
-
-        s = "Agents:"
-        for i, (_, profile) in enumerate(self.all_agents.items()):
-            s += "\n  " + str(build_unaid(profile))
-        log.user(s)
 
         # If there are no students connected, be sure we go back to the initial state
         if len(self.get_agents_by_role("student")) == 0 and self.behav.get_state_name() != "init":
@@ -209,6 +203,8 @@ class WAgent(Agent):
             students = self.get_agents_by_role('student')
             quality = self.student_quality
             state = self.behav.get_state_name(consider_limbo=True)
+            if state is None:
+                return
             s = None
             if "lecture" in state:
                 s = f"   [Activity] Teaching lecture #{self.current_lecture_num}"
@@ -245,7 +241,7 @@ class WAgent(Agent):
     @action
     async def give_next_lecture(self):
         """This action prepares the teacher and tells students that the next lecture is going to start."""
-        
+
         # If the teacher already streamed all the lectures, this action must fail
         if self.current_lecture_num > 3:
             return False
@@ -303,7 +299,7 @@ class WAgent(Agent):
         if self.current_lecture_finished:
             if self.last_data_sent_at < 0:  # We wait a little bit for the last response to travel back
                 self.last_data_sent_at = self.clock.get_time()
-            ret = (self.clock.get_time() - self.last_data_sent_at) > self.MAX_WAIT_FOR_RESPONSE
+            ret = (self.clock.get_time() - self.last_data_sent_at) > self.LECTURE_RESPONSE_DELTA
             if ret:
                 self.current_lecture_num += 1  # Moving to the next lecture
             return ret
@@ -349,8 +345,8 @@ class WAgent(Agent):
                         callback="mark_exam_as_finished")
 
         # Saving the involved students (the ones who actually got our interaction, stored in the 'target' attribute)
-        self.current_students = set(self.get_last_sent_interaction().target) \
-            if self.get_last_sent_interaction() else set()
+        self.current_students = set(  # noqa
+            self.get_last_sent_interaction().target) if self.get_last_sent_interaction() else set()
 
         return len(self.current_students) > 0
 
@@ -472,8 +468,8 @@ class WAgent(Agent):
                         callback="mark_feedback_as_provided")
 
         # Saving the involved students (the ones who actually got our interaction, stored in the 'target' attribute)
-        self.current_students = set(self.get_last_sent_interaction().target) \
-            if self.get_last_sent_interaction() else set()
+        self.current_students = set(  # noqa
+            self.get_last_sent_interaction().target) if self.get_last_sent_interaction() else set()
 
         return len(self.current_students) > 0
 
@@ -562,9 +558,13 @@ class WAgent(Agent):
 
             # Here we consider a stream group composed on an image stream and a text stream
             img_stream = self.get_stream(stream_group, data_type="img")
+            if img_stream is None:
+                return False
             img_tag = img_stream.get_tag(uuid=uuid)
 
             text_stream = self.get_stream(stream_group, data_type="text")
+            if text_stream is None:
+                return False
             text_tag = text_stream.get_tag(uuid=uuid)
 
             if img_tag is not None and text_tag is not None and img_tag == text_tag:
@@ -574,6 +574,7 @@ class WAgent(Agent):
                 if img is None or text is None:
                     return False
 
+                assert img_tag is not None
                 self.sent_samples[img_tag] = [img, text]  # Saving
                 return True
             else:
@@ -594,6 +595,7 @@ class WAgent(Agent):
 
                 # The student's response can be either just the class name, or a UAI component
                 if msg is not None:
+                    assert isinstance(msg, str)
                     at_least_one_received = True
 
                     if not msg.startswith("```"):
@@ -624,7 +626,7 @@ class WAgent(Agent):
                 else:
                     continue
 
-                if tag in self.sent_samples and class_name is not None:
+                if tag is not None and tag in self.sent_samples and class_name is not None:
                     if tag not in self.received_samples:
                         self.received_samples[tag]: dict[str, str] = {}
                     self.received_samples[tag][student] = class_name  # Saving
@@ -640,10 +642,10 @@ class WAgent(Agent):
         sent = on_sending()
         recv = on_receiving()
 
-        # After some 'sent' data, we wait a little bit before returning False, to allow the last reponse to travel back
+        # After some 'sent' data, we wait a little bit before returning False, to allow the last response to travel back
         if sent:
             self.last_data_sent_at = self.clock.get_time()
-        return sent or recv or (self.clock.get_time() - self.last_data_sent_at) < self.MAX_WAIT_FOR_RESPONSE
+        return sent or recv or (self.clock.get_time() - self.last_data_sent_at) < self.EXAM_OR_FEEDBACK_RESPONSE_DELTA
 
     def hook_before_sending_sample(self, data, data_tag: int, net_hash: str, stream_name: str, _: str | None):
         """This is customizable hook, called right before sending a data sample through the network.
