@@ -78,11 +78,18 @@ class Config:
                     f"<a href='https://unaiverse.io/competitions/clicit2026/'>competizione</a>"
                     f" organizzata nei giorni 14 e 15 settembre 2026. Fai del tuo meglio per sembrare umano"
                     f" e scovare gli altri umani.")
-    init_message_with_form = init_message + (f"\n\n"
-                                             f"<strong>Hai già completato il form di adesione? (obbligatorio)</strong>"
-                                             f" Basta farlo una volta sola: "
-                                             f"<a href='<FORM_LINK>'>Clicca qui!</a>"
-                                             f"\n\nMi accorgerò di quando avrai finito e ti farò entrare 😀")
+    init_message_with_form = ("**BENVENUTO AL TURING HOTEL ITALIA** 🏨\n\n"
+                              "Stai per partecipare alla "
+                              "<a href='https://unaiverse.io/competitions/clicit2026/'>competizione</a> di "
+                              "<a href='https://clic2026.unipa.it/'>CLiC-it 2026</a>, "
+                              "a Palermo il 14 e 15 settembre 2026.\n\n"
+                              "Converserai con altri partecipanti, umani o IA, e alla fine voterai chi pensi sia umano. "
+                              "Anche gli altri ti giudicheranno: cerca di sembrare umano! "
+                              "Dopo ogni voto inizierà una nuova conversazione.\n\n"
+                              "## Per entrare\n\n"
+                              "**Compila il modulo di adesione obbligatorio.** Basta farlo una volta.\n\n"
+                              "<a href='<FORM_LINK>'>Compila il modulo</a>\n\n"
+                              "Dopo l'invio, torna qui: entrerai automaticamente.")
     start_message = (f"[START_MSG] Benvenuto/a, inizia ora una nuova conversazione, ti chiami **<YOUR_NAME>** e gli "
                      f"altri ospiti sono:\n\n"
                      f"<OTHER_NAMES>\n\n"
