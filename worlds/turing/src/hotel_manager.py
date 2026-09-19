@@ -24,7 +24,7 @@ from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
 from concurrent.futures import ThreadPoolExecutor
 from unaiverse.networking.node.profile import NodeProfile
-from .utils import parse_vote_msg, compute_check_in_proposals
+from .utils import read_vote, vote_words, compute_check_in_proposals
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
     asyncio.get_event_loop().set_default_executor(_turing_executor)
@@ -47,6 +47,14 @@ class WAgent(Agent):
         # Floor updates identifier
         self._floor_update_tags = {}
 
+        # Guests ejected from the local reconstruction OUT OF BAND, i.e., not by the floor-updates
+        # stream: a direct "guest_back_to_hall" message, or a lost connection (remove_agent). They are
+        # remembered (guest -> room id at eject time) until the floor manager's own updates acknowledge
+        # the ejection, so that the coherence checks in update_hotel can tell "the packet does not know
+        # yet" apart from a real incoherence (without this, every end-of-conversation wave would race
+        # the 3-seconds update cadence and reset the floor)
+        self._ejected_ahead = {}
+
         # Agents fake names
         self.fake_names = Room.make_fake_names(letters=Config.use_letter_names)
 
@@ -56,6 +64,9 @@ class WAgent(Agent):
         # Time marker, for printing facilities
         self._last_update_received_at = "..."
         self._last_guest_send_to_floor_at = "..."
+
+        # Unreadable votes arriving back to back: a streak of Config.skipped_votes_alarm trips the alarm
+        self._skipped_votes_in_a_row = 0
 
     async def on_tick(self):
         connected_floor_managers = self.get_agents_by_role("floor_manager")
@@ -72,8 +83,25 @@ class WAgent(Agent):
             if floor.id in self._floor_update_tags:
                 del self._floor_update_tags[floor.id]
 
+            # Removing (or recreating) a floor resyncs the reconstruction to the packets' own view, so
+            # the "the packet does not know yet" memos about its rooms are obsolete: from here on, any
+            # leftover ghost is owned by the unknown-guests mechanism of the recreation
+            room_ids = {room.id for room in floor.get_rooms()}
+            self._ejected_ahead = {g: r for g, r in self._ejected_ahead.items() if r not in room_ids}
+
             # Removing manager and floor
             self.hotel.remove_floor(floor.id)  # This will also remove the floor manager
+
+    def __eject_ahead_of_updates(self, guest: str):
+        """Eject a guest from the local reconstruction OUT OF BAND (not because the floor-updates stream
+        said so): his room is remembered in _ejected_ahead until the floor manager's own updates
+        acknowledge the ejection (see the coherence checks in update_hotel)."""
+        floor = self.hotel.get_floor_of(guest)
+        if floor is not None and floor.is_in_a_room(guest):
+            room = floor.get_room_of(guest)
+            if room is not None:
+                self._ejected_ahead[guest] = room.id
+        self.hotel.eject(guest)
 
     async def add_agent(self, peer_id: str, profile: NodeProfile,
                         add_proc_streams: bool = True, add_env_streams: bool = True,
@@ -88,7 +116,7 @@ class WAgent(Agent):
 
         if peer_id in self.hotel.get_floor_managers():
             self.remove_floor_by_floor_manager(peer_id)
-        self.hotel.eject(peer_id)
+        self.__eject_ahead_of_updates(peer_id)
 
     @action
     async def discover_floor_managers(self):
@@ -222,6 +250,13 @@ class WAgent(Agent):
 
             # Handling new ejections of guests
             for (_room_id, _guest) in _update_dict["ejected_guests"]:
+
+                # The floor is acknowledging an ejection this manager already applied OUT OF BAND
+                # (guest back to hall, connection lost): nothing left to do, and the guest might even
+                # be legitimately checked in somewhere else by now
+                if self._ejected_ahead.get(_guest) == _room_id:
+                    del self._ejected_ahead[_guest]
+                    continue
                 if not self.hotel.is_in_a_floor(_guest):
                     if len(unk_guests) > 0:
                         _guest = unk_guests.pop(0)
@@ -349,6 +384,9 @@ class WAgent(Agent):
                         if not _update_floor(floor_id, update_dict):
 
                             # Some issue were found while trying to update the floor, let's kill it
+                            log.error(f"Floor manager {floor_manager} (floor {floor_id}) sent guest "
+                                      f"insertions/ejections that do not match the local reconstruction, "
+                                      f"resetting floor")
                             _create_or_recreate_floor(floor_manager, update_dict, update_tag,
                                                       _consider_guest_updates=True, _fill_floor=True)
                         else:
@@ -361,11 +399,17 @@ class WAgent(Agent):
                 assert floor is not None
                 for room_id, guest_count in update_dict["floor_status"]:
 
-                    # Discrepancies
-                    if floor.get_room(room_id).count_guests() != guest_count:
+                    # Discrepancies. The packet's count still includes the guests of that room this
+                    # manager ejected OUT OF BAND after the packet was published (back to hall, lost
+                    # connections): the reconstruction is coherent when it matches the communicated
+                    # count MINUS those pending ejections (acknowledged, and forgotten, in _update_floor)
+                    pending = sum(1 for r in self._ejected_ahead.values() if r == room_id)
+                    if floor.get_room(room_id).count_guests() + pending != guest_count:
                         log.error(f"Floor manager {floor_manager} (floor {floor.id}) "
                                   f"communicated {guest_count} in room {room_id}, that is not coherent with the "
-                                  f"local reconstruction ({floor.get_room(room_id).count_guests()}), resetting floor")
+                                  f"local reconstruction ({floor.get_room(room_id).count_guests()}"
+                                  + (f" + {pending} pending out-of-band ejections" if pending > 0 else "")
+                                  + "), resetting floor")
                         _create_or_recreate_floor(floor_manager, update_dict, update_tag,
                                                   _consider_guest_updates=True, _fill_floor=True)
                         floor = self.hotel.get_floor(floor_id)  # Refresh this reference, since the floor was recreated
@@ -420,6 +464,7 @@ class WAgent(Agent):
 
         for guest in self.hotel.get_managed_guests():
             floor = self.hotel.get_floor_of(guest)
+
             if floor is not None:
                 hotel_manager = floor.get_hotel_manager_of(guest)
                 expected_guest_of_this_floor = floor.is_expected_guest(guest)
@@ -613,21 +658,66 @@ class WAgent(Agent):
                         if v < Config.min_msgs_from_votee:
                             fake_names_to_ignore.add(k)
 
-                    # Parsing vote
-                    parsed_vote = parse_vote_msg(vote_dict["vote"],  # Dict fake-name (votee) to "human" | "ai"
-                                                 agents=self.fake_names,
-                                                 bots=[k for k, v
-                                                       in vote_dict["ground_truth"].items() if v[0] == "ai"],
-                                                 humans=[k for k, v
-                                                         in vote_dict["ground_truth"].items() if v[0] == "human"])
+                    # Reading the vote: a reply block to the form this guest was asked, read without parsing
+                    # anything, since whoever answered was held to the form before the answer left. The form
+                    # itself is taken out of the dictionary here, as it is not part of what we store.
+                    vote_form = vote_dict.pop("vote_form", None)
+                    parsed_vote = read_vote(vote_dict["vote"], vote_form)  # Dict fake-name (votee) to "human" | "ai"
 
-                    # If parsing failed or if the vote is actually garbage, we save the result
+                    # The words the voter actually wrote: a compliant vote arrives as a reply block whose
+                    # raw carries them, and they (not the block's JSON) are what the stats keep as VOTE_MSG
+                    voter_words = vote_words(vote_dict["vote"])
+
+                    # If nothing could be read, we save the result anyway, under a group that names the
+                    # reason: a voter who met NOBODY had no form and nothing to read by design, an EMPTY
+                    # answer (a processor that stayed silent) is a different failure from words carrying
+                    # no readable judgement, and conflating the three once hid a systematic break. Real
+                    # skips are also said out loud, and a streak of them raises a hotel-wide alarm (once
+                    # per streak, deliberately blind to rooms and floors): votes normally read fine, so a
+                    # run of unreadable ones means something upstream is broken
                     if len(parsed_vote) == 0:
                         int_timestamp = self.clock.get_time_ms(monotonic=True)
-                        vote_dict["VOTE_MSG"] = vote_dict["vote"]
+                        vote_dict["VOTE_MSG"] = voter_words
                         vote_dict["vote"] = "SKIPPED"
-                        self.stats.store_stat("turing_vote", vote_dict,
-                                              group_key="PARSER_SKIPPED", timestamp=int_timestamp)
+                        if vote_form is None:
+                            self.stats.store_stat("turing_vote", vote_dict,
+                                                  group_key="NO_FORM_SKIPPED", timestamp=int_timestamp)
+                        else:
+                            vote_was_empty = len(voter_words.strip()) == 0
+                            self.stats.store_stat("turing_vote", vote_dict,
+                                                  group_key="EMPTY_SKIPPED" if vote_was_empty else "PARSER_SKIPPED",
+                                                  timestamp=int_timestamp)
+                            self._skipped_votes_in_a_row += 1
+                            log.user(f"⚠️ Vote from {vote_dict.get('voter', '?')} could not be read "
+                                     f"({'empty answer' if vote_was_empty else 'no reply block in it'}): "
+                                     f"stored as SKIPPED")
+                            if self._skipped_votes_in_a_row == Config.skipped_votes_alarm:
+                                log.error(f"❌ {self._skipped_votes_in_a_row} votes in a row could not be read: "
+                                          f"the voting pipeline is likely broken (check the guests' processors "
+                                          f"and the vote form round-trip)")
+
+                            # A vote that expressed nothing is still a data point: one record per votee
+                            # the voter was asked about, in its own stat, grouped like turing_vote by the
+                            # votee's unaid (the min-messages filter is NOT applied here: the counts are
+                            # stored, whoever reads decides)
+                            for fake_name, gt_pair in vote_dict["ground_truth"].items():
+                                self.stats.store_stat(
+                                    "turing_empty_vote",
+                                    {"voter": vote_dict["voter"],
+                                     "voter_fake_name": vote_dict.get("voter_fake_name"),
+                                     "voter_nature": vote_dict["voter_nature"],
+                                     "votee_fake_name": fake_name,
+                                     "ground_truth": gt_pair[0],
+                                     "VOTE_MSG": voter_words,
+                                     "reason": "EMPTY" if vote_was_empty else "UNREADABLE",
+                                     "session_id": vote_dict["session_id"],
+                                     "floor_manager": vote_dict["floor_manager"],
+                                     "hotel_manager": vote_dict["hotel_manager"],
+                                     "msgs_from_votee": vote_dict["msgs_from_votee"].get(fake_name),
+                                     "msgs_from_voter": vote_dict["msgs_from_voter"].get(fake_name)},
+                                    group_key=gt_pair[1], timestamp=int_timestamp)
+                    else:
+                        self._skipped_votes_in_a_row = 0
 
                     # Reversing the logic: the index is the votee, hence the vote dictionary must be replicated for each
                     # votee of in the parsed vote structure
@@ -642,7 +732,9 @@ class WAgent(Agent):
                             continue
 
                         _vote_dict_ = copy.deepcopy(vote_dict)
-                        _vote_dict_["VOTE_MSG"] = vote_dict["vote"]  # We also save the original vote message
+                        _vote_dict_["VOTE_MSG"] = voter_words  # The words the voter wrote (the block's raw)
+                        _vote_dict_["votee_fake_name"] = fake_name  # The votee's room alias: it makes the
+                        #                                             VOTE_MSG (and the transcript) readable
                         _vote_dict_["vote"] = classification
                         _vote_dict_["ground_truth"] = vote_dict["ground_truth"][fake_name][0]
                         _vote_dict_["msgs_from_votee"] = vote_dict["msgs_from_votee"][fake_name]
@@ -658,5 +750,5 @@ class WAgent(Agent):
     @action
     async def guest_back_to_hall(self, guest: str | None = None):
         assert guest is not None
-        self.hotel.eject(guest)
+        self.__eject_ahead_of_updates(guest)
         return True

@@ -12,8 +12,11 @@ OUTER dynamic (peer_id = group key):
                       Value shape:
                         {
                           "voter":            "<unaid>",
+                          "voter_fake_name":  "<str>",   (the voter's room alias)
                           "voter_nature":     "human" | "ai",
                           "vote":             "human" | "ai",
+                          "votee_fake_name":  "<str>",   (the votee's room alias)
+                          "VOTE_MSG":         "<str>",   (the raw vote message the voter wrote)
                           "ground_truth":     "human" | "ai",
                           "session_id":       "<floor.peer_id>:<room.uuid>",
                           "floor_manager":    "<peer_id>",
@@ -21,21 +24,58 @@ OUTER dynamic (peer_id = group key):
                           "msgs_from_votee":  <int>,
                           "msgs_from_voter":  <int>,
                         }
-                      Invalid votes are NEVER written: the Floor Manager sends valid votes
-                      to the Hotel Manager that sent there that peer. Then the Hotel Manager
-                      stores the valid vote and sends it to the world.
+                      A vote whose message could not be read is stored too, with
+                      vote="SKIPPED" and the voter's words in VOTE_MSG, under the reason
+                      group "NO_FORM_SKIPPED" (the voter met nobody, there was no form
+                      to answer), "EMPTY_SKIPPED" (the voter answered nothing) or
+                      "PARSER_SKIPPED" (words with no readable judgement): those
+                      *_SKIPPED rows never enter the plotted statistics, they exist to
+                      make failures visible. Everything else is a validated judgement:
+                      the Floor Manager sends the votes to the Hotel Manager that
+                      sponsored that peer, which stores them and sends them to the
+                      world. VOTE_MSG holds the words the voter actually wrote (the
+                      raw of the vote's reply block, per the protocol), never the
+                      block's JSON.
 
-  conversation_chunk - per-message transcript chunk (debug only).
-                       peer_id = "<room.uuid>:<activation_ts>" session id.
-                       Gated by STORE_CONVERSATIONS; never read by plot() sent by the agent himself.
+  turing_empty_vote - one record per (voter, votee) pair of a vote that could NOT be read.
+                      peer_id = votee real <unaid>, like turing_vote: an expressed nothing
+                      is still a data point about the pair. Written beside the *_SKIPPED
+                      record of the same vote (never for the met-nobody case, which has no
+                      pairs); the min-messages filter is NOT applied, the counts are stored
+                      and whoever reads decides. Never read by plot().
+                      Value shape:
+                        {
+                          "voter":            "<unaid>",
+                          "voter_fake_name":  "<str>",
+                          "voter_nature":     "human" | "ai",
+                          "votee_fake_name":  "<str>",
+                          "ground_truth":     "human" | "ai",
+                          "VOTE_MSG":         "<str>",   (the words the voter wrote, possibly "")
+                          "reason":           "EMPTY" | "UNREADABLE",
+                          "session_id":       "<floor.peer_id>:<room.uuid>",
+                          "floor_manager":    "<peer_id>",
+                          "hotel_manager":    "<peer_id>",
+                          "msgs_from_votee":  <int>,
+                          "msgs_from_voter":  <int>,
+                        }
+
+  conversation_chunk - per-message transcript chunk (one record per message broadcast in a room).
+                       peer_id = room id (grouping only: consumers join by the session_id INSIDE the
+                       value, which matches the session_id of the turing_vote records).
+                       Written by the floor managers in get_msg_and_broadcast (the MASKED text, after
+                       the room filter), gated by Config.store_conversations; never read by plot().
                        Value shape:
                          {
-                           "session_id":       "<floor.peer_id>:<room.uuid>",
+                           "session_id":       "<floor.id>:<room.id>",
                            "author":           "<unaid>",
                            "author_fake_name": "<str>",
                            "text":             "<str>",
                            "ts":               <ts_ms>,
                          }
+                       Room EVENTS (guest joined/left/disconnected) are stored in the same stream with
+                       two extra keys: "kind": "event" and "event": "joined" | "left" | "disconnected";
+                       there the author is the AFFECTED guest and the text is the broadcast announce
+                       (records without "kind" are plain chat messages).
 
   hotel_n_*         - one scalar stat per hotel operational metric.
                       peer_id = hotel manager real peer id.
@@ -65,10 +105,10 @@ import copy
 import html
 import json
 import time
-from datetime import datetime, timezone
 from typing import Any
-
 from unaiverse.stats import Stats
+from datetime import datetime, timezone
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -110,7 +150,6 @@ class WStats(Stats):
 
     # ------------------------------------------------------------------ schema
 
-    STORE_CONVERSATIONS: bool = True
     LEADERBOARD_CACHE_TTL_SECONDS: int = 60
 
     CUSTOM_WORLD_STATS_DYNAMIC_SCHEMA = {k: (int, 0) for k in _HOTEL_OPS_STATS}
@@ -122,6 +161,7 @@ class WStats(Stats):
 
     CUSTOM_OUTER_STATS_DYNAMIC_SCHEMA = {
         "turing_vote":              (dict, None),
+        "turing_empty_vote":        (dict, None),
         "conversation_chunk":       (dict, None),
         }
 
@@ -151,18 +191,41 @@ class WStats(Stats):
     def _refresh_aggregates(self) -> None:
         now_ms = int(time.time() * 1000)
         votes = self._fetch_vote_history()
+        empty_votes = self._fetch_empty_vote_history()
         ops = self._fetch_hotel_ops_series()
 
         buckets = self._bucket_by_scope(votes, now_ms)
+        empty_buckets = self._bucket_by_scope(empty_votes, now_ms)
 
+        # Each scope is aggregated TWICE: over all the votes, and over the votes cast by HUMAN voters
+        # only (the '@h' variant, selected by the 'Human votes only' checkbox of the dashboard: there
+        # Best Fooling counts only how well the AIs fooled human judges, and Best Detecting can only
+        # rank human detectors, since the AI voters have no votes left). The EMPTY (unreadable) votes
+        # never enter any computation: they only decorate the voter rows' vote count as 'n (m)' —
+        # bracketed only when m > 0 — under the same scope window and human-only filter
         scopes: dict[str, dict] = {}
         for scope_key, scope_votes in buckets.items():
-            scopes[scope_key] = {
-                "confusion": self._compute_confusion_matrix(scope_votes),
-                "votee": self._compute_votee_leaderboard(scope_votes, _MIN_VOTES),
-                "voter": self._compute_voter_leaderboard(scope_votes, _MIN_VOTES),
-                "n_total_votes": len(scope_votes),
-            }
+            human_votes = [v for v in scope_votes if v.get("voter_nature") == "human"]
+            scope_empty = empty_buckets.get(scope_key, [])
+            human_empty = [v for v in scope_empty if v.get("voter_nature") == "human"]
+            for suffix, votes_subset, empty_subset in (("", scope_votes, scope_empty),
+                                                       ("@h", human_votes, human_empty)):
+                voter_rows = self._compute_voter_leaderboard(votes_subset, _MIN_VOTES)
+                empty_by_voter: dict[str, int] = {}
+                for v in empty_subset:
+                    voter = v.get("voter") or ""
+                    if voter != "":
+                        empty_by_voter[voter] = empty_by_voter.get(voter, 0) + 1
+                for row in voter_rows:
+                    n_empty = empty_by_voter.get(row["peer_id"], 0)
+                    if n_empty > 0:
+                        row["votes"] = f"{row['votes']} ({n_empty})"
+                scopes[scope_key + suffix] = {
+                    "confusion": self._compute_confusion_matrix(votes_subset),
+                    "votee": self._compute_votee_leaderboard(votes_subset, _MIN_VOTES),
+                    "voter": voter_rows,
+                    "n_total_votes": len(votes_subset),
+                }
 
         global_counters = self._derive_global_counters(ops, now_ms)
 
@@ -188,12 +251,36 @@ class WStats(Stats):
         ).fetchall()
         votes = []
         for ts, votee_peer_id, val_json in rows:
-            if votee_peer_id == "PARSER_SKIPPED":
+            if votee_peer_id.endswith("_SKIPPED"):  # The unreadable-vote reason groups: kept, never plotted
                 continue
             try:
                 record = json.loads(val_json)
                 record["_ts"] = ts
                 record["_votee"] = votee_peer_id
+                votes.append(record)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return votes
+
+    def _fetch_empty_vote_history(self) -> list[dict]:
+        """Return all turing_empty_vote records (votes that could not be read, with their 'reason') as
+        parsed dicts: NEVER part of any performance computation, only counted next to the voter rows."""
+        if not self.is_world:
+            return []
+        assert self._db_conn is not None
+        rows = self._db_conn.execute(
+            "SELECT timestamp, peer_id, val_json "
+            "FROM dynamic_stats "
+            "WHERE stat_name = 'turing_empty_vote' "
+            "ORDER BY timestamp"
+        ).fetchall()
+        votes = []
+        for ts, group_key, val_json in rows:
+            if group_key.endswith("_SKIPPED"):
+                continue
+            try:
+                record = json.loads(val_json)
+                record["_ts"] = ts
                 votes.append(record)
             except (json.JSONDecodeError, TypeError):
                 pass
@@ -466,14 +553,16 @@ class WStats(Stats):
             _card("Active floors", global_counters.get("n_active_floors", 0)),
         ])
 
-        # n_total_votes varies per scope - render one card per scope, hide/show via JS
+        # n_total_votes varies per scope (and per '@h' human-only variant) - render one card per
+        # scope key, hide/show via JS (the label always names the BASE scope window)
         scope_vote_cards = ""
-        for scope_key in _SCOPE_WINDOWS_MS:
-            n = scope_counters.get(scope_key, {}).get("n_total_votes", 0)
+        for scope_key, counters in scope_counters.items():
+            n = counters.get("n_total_votes", 0)
+            base_key = scope_key.split("@")[0]
             scope_vote_cards += (
                 f'<div class="card scope-card" data-scope="{scope_key}" style="display:none">'
                 f'<span class="card-val">{self._esc(n)}</span>'
-                f'<span class="card-lbl">Votes ({_SCOPE_LABELS[scope_key]})</span></div>'
+                f'<span class="card-lbl">Votes ({_SCOPE_LABELS[base_key]})</span></div>'
             )
 
         # age_s = max(0,(int(time.time() * 1000) - global_counters.get("refreshed_ms", int(time.time()*1000))) // 1000)
@@ -494,11 +583,10 @@ class WStats(Stats):
         vote_cols = ("human", "ai")
 
         def _bg(_p: float) -> str:
-            # white → soft blue-green
-            r = int(255 - _p * 0.8)
-            g = int(255 - _p * 0.5)
-            b = int(255 - _p * 0.1)
-            return f"rgb({r},{g},{b})"
+            # Translucent accent: the intensity rides on the ALPHA channel, so the tint composites
+            # over the theme background and works in BOTH light and dark mode (a fixed white-to-blue
+            # ramp would keep the cells light when the page switches to dark)
+            return f"rgba(26,92,255,{_p / 100 * 0.55:.3f})"
 
         header = (
             "<thead><tr>"
@@ -638,6 +726,24 @@ class WStats(Stats):
             default_scope=default_scope,
             ops_json=ops_json,
         )
+
+    # ========================================================== challenge reset
+
+    def reset_stats(self) -> None:
+        """(World-only) CHALLENGE RESET: wipe ALL the stats — dynamic (votes, conversations, ops
+        history) AND static — like starting from scratch, while the world keeps running: participants
+        do NOT need to leave (the still-connected managers re-store the population/state stats at
+        their next update cycle). Must run on the node main loop (the same loop that runs
+        save_to_disk, so no writer race: see the run_hook of run_w.py, triggered by a sentinel file)."""
+        if not self.is_world or self._db_conn is None:
+            return
+        self._dynamic_db_buffer = []  # Pending unsaved rows must not be flushed back after the wipe
+        self._static_db_buffer = []
+        self._db_conn.execute("DELETE FROM dynamic_stats")
+        self._db_conn.execute("DELETE FROM static_stats")
+        self._db_conn.commit()
+        self._stats = {self.GROUP_KEY: {}}  # The whole hot cache restarts empty, like at world start
+        self._leaderboard_cache = None  # The join dashboard rebuilds at the next plot()
 
     # ========================================================== plot() entry
 

@@ -3,10 +3,10 @@
 *A distributed multi-agent Turing test, run as a social-deduction game.*
 
 > The flagship complex world. Humans and LLM bots check into a hotel, get anonymously matched into
-> rooms of four, chat for a fixed time, then each guest votes on who they think was a bot. It
+> rooms of four, chat for a fixed time, then each guest votes on who they think was human. It
 > showcases nearly every advanced framework feature: three roles each with its own behavior, a
 > three-tier management hierarchy, pubsub and direct streams, live matchmaking, timed conversation,
-> vote parsing and scoring, and a custom HTML leaderboard.
+> structured voting and scoring, moderation, and a custom HTML leaderboard.
 >
 > This world hand-builds its state machines from raw actions, so it is the best place to learn the
 > action API. Every action is explained in the [Actions and Behaviors reference](../../behaviors/README.md).
@@ -17,9 +17,8 @@
 
 A multi-agent Turing test framed as a hotel. From `Config.init_message`:
 
-> "This is a unique destination composed of rooms that implement the multi-agent Turing Test, where
-> you will act as both the judge and a conversation partner. You will judge others to detect who is
-> human, while others judge whether you are a human or a machine (remember to act human)."
+> "This is a hotel of rooms running a multi-agent Turing test, where you are both
+> the judge ⚖️ and a conversation partner 🗣️!"
 
 Why it is worth studying:
 
@@ -34,11 +33,9 @@ Why it is worth studying:
   workload: the hotel manager load-balances onto floors, the floor manager owns per-room conversation,
   timing, and voting, and the Room is a pure in-memory bookkeeping object.
 - **Humans and bots, transparently.** The same `guest.json` behavior runs whether the guest is a
-  person typing at the keyboard or an LLM. The only branch is whether to wait for a human to press
-  enter.
-- **An elaborate "act human" prompt.** `Config.history_incipit` is a long persona prompt (identity,
-  how to write like a real person, anti-repetition, a bot-detection guide), a concrete study in
-  adversarial persona prompting.
+  person typing at the keyboard or an LLM. The vote form supports buttons and typed answers.
+- **Processor-owned history.** The guest forwards room events. Each processor manages its own
+  conversation history, persona, and prompts.
 
 This world uses no behavior templates and no wildcards: every machine is hand-built transition by
 transition, which makes it the best place to learn the raw state-machine API.
@@ -47,8 +44,8 @@ transition, which makes it the best place to learn the raw state-machine API.
 
 ## The story, step by step
 
-1. **Check-in.** A guest joins, gets the `guest` role, and enters `init`. A human sees the welcome and
-   must type to begin; a bot skips straight to `ready`. In `ready` the guest picks a random hotel
+1. **Check-in.** A guest joins, gets the `guest` role, and enters `init`. After the optional registration
+   check, it moves to `ready`. In `ready` the guest picks a random hotel
    manager and connects. After the handshake it lands in `hall`. If the manager never acks within the
    timeout, it disconnects, waits a decompression period, and retries.
 2. **Assignment to a floor.** The hotel manager's `check_in` finds connected guests not yet on a floor
@@ -58,15 +55,17 @@ transition, which makes it the best place to learn the raw state-machine API.
    sponsor. The floor manager's `check_in` picks a room (at most four guests, with one overbooking
    slot), inserts the guest into the `Room` with a fresh fake name, and sends `goto_room`.
 4. **Timed anonymous chat.** When a guest arrives at a room, the floor manager sends a start message
-   ("You were named Ada and the other guests are Ben, Cal..."). The guest parses the names, seeds its
-   conversation history with the persona prompt, and loops: write a message, send it to the floor
+   ("Your name is Ada and the other guests are Ben, Cal..."). The guest forwards this event to its
+   processor, which starts a new conversation history, and loops: write a message, send it to the floor
    manager, which relays it to the others under the sender's fake name. Reminders with time remaining
-   are sent periodically; typing "exit" leaves early.
+   are sent periodically; typing "exit" leaves early. Messages have a cooldown and a length limit;
+   the floor manager masks profanity and personal data before broadcasting or storing them.
 5. **Voting.** When a guest's time at the table reaches `test_duration`, it is sent to the voting
-   booth and asked to list who it thinks were humans.
+   booth and shown a form with a Human/AI choice for each guest it met. Typed replies can list the
+   human guests, separated by commas, or use `all` / `none`.
 6. **Scoring and display.** The floor manager packages each vote (voter, voter nature, vote text,
    ground truth per fake name, message counts) and sends it to the sponsoring hotel manager. The hotel
-   manager validates it, parses the free text into a per-name human/ai judgment, drops votes about
+   manager reads the validated form reply as per-name human/ai judgments, drops votes about
    people you barely talked to, and stores one stat per voter/votee pair. The world's stats build the
    leaderboard: a confusion matrix, a votee "Turing score" (fooling rate weighted by conversation
    length), and a voter "detection score" (F1 of human detection).
@@ -85,7 +84,8 @@ return "guest"
 ```
 
 The manager sets are loaded from `src/managers.txt` and hot-reloaded when the file changes. So role is
-identity in a config file, and everyone else defaults to guest.
+identity in a config file, and everyone else defaults to guest. `src/banned.txt` contains banned
+UNaIDs, one per line: new joins are refused and connected agents are disconnected when it changes.
 
 The hotel/floor/room abstraction (pure in-memory bookkeeping, no networking):
 
@@ -118,10 +118,13 @@ Which script is which:
   adds a small delay and jitter to message timing (one guest, Jenny, is deliberately slow).
 - **Real LLM bots** would swap the proc, exactly as in the sibling [`lonewolves`](../../lonewolves)
   examples: `proc=Phi()` (a local Hugging Face model) or
-  `proc=FeatherlessAPI(model="Qwen/Qwen3-32B", ...)` (a hosted model). In this world the persona is
-  injected as conversation context (`history_incipit`), not as the proc's system prompt.
-- **Human guests:** `proc=None` with a human node type; the human types at the keyboard, and the guest
-  waits for input before starting.
+  `proc=FeatherlessAPI(model="Qwen/Qwen3-32B", ...)` (a hosted model). The processor must manage its
+  own history and persona. See the event contract in [src/guest.py](./src/guest.py).
+- **Human guests:** use `proc="human"` for terminal input and vote-form reprompts.
+
+Each processor input contains one or more events separated by `Config.event_separator` (`\x1e`).
+Events keep their newlines. A start message begins a new conversation; the vote request arrives
+alone. Returning an empty string during chat means staying silent.
 
 Guests and the floor manager declare `["text"]` in and `["text"]` out; the hotel manager declares no
 processor I/O.
@@ -137,7 +140,7 @@ Created by the floor manager and advertised in its profile:
   and count discrepancies.
 - **`chat`** (direct): individual chat messages broadcast from the floor manager to room members.
 - **`votes`** (direct): the JSON vote packets the floor manager sends to the sponsoring hotel manager.
-- **`processor_in` / `processor`:** each guest's own model I/O, where the assembled history goes in and
+- **`processor_in` / `processor`:** each guest's own model I/O, where room events go in and
   the reply comes out.
 
 ---
@@ -182,12 +185,12 @@ Each role's `WAgent` defines its own action methods (transition names match thes
   `pub_floor_updates`, `send_votes`, `get_msg_and_broadcast` (relay chat under fake names and count
   exchanges).
 - **Guest** ([src/guest.py](./src/guest.py)): `connect_to_hotel_manager`, `connect_to_floor_manager`,
-  `send_guest_sponsor`, `get_status_msg` (parse tagged start/join/leave/reminder messages and grow the
-  history), `get_msgs`, `send_msg`, plus an `on_tick` watchdog that recovers from lost managers and
+  `send_guest_sponsor`, `get_status_msg` (forward tagged start/join/leave/reminder messages to the
+  processor), `get_msgs`, `send_msg`, plus an `on_tick` watchdog that recovers from lost managers and
   stuck states.
 
-Supporting utilities ([src/utils.py](./src/utils.py)): `parse_vote_msg` turns free-text votes into a
-per-name human/ai judgment with robust handling of "nobody", "everyone", lists, and reversed phrasing;
+Supporting utilities ([src/utils.py](./src/utils.py)): `build_vote_form` creates the vote form,
+`vote_list_values` interprets names and shortcuts, and `read_vote` reads the validated reply;
 `compute_check_in_proposals` is the matchmaking algorithm (prefer partly full rooms, then overbooking,
 then a new empty room), shared by both Hotel and Floor; `print_live` renders the live console table.
 [src/html_renderer.py](./src/html_renderer.py) renders the themed leaderboard dashboard from the stats
@@ -210,11 +213,26 @@ python run_3.py    # ... through run_11.py: nine guest nodes
 All nine shipped guests are placeholder bots (Jenny is the slow one). To get a real Turing test,
 replace a guest's proc with `Phi()` or `FeatherlessAPI(...)`, or join as a human node. Manager
 identities must be listed in `src/managers.txt` matching the node's `owner@nickname/NodeName`, or that
-node would become a manager instead of a guest.
+node would become a guest instead of a manager.
 
 **What to expect:** the managers print live tables of floors, rooms, and occupancy; guests print status
 lines as they move from hall to floor to room. With nine guests they pack into rooms of four, chat for
 the configured duration, then get the vote survey, and the world serves the leaderboard.
+
+Registration is disabled by default. To require it, set `Config.form` and
+`Config.registered_users_form_sheets` to dictionaries with `True` (human) and `False` (AI) keys and
+plain form/sheet URLs. Set `registered_users_form_column_id` to the nickname column, counting from zero.
+
+The embedded leaderboard supports a **Human votes only** filter; unreadable votes are stored
+separately and excluded from scores.
+
+The existing runners support these control files in `src/`:
+
+- `BROADCAST_WHEN_NO_HUMANS` / `BROADCAST_WHEN_HUMANS`: switch broadcasting while the floor manager runs.
+- `RESET_STATS`: erase local statistics while the world runs.
+
+Control files are removed after being processed. Floor managers need the shipped `src/wordlists`
+directory on disk; `TURING_WORDLISTS` can point to it when running from elsewhere.
 
 ---
 
@@ -224,8 +242,7 @@ the configured duration, then get the vote survey, and the world serves the lead
    wildcards, this is the clearest place to learn the raw state-machine API: teleports, `ready=False`
    transitions, blocking states, callbacks, and stuck-state recovery.
 2. **The `proc` is orthogonal to behavior.** The same `guest.json` runs a human, a dummy bot, or a real
-   LLM; swapping intelligence is one constructor argument in the run file, and the persona comes from
-   the conversation context.
+   LLM; processors receive the same room events and manage their own conversation context.
 3. **Coordination is just action methods plus streams.** Managers with `proc=None` do all their work
    through actions, fan-out sends with callbacks, and pubsub plus direct streams: a complete pattern for
    distributed orchestration with no machine learning at all.
@@ -233,7 +250,7 @@ the configured duration, then get the vote survey, and the world serves the lead
    the matchmaker packs a churning population into rooms, and the hotel manager reconstructs global
    state from tagged pubsub diffs with gap detection.
 5. **Custom stats and a renderer turn interactions into a product.** Votes flow guest to floor to hotel
-   to world as validated JSON, get parsed and scored with purpose-built metrics, and are rendered into
+   to world as validated JSON, get scored with purpose-built metrics, and are rendered into
    a themed leaderboard.
 
 See also: [`chat`](../chat) for the underlying relay pattern in isolation.

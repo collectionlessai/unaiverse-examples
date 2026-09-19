@@ -24,10 +24,11 @@ from unaiverse.custom import Custom
 from unaiverse.streams import Stream
 from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
-from unaiverse.interaction import Interaction
+from unaiverse.interaction import Interaction, CompletionReason
 from unaiverse.streams.dataprops import DataProps
 from concurrent.futures import ThreadPoolExecutor
-from .utils import compute_check_in_proposals, format_message
+from .filter import RuleBasedFilter
+from .utils import build_survey_wire, compute_check_in_proposals, format_message, sanitize_room_message
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
     asyncio.get_event_loop().set_default_executor(_turing_executor)
@@ -71,9 +72,14 @@ class WAgent(Agent):
         self._sponsored_guests = {}
 
         # Attributes that handle some guest-status related info
-        self._guest2vote_info = {}  # Guest who got the survey message -> [UUID of the request message, vote dict]
+        self._guest2vote_info = {}  # Guest who got the survey -> [UUID of the request, vote dict, vote form]
         self._guest2reminder_time = {}  # Guest who got the survey message -> last reminder message time
         self._wants_to_exit = set()  # Guest who wants to leave
+        self._severe_strikes = {}  # Guest -> how many times he said something we consider hate speech
+
+        # The filter every message goes through before being broadcast. This is the right place for
+        # it: guests run their own copy of guest.py, the floor manager is run by the world owners
+        self.msg_filter = RuleBasedFilter(use_pii=Config.msg_filter_pii) if Config.msg_filter else None
 
     def accept_new_role(self, role: int):
         super().accept_new_role(role)
@@ -93,15 +99,25 @@ class WAgent(Agent):
         self.update_streams_in_profile()
 
     async def remove_agent(self, peer_id: str):
-        await super().remove_agent(peer_id)
+        try:
+            await super().remove_agent(peer_id)
+        except Exception as e:
+            log.error(f"Error while removing agent {peer_id} [{e}]")
 
         # Tell everybody in the room that this agent disconnected
         if self.floor is not None and self.floor.is_in_a_room(peer_id):
             room = self.floor.get_room_of(peer_id)
+            disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
+
+            # The archive records EVERY disconnection of a room member, whatever his status: it must
+            # close every stored 'joined' (or a transcript reader keeps the guest
+            # "in the room" forever), and the extra cases are honest data too (a 'disconnected' with
+            # no 'joined' is a guest who never made it to the table, one after a 'left' is a voter
+            # who dropped without delivering his vote)
+            self.__store_event_chunk(room, peer_id, "disconnected", disconnected_message)
 
             # Send this message only if the agent was chatting (i.e., not if he was in the voting booth)
             if room.get_status(peer_id) in {GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE, GuestStatus.AT_ROUND_TABLE}:
-                disconnected_message = Config.disconnected_message.replace("<SOME_NAME>", room.fake_name_of(peer_id))
                 others = [g for g in list(room.get_guests()) if g != peer_id]
 
                 # Do not check if this fails: if you do, and then you disconnect when it fails,
@@ -165,16 +181,20 @@ class WAgent(Agent):
         # Let's distinguish if we are in the context of a callback from a vote-process-operation-completed,
         # or if we are just calling the method somewhere else
         callback_from_process_vote = False
-        _guest = guest # TODO
+        _guest = guest  # TODO
         if guest is None:
             assert interaction is not None
+
+            # If the guest did not vote, the "process" interaction ends up being timed out, and this might happen
+            # in a moment in which the agent is already talking in another room, so let's burn it!
+            if interaction.completion_reason == CompletionReason.TIMEOUT:
+                return True  # Burning
+
             guest = interaction.target[0]
             callback_from_process_vote = True
-        log.user(f"==> GUEST BACK TO HALL, guest={_guest}, callback_from_process_vote={callback_from_process_vote}")
 
         # Safety
         if not self.floor.is_in_a_room(guest):
-            log.user(f"NOT IN A ROOM! Return True - not expected")
             return True  # Return true to complete the action and hence burn the interaction
 
         # Getting info
@@ -190,6 +210,7 @@ class WAgent(Agent):
             # This dictionary is almost filled, it misses the actual vote (it will be sent in its own stream)
             vote_dict = {
                 "voter": room.get_unaid_of(guest),
+                "voter_fake_name": fake_name,  # The voter's room alias (needed to READ the transcripts)
                 "voter_nature": room.get_ground_truth_of(guest),
                 "vote": None,  # This will be filled when actually receiving the vote from the processor stream
                 "ground_truth": {
@@ -211,7 +232,10 @@ class WAgent(Agent):
                     votee_fake_name: room.count_messages_recv_by(fake_name=votee_fake_name,
                                                                  from_fake_name=fake_name)
                     for votee_fake_name in fake_names_seen_so_far if votee_fake_name != fake_name
-                }
+                },
+
+                # The form this guest was asked: the hotel manager reads the answer against it
+                "vote_form": self._guest2vote_info[guest][2] if guest in self._guest2vote_info else None
             }
 
             # We save the vote dictionary as second element of the tuple below
@@ -396,7 +420,7 @@ class WAgent(Agent):
                 start_message = Config.start_message
             start_message = (start_message.
                              replace("<YOUR_NAME>", room.fake_name_of(guest)).
-                             replace("<OTHER_NAMES>", ", ".join(other_guests_names)))
+                             replace("<OTHER_NAMES>", "\n".join(f"- **{name}**" for name in other_guests_names)))
 
             sent = False
             if not await self.send(action_name="get_status_msg",
@@ -409,6 +433,7 @@ class WAgent(Agent):
             else:
                 sent = True
                 joined_message = Config.joined_message.replace("<SOME_NAME>", room.fake_name_of(guest))
+                self.__store_event_chunk(room, guest, "joined", joined_message)
                 await asyncio.gather(*[
                     self.__send_or_disconnect(_guest,
                                               action_name="get_status_msg",
@@ -427,10 +452,11 @@ class WAgent(Agent):
             fake_name = room.fake_name_of(guest)
             other_guests_names = sorted(list(room.get_fake_names_met_by(fake_name)))
 
-            # Interacting with the guest's processor
-            survey_msg = (
-                Config.survey_message if len(other_guests_names) > 0 else Config.survey_message_nobody).replace(
-                "<YOUR_NAME>", room.fake_name_of(guest)).replace("<OTHER_NAMES>", ", ".join(other_guests_names))
+            # Interacting with the guest's processor. The vote travels as a protocol form, on its own lines
+            # after the framing text: whoever answers it (a widget, a model, a person writing by hand) is
+            # held to it, and the hotel manager reads one judgment per name. The wire message is built by
+            # utils.build_survey_wire, the ONE place that knows its shape (the contract tests pin it there)
+            survey_wire, vote_form = build_survey_wire(fake_name, other_guests_names)
 
             interaction = await self._send(action_name="process",
                                            from_state="can_vote",
@@ -443,12 +469,13 @@ class WAgent(Agent):
             # Interacting with the guests for two reasons:
             # (1) Send the "vote-request" message to the handled guest
             # (2) Tell other guest that the handled guest left
-            self._guest2vote_info[guest] = [interaction.uuid, None]
+            self._guest2vote_info[guest] = [interaction.uuid, None, vote_form]
             left_message = Config.left_message.replace("<SOME_NAME>", fake_name)
+            self.__store_event_chunk(room, guest, "left", left_message)
             await asyncio.gather(
                 self.__send_or_disconnect(guest,
                                           action_name="get_status_msg",
-                                          action_kwargs={"msg": format_message(Config.manager_fake_name, survey_msg),
+                                          action_kwargs={"msg": survey_wire,
                                                          "process_uuid": interaction.uuid},
                                           from_state="can_vote",
                                           volatile=True),
@@ -470,8 +497,18 @@ class WAgent(Agent):
             time_left = Config.test_duration - room.get_time_in_current_status(guest)
             sent = False
             if time_left > 0:
-                reminder_message = (Config.reminder_message.replace("<TIME_LEFT>", str(time_left)).
-                                    replace("<YOUR_NAME>", room.fake_name_of(guest)))
+                other_guests_names = sorted([room.fake_name_of(_guest)
+                                             for _guest in room.get_guests()
+                                             if _guest != guest and
+                                             room.get_status(_guest) in {GuestStatus.AT_ROUND_TABLE,
+                                                                         GuestStatus.JUST_ARRIVED_AT_ROUND_TABLE}])
+                if len(other_guests_names) == 0:
+                    reminder_message = Config.reminder_message_nobody
+                else:
+                    reminder_message = Config.reminder_message
+                reminder_message = (reminder_message.replace("<TIME_LEFT>", str(time_left)).
+                                    replace("<YOUR_NAME>", room.fake_name_of(guest)).
+                                    replace("<OTHER_NAMES>", "\n".join(f"- **{name}**" for name in other_guests_names)))
                 if not await self.send(action_name="get_status_msg",
                                        action_kwargs={"msg": format_message(Config.manager_fake_name,
                                                                             reminder_message)},
@@ -589,7 +626,7 @@ class WAgent(Agent):
         to_remove = []
 
         # Votes are expected to be found on the guest's processor, with a UUID that we saved in advance
-        for guest, (vote_interaction_uuid, vote_dict) in self._guest2vote_info.items():
+        for guest, (vote_interaction_uuid, vote_dict, _) in self._guest2vote_info.items():
             if vote_dict is None:
 
                 # If the vote_dict is None, then the guest was asked to go to the voting booth and was asked for a vote,
@@ -648,7 +685,7 @@ class WAgent(Agent):
         # Send all violation messages in parallel, then disconnect (disconnect must follow send).
         await asyncio.gather(*[
             self.send(action_name="get_status_msg",
-                      action_kwargs={"msg": Config.violation_message},
+                      action_kwargs={"msg": format_message(Config.manager_fake_name, Config.violation_message)},
                       target=guest)
             for guest in guests
         ], return_exceptions=True)
@@ -657,6 +694,24 @@ class WAgent(Agent):
         await asyncio.gather(*[self.disconnect(guest) for guest in guests], return_exceptions=True)
 
         return True
+
+    def __store_event_chunk(self, room, guest: str, event: str, text: str) -> None:
+        """Room events (joined/left/disconnected) enter the stored transcript too, as 'kind: event'
+        conversation_chunk records (see stats.py): without them a transcript reader cannot tell when
+        the cast of a room changed. The 'author' is the AFFECTED guest, so even a guest who never
+        writes a message leaves a trace in the room archive."""
+        if not Config.store_conversations:
+            return
+        ts = self.clock.get_time_ms(monotonic=True)
+        self.stats.store_stat("conversation_chunk",
+                              {"session_id": self.floor.id + ":" + room.id,
+                               "kind": "event", "event": event,
+                               "author": room.get_unaid_of(guest),
+                               "author_fake_name": room.fake_name_of(guest),
+                               "author_nature": room.get_ground_truth_of(guest),
+                               "text": text,
+                               "ts": ts},
+                              group_key=room.id, timestamp=ts)
 
     @action
     async def get_msg_and_broadcast(self, msg: str | None = None, interaction: Interaction | None = None):
@@ -668,12 +723,26 @@ class WAgent(Agent):
 
         if self.floor.is_in_a_room(guest) and (msg is not None and len(msg) > 0):
             fake_name = self.floor.get_room_of(guest).fake_name_of(guest)
-            altered_msg = format_message(fake_name, msg)
             room = self.floor.get_room_of(guest)
 
-            if msg.strip().lower() == Config.exit_trigger_message.lower():
+            trigger = Config.exit_trigger_message.lower()
+            if any(line.strip().lower() == trigger for line in msg.splitlines()):
                 self._wants_to_exit.add(guest)
                 return True
+
+            # A guest-authored message must not be able to wear the room's wire format (the event
+            # separator, or a line reading as "**SENDER:** " that would impersonate the manager or
+            # another guest): defused ONCE here, so broadcast, transcripts and processors see one text
+            msg = sanitize_room_message(msg)
+
+            # Bad words and personal data are masked here, before anything else sees the message:
+            # what is broadcast (and what will end up in the stored conversations) is the masked text
+            if self.msg_filter is not None:
+                msg = await self.__filter_and_warn(guest, msg, room)
+                if msg is None:
+                    return True  # The guest was thrown out of the floor, nothing left to broadcast
+
+            altered_msg = format_message(fake_name, msg)
 
             async def _broadcast_to(_guest):
                 _fake_name = room.fake_name_of(_guest)
@@ -690,7 +759,75 @@ class WAgent(Agent):
             if Config.broadcast_when_no_humans or room.count_human_guests() > 0:
                 await asyncio.gather(*[_broadcast_to(g) for g in room.get_guests()])
 
+                # Storing the conversation chunk, ONLY for messages that were actually broadcast to
+                # the room (and with the MASKED text, coherently with what the room sees); the
+                # session_id matches the one of the turing_vote records, so votes and transcripts of
+                # the same room session can be joined
+                if Config.store_conversations:
+                    ts = self.clock.get_time_ms(monotonic=True)
+                    self.stats.store_stat("conversation_chunk",
+                                          {"session_id": self.floor.id + ":" + room.id,
+                                           "author": room.get_unaid_of(guest),
+                                           "author_fake_name": fake_name,
+                                           "author_nature": room.get_ground_truth_of(guest),
+                                           "text": msg,
+                                           "ts": ts},
+                                          group_key=room.id, timestamp=ts)
+
         return True
+
+    async def __filter_and_warn(self, guest, msg: str, room) -> str | None:
+        """Mask what a guest is not allowed to say, tell him about it, count his severe hits (async).
+
+        The sender is always told what happened: a message that silently changes (or disappears) on
+        its way to the room is far more confusing than a moderated one, and a human guest who does
+        not understand why nobody answers stops behaving like a human.
+
+        Args:
+            guest: The peer ID of the guest who wrote the message.
+            msg: The raw text he wrote.
+            room: The room he is sitting in (its fake names are never filtered).
+
+        Returns:
+            The text to broadcast, or None if the guest has just been thrown out of the floor.
+        """
+        result = await self.msg_filter.check(msg, allowed_names=set(room.get_fake_names()))
+        if not result:
+            return msg
+
+        log.user(f"🚫 Message filtered ({room.fake_name_of(guest)}): {result}")
+
+        if len(result.severe) > 0:
+            self._severe_strikes[guest] = self._severe_strikes.get(guest, 0) + 1
+            strikes = self._severe_strikes[guest]
+
+            # Too many: same treatment as the guests reported by the hotel director
+            if strikes >= Config.msg_filter_max_severe:
+                await self.send(action_name="get_status_msg",
+                                action_kwargs={"msg": format_message(
+                                    Config.manager_fake_name,
+                                    Config.filter_eject_message.replace("<MAX>",
+                                                                        str(Config.msg_filter_max_severe)))},
+                                target=guest,
+                                volatile=True)
+                await self.disconnect(guest)  # Triggers remove_agent, that pushes him out of the floor
+                return None
+
+            notice = (Config.filter_severe_message
+                      .replace("<N>", str(strikes))
+                      .replace("<MAX>", str(Config.msg_filter_max_severe)))
+        else:
+            notice = Config.filter_mask_message.replace(
+                "<WHAT>", ", ".join(sorted({category.lower() for category, _ in result.hits})))
+
+        if not await self.send(action_name="get_status_msg",
+                               action_kwargs={"msg": format_message(Config.manager_fake_name, notice)},
+                               from_state="room_round_table",
+                               target=guest,
+                               volatile=True):
+            await self.disconnect(guest)
+
+        return result.clean_msg
 
     def __eject_and_clear_guest(self, guest):
         """Send a guest of the floor/room, without clearing his vote-related info (they might be needed to get his vote

@@ -31,8 +31,8 @@
 
 ## Data
 
-Wordlists vendored in `worlds/turing_ita/src/wordlists/`, used by the message filter of the Turing
-Hotel Italia world. Each file carries the same attribution in its own header.
+Wordlists vendored in `worlds/turing/src/wordlists/` and `worlds/turing_ita/src/wordlists/`, used by
+the message filters of both Turing Hotel worlds. Each file carries the same attribution in its own header.
 
 | Name                                                  | License    | URL                                                                                 |
 |-------------------------------------------------------|------------|-------------------------------------------------------------------------------------|
