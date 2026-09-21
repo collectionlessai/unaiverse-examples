@@ -197,19 +197,24 @@ class WStats(Stats):
         buckets = self._bucket_by_scope(votes, now_ms)
         empty_buckets = self._bucket_by_scope(empty_votes, now_ms)
 
-        # Each scope is aggregated TWICE: over all the votes, and over the votes cast by HUMAN voters
-        # only (the '@h' variant, selected by the 'Human votes only' checkbox of the dashboard: there
-        # Best Fooling counts only how well the AIs fooled human judges, and Best Detecting can only
-        # rank human detectors, since the AI voters have no votes left). The EMPTY (unreadable) votes
-        # never enter any computation: they only decorate the voter rows' vote count as 'n (m)' —
-        # bracketed only when m > 0 — under the same scope window and human-only filter
+        # Each scope is aggregated THREE times: over all the votes, over the votes cast by HUMAN
+        # voters only ('@h', the 'Human votes only' checkbox of the dashboard) and over the votes cast
+        # by AI voters only ('@a', the 'AI votes only' checkbox — the two are mutually exclusive).
+        # Under a nature filter, Best Fooling counts only how well the AIs fooled judges of that
+        # nature, and Best Detecting can only rank detectors of that nature (the other voters have no
+        # votes left). The EMPTY (unreadable) votes never enter any computation: they only decorate
+        # the voter rows' vote count as 'n (m)' — bracketed only when m > 0 — under the same scope
+        # window and voter-nature filter
         scopes: dict[str, dict] = {}
         for scope_key, scope_votes in buckets.items():
             human_votes = [v for v in scope_votes if v.get("voter_nature") == "human"]
+            ai_votes = [v for v in scope_votes if v.get("voter_nature") == "ai"]
             scope_empty = empty_buckets.get(scope_key, [])
             human_empty = [v for v in scope_empty if v.get("voter_nature") == "human"]
+            ai_empty = [v for v in scope_empty if v.get("voter_nature") == "ai"]
             for suffix, votes_subset, empty_subset in (("", scope_votes, scope_empty),
-                                                       ("@h", human_votes, human_empty)):
+                                                       ("@h", human_votes, human_empty),
+                                                       ("@a", ai_votes, ai_empty)):
                 voter_rows = self._compute_voter_leaderboard(votes_subset, _MIN_VOTES)
                 empty_by_voter: dict[str, int] = {}
                 for v in empty_subset:
@@ -226,6 +231,17 @@ class WStats(Stats):
                     "voter": voter_rows,
                     "n_total_votes": len(votes_subset),
                 }
+
+            # The '@b' variant ('Balance Human/AI votes', a Best-Fooling-only checkbox): the votee
+            # results of '@h' and '@a' averaged per AI model with a STRICT /2 (a model judged by one
+            # nature only gets half). Voters, confusion matrix and counters are shared with the
+            # all-votes variant (the union of the two averaged subsets): the dashboard never selects
+            # '@b' outside Best Fooling, so only its votee board is ever shown
+            scopes[scope_key + "@b"] = {
+                **scopes[scope_key],
+                "votee": self._balance_votee_boards(scopes[scope_key + "@h"]["votee"],
+                                                    scopes[scope_key + "@a"]["votee"]),
+            }
 
         global_counters = self._derive_global_counters(ops, now_ms)
 
@@ -349,6 +365,26 @@ class WStats(Stats):
             for vt in vote_cols:
                 pct[gt][vt] = counts[gt][vt] / row_total * 100 if row_total else 0.0
         return {"counts": counts, "pct": pct}
+
+    @staticmethod
+    def _balance_votee_boards(h_rows: list[dict], a_rows: list[dict]) -> list[dict]:
+        """Merge the human-only and AI-only votee (Best Fooling) boards: fooling rate and Turing score
+        are averaged with a STRICT /2 (a model present on one side only gets half), votes is the total
+        support, avg_msgs the mean of the sides where the model appears."""
+        merged: dict[str, dict] = {}
+        for rows in (h_rows, a_rows):
+            for r in rows:
+                e = merged.setdefault(r["peer_id"], {"votes": 0, "fooling_rate": 0.0,
+                                                     "turing_score": 0.0, "msgs": []})
+                e["votes"] += r["votes"]
+                e["fooling_rate"] += r["fooling_rate"]
+                e["turing_score"] += r["turing_score"]
+                e["msgs"].append(r["avg_msgs"])
+        out = [{"peer_id": vid, "votes": e["votes"], "fooling_rate": round(e["fooling_rate"] / 2., 1),
+                "avg_msgs": round(sum(e["msgs"]) / len(e["msgs"]), 1),
+                "turing_score": round(e["turing_score"] / 2., 1)} for vid, e in merged.items()]
+        out.sort(key=lambda r: r["turing_score"], reverse=True)
+        return out
 
     @staticmethod
     def _compute_votee_leaderboard(

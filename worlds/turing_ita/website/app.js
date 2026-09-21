@@ -45,6 +45,8 @@ const L = {
   floors_note: "Everything the archive knows: the rooms where votes were recorded and the logged " +
                "conversations. Rooms with recent activity also show who is at their round table " +
                "right now (as of the last sync of the archive).",
+  floors_export: "Download CSV (whole hotel)",
+  floors_export_blank: "Download CSV (blanked users)",
   floor_label: "Floor", room_label: "Room", rooms_label: "rooms",
   no_floors: "No recorded activity yet.",
   room_votes_badge_one: "1 vote", room_votes_badge: "<N> votes",
@@ -78,7 +80,8 @@ const L = {
   lb_title: "Leaderboard", lb_fooling: "Best Fooling", lb_detecting: "Best Detecting",
   lb_score_fooling: "Turing Score", lb_score_detecting: "Detection Score",
   lb_none: "No data (minimum vote threshold not reached).",
-  lb_human_only: "Human votes only",
+  lb_human_only: "Human votes only", lb_ai_only: "AI votes only",
+  lb_balance: "Balance Human/AI votes",
   cm_title: "Confusion matrix", cm_corner: "Truth \\ Vote",
   votee_cols: { peer: "AI Agent", votes: "Votes received", fooling: "Fooling rate %",
                 avg_msgs: "Avg msgs sent", turing: "Turing score" },
@@ -318,6 +321,29 @@ function aggVotee(votes) {  // WStats._compute_votee_leaderboard (AI-only, Turin
   return rows;
 }
 
+function aggVoteeBalanced(votes) {  // 'Balance Human/AI votes': the Best Fooling results computed over
+  // the human-cast votes and over the AI-cast votes, averaged per AI model with a STRICT /2 (a model
+  // judged by one nature only gets half); votes = total support, avg_msgs = mean of the present sides
+  const byNature = new Map();
+  for (const nature of ["human", "ai"]) {
+    for (const r of aggVotee(votes.filter((v) => v.v.voter_nature === nature))) {
+      if (!byNature.has(r.peer_id)) byNature.set(r.peer_id, { votes: 0, fooling_rate: 0,
+                                                             turing_score: 0, msgs: [] });
+      const e = byNature.get(r.peer_id);
+      e.votes += r.votes;
+      e.fooling_rate += r.fooling_rate;
+      e.turing_score += r.turing_score;
+      e.msgs.push(r.avg_msgs);
+    }
+  }
+  const rows = [...byNature.entries()].map(([vid, e]) => ({
+    peer_id: vid, votes: e.votes, fooling_rate: round1(e.fooling_rate / 2),
+    avg_msgs: round1(e.msgs.reduce((s, m) => s + m, 0) / e.msgs.length),
+    turing_score: round1(e.turing_score / 2) }));
+  rows.sort((a, b) => b.turing_score - a.turing_score);
+  return rows;
+}
+
 function aggVoter(votes) {  // WStats._compute_voter_leaderboard (positive class = human)
   const nature = new Map();
   for (const rec of votes) {
@@ -384,7 +410,8 @@ function kpiCards() {
 }
 
 /* ─── pages ────────────────────────────────────────────── */
-const STATE = { scope: "max", lb: "fooling", userTab: "cast", humanOnly: false };
+const STATE = { scope: "max", lb: "fooling", userTab: "cast", voterFilter: "all" };  // voterFilter:
+                          // "all" | "human" | "ai" (nature of the VOTERS) | "balance" (fooling only)
 
 function pageOverview() {
   return kpiCards() +
@@ -415,7 +442,11 @@ function drawOpsChart() {
 function pageFloors() {
   if (DB.floors.size === 0) return `<p class="empty">${esc(L.no_floors)}</p>`;
   let html = `<h2 class="section-title">${esc(L.floors_title)}</h2>` +
-             `<p class="section-note">${esc(L.floors_note)}</p>`;
+             `<p class="section-note">${esc(L.floors_note)}</p>` +
+             `<div class="ctrl-bar"><a class="ctrl-btn" href="${API}?q=export_csv">` +
+             `${esc(L.floors_export)}</a>` +
+             `<a class="ctrl-btn" href="${API}?q=export_csv&blank=1">` +
+             `${esc(L.floors_export_blank)}</a></div>`;
   const floors = [...DB.floors.entries()].sort((a, b) => {
     const last = (rooms) => Math.max(...[...rooms.values()].map((r) => r.last_ts));
     return last(b[1]) - last(a[1]);
@@ -927,21 +958,29 @@ function podium(rows, scoreKey, scoreLabel) {
 }
 
 function pageLeaderboard() {
-  // 'Human votes only': the SAME filter feeds the boards and the confusion matrix — Best Fooling then
-  // counts only how well the AIs fooled HUMAN judges, and Best Detecting ranks human detectors only
-  // (an all-AI-voters subset leaves nothing to rank once filtered)
-  let votes = votesInScope(STATE.scope);
-  if (STATE.humanOnly) votes = votes.filter((r) => r.v.voter_nature === "human");
+  // 'Human votes only' / 'AI votes only' / 'Balance Human/AI votes' (mutually exclusive): the same
+  // voter-nature filter feeds the boards and the confusion matrix — Best Fooling then counts only how
+  // well the AIs fooled judges of that nature, and Best Detecting ranks only detectors of that
+  // nature. 'Balance' (Best Fooling ONLY) averages the human-only and AI-only results per AI model,
+  // ALWAYS dividing by 2 (a model judged by one nature only gets half); its votes column is the total
+  // and its confusion matrix is over all the votes (the union of the two averaged subsets)
+  const allVotes = votesInScope(STATE.scope);
   const fooling = STATE.lb === "fooling";
-  const rows = fooling ? aggVotee(votes) : aggVoter(votes);
+  const balance = fooling && STATE.voterFilter === "balance";
+  const votes = (STATE.voterFilter === "all" || balance) ? allVotes
+    : allVotes.filter((r) => r.v.voter_nature === STATE.voterFilter);
+  const rows = balance ? aggVoteeBalanced(allVotes) : (fooling ? aggVotee(votes) : aggVoter(votes));
   const cm = aggConfusion(votes);
 
   const scopeBtns = Object.keys(SCOPES).map((k) =>
     `<button class="ctrl-btn${k === STATE.scope ? " active" : ""}" ` +
     `onclick="setScope('${k}')">${esc(L.scope_labels[k])}</button>`).join("");
-  const humanOnly = `<label class="ctrl-check"><input type="checkbox" ` +
-    `${STATE.humanOnly ? "checked" : ""} onchange="setHumanOnly(this.checked)"> ` +
-    `${esc(L.lb_human_only)}</label>`;
+  const checks = [["human", L.lb_human_only], ["ai", L.lb_ai_only]];
+  if (fooling) checks.push(["balance", L.lb_balance]);
+  const natureChecks = checks.map(([k, lbl]) =>
+    `<label class="ctrl-check"><input type="checkbox" ` +
+    `${STATE.voterFilter === k ? "checked" : ""} onchange="setVoterFilter('${k}', this.checked)"> ` +
+    `${esc(lbl)}</label>`).join("");
   const lbBtns = [["fooling", L.lb_fooling], ["detecting", L.lb_detecting]].map(([k, lbl]) =>
     `<button class="ctrl-btn${k === STATE.lb ? " active" : ""}" ` +
     `onclick="setLB('${k}')">${esc(lbl)}</button>`).join("");
@@ -958,7 +997,7 @@ function pageLeaderboard() {
   const emptyByVoter = new Map();
   for (const r of DB.emptyVotes) {
     if ((now - r.ts) > SCOPES[STATE.scope]) continue;
-    if (STATE.humanOnly && r.v.voter_nature !== "human") continue;
+    if (STATE.voterFilter !== "all" && r.v.voter_nature !== STATE.voterFilter) continue;
     if (r.v.voter) emptyByVoter.set(r.v.voter, (emptyByVoter.get(r.v.voter) || 0) + 1);
   }
   const data = rows.slice(0, 100).map((r, i) => fooling
@@ -976,15 +1015,20 @@ function pageLeaderboard() {
   return `<h2 class="section-title">${esc(L.lb_title)}</h2>` +
     podium(rows, fooling ? "turing_score" : "detection_score",
            fooling ? L.lb_score_fooling : L.lb_score_detecting) +
-    `<div class="ctrl-bar">${scopeBtns}<span style="flex:1"></span>${humanOnly}${lbBtns}</div>` +
+    `<div class="ctrl-bar">${scopeBtns}<span style="flex:1"></span>${natureChecks}${lbBtns}</div>` +
     `<div id="lb-grid"></div>` +
     `<div class="two-col" style="margin-top:18px"><div class="panel">` +
     `<h3>${esc(L.cm_title)} — ${esc(L.scope_labels[STATE.scope])}</h3>${cmTable(cm)}</div><div></div></div>`;
 }
 
 window.setScope = (k) => { STATE.scope = k; route(); };
-window.setLB = (k) => { STATE.lb = k; route(); };
-window.setHumanOnly = (v) => { STATE.humanOnly = !!v; route(); };
+window.setLB = (k) => {
+  STATE.lb = k;
+  if (k !== "fooling" && STATE.voterFilter === "balance") STATE.voterFilter = "all";  // Fooling-only
+  route();
+};
+window.setVoterFilter = (kind, on) => { STATE.voterFilter = on ? kind : "all"; route(); };  // Checking
+                                                          // one of the two boxes unchecks the other
 
 /* ─── router ───────────────────────────────────────────── */
 function applyNav(page) {

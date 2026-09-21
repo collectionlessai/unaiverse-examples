@@ -8,6 +8,9 @@
 //   ?q=sessions                   -> logged-conversation sessions [{session, n, first_ts, last_ts, authors}, ...]
 //   ?q=presence                   -> who is in each room now      {session: [{author, fake_name, nature,
 //                                    since_ts}, ...]} (from the recent join/left/disconnected events)
+//   ?q=export_csv                 -> the WHOLE hotel archive as a CSV download (chats, room events and
+//                                    voting acts, one row each, roughly chronological; see the case below);
+//                                    &blank=1 replaces every UNaID with "user1", "user2", ... pseudonyms
 //   ?q=events&session=S           -> the 'kind: event' chunks only [{id, ts, m}, ...] (join/left/disconnected)
 //   ?q=conversation&session=S     -> a PAGE of the session transcript: {rows: [{id, ts, m}, ...], more: bool}
 //        Room transcripts are UNBOUNDED (rooms never close), so this endpoint never returns them whole:
@@ -113,6 +116,12 @@ try {
             // n counts the CHAT messages only: 'kind: event' records (joined/left/disconnected) are
             // part of the transcript but not of the message count (their author still counts as a
             // participant: it is the AFFECTED guest, so even silent guests leave a trace)
+            // MySQL SILENTLY truncates GROUP_CONCAT at group_concat_max_len (default 1024 chars):
+            // ~30 authors already exceed it, cutting the list MID-UNaID — a garbage participant plus
+            // missing ones. Raise the cap first (MySQL only: SQLite, used by the test twin, has none)
+            if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+                $pdo->exec("SET SESSION group_concat_max_len = 1000000");
+            }
             $st = $pdo->query("SELECT g_session AS session, " .
                               "SUM(CASE WHEN g_kind IS NULL THEN 1 ELSE 0 END) AS n, " .
                               "MIN(ts) AS first_ts, MAX(ts) AS last_ts, " .
@@ -130,6 +139,242 @@ try {
             }
             echo json_encode($out);
             break;
+
+        case 'export_csv':
+            // The WHOLE hotel archive as one CSV: chat messages, room events (joined/left/disconnected)
+            // and voting acts, one row each, ordered by timestamp. Columns:
+            //   floor_id, room_id, ts_ms, datetime (ISO 8601 UTC), event (chat|joined|left|disconnected|
+            //   vote), fake_name, user (UNaID), nature, msg, structured
+            // 'msg' carries the chat/event text, or the raw words the voter wrote. 'structured' is a
+            // JSON dict where information was parsed: for events {agent: {fake_name, user}, event}; for
+            // votes {voter: {fake_name, user}, votees: [{fake_name, user, ground_truth, vote,
+            // correct (1|0), conversation_from_ts, conversation_to_ts}, ...]} — one VOTING ACT per row,
+            // each votee with ITS OWN conversation window (the same pairWindows/pickWindow logic of the
+            // site; nulls when the events cannot isolate it, vote ts closes a still-open window). The
+            // unreadable acts (turing_empty_vote) are NOT special-cased: same 'vote' rows, null
+            // vote/correct, plus their 'reason'. Every cell is quoted, always (messages carry commas,
+            // quotes and newlines); the leading BOM keeps Excel happy with UTF-8.
+            // The archive is unbounded, so rows are STREAMED in keyset-paginated chunks (never all in
+            // memory); only the room events are preloaded (they are few, and every vote row needs them).
+            // A voting act spans several DB records (one per votee) whose timestamps may differ by a few
+            // ms (they are stamped per record): records of the same (stat, session, voter) within
+            // EXPORT_ACT_TOLERANCE_MS are one act (a voter votes at most once per room cycle)
+            // &blank=1 -> the BLANKED variant: every UNaID (the 'user' column and every 'user' field
+            // inside 'structured') is replaced by a pseudonym "user1", "user2", ... assigned in order
+            // of first appearance and consistent across the whole file; the fake names (room aliases,
+            // anonymous by construction) are kept as they are
+            define('EXPORT_ACT_TOLERANCE_MS', 2000);
+            define('EXPORT_CHUNK_ROWS', 5000);
+            set_time_limit(0);  // The archive is unbounded and this endpoint STREAMS it: the default
+                                // 30s execution cap would kill the export mid-file (and append the
+                                // fatal-error HTML to the CSV). Memory stays bounded by the chunking
+            $blank = ($_GET['blank'] ?? '') === '1';
+            $userMap = [];
+            $anon = function ($unaid) use (&$userMap, $blank) {
+                if (!$blank || (string)$unaid === '') {
+                    return (string)$unaid;
+                }
+                if (!isset($userMap[$unaid])) {
+                    $userMap[$unaid] = 'user' . (count($userMap) + 1);
+                }
+                return $userMap[$unaid];
+            };
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="turing_hotel_export'
+                   . ($blank ? '_blanked' : '') . '.csv"');
+            $out = fopen('php://output', 'wb');
+            $csv = function (array $cells) use ($out) {
+                fwrite($out, implode(',', array_map(function ($v) {
+                    return '"' . str_replace('"', '""', $v === null ? '' : (string)$v) . '"';
+                }, $cells)) . "\r\n");
+            };
+            $iso = function ($ms) {
+                return gmdate('Y-m-d\TH:i:s', intdiv((int)$ms, 1000)) . sprintf('.%03dZ', ((int)$ms) % 1000);
+            };
+            $split = function ($session) {  // "floor_id:room_id" -> [floor_id, room_id]
+                $p = explode(':', (string)$session, 2);
+                return count($p) === 2 ? $p : ['', (string)$session];
+            };
+            $jenc = function ($x) {
+                return json_encode($x, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            };
+            fwrite($out, "\xEF\xBB\xBF");
+            $csv(['floor_id', 'room_id', 'ts_ms', 'datetime', 'event', 'fake_name', 'user', 'nature',
+                  'msg', 'structured']);
+
+            // Room events per session (they also feed the per-votee conversation windows)
+            $eventsBySession = [];
+            $st = $pdo->query("SELECT id, ts, val_json FROM dynamic_stats " .
+                              "WHERE stat_name = 'conversation_chunk' AND g_kind = 'event' ORDER BY id");
+            foreach ($st as $row) {
+                $m = json_decode($row['val_json'], true);
+                if (is_array($m)) {
+                    $eventsBySession[$m['session_id'] ?? ''][] =
+                        ['id' => (int)$row['id'], 'ts' => (int)$row['ts'], 'm' => $m];
+                }
+            }
+
+            // pairWindows/pickWindow, ported 1:1 from app.js: the [join .. first left/disconnected]
+            // windows in which the two identities (unaid + fake name, rooms are reused) were in the
+            // room together, then the window whose right extreme is closest BEFORE the vote
+            $evTs = function ($ev) { return (int)($ev['m']['ts'] ?? $ev['ts']); };
+            $pairWindows = function (array $events, $a, $aFake, $b, $bFake) {
+                $match = function ($m, $unaid, $fake) {
+                    return ($m['author'] ?? '') === $unaid &&
+                           ((string)$fake === '' || (string)($m['author_fake_name'] ?? '') === '' ||
+                            $m['author_fake_name'] === $fake);
+                };
+                $present = ['a' => false, 'b' => false];
+                $windows = [];
+                $start = null;
+                foreach ($events as $ev) {
+                    $m = $ev['m'];
+                    if ($match($m, $a, $aFake)) {
+                        $who = 'a';
+                    } elseif ($match($m, $b, $bFake)) {
+                        $who = 'b';
+                    } else {
+                        continue;
+                    }
+                    if (($m['event'] ?? '') === 'joined') {
+                        $present[$who] = true;
+                        if ($start === null && $present['a'] && $present['b']) {
+                            $start = $ev;
+                        }
+                    } else {
+                        if ($start !== null) {
+                            $windows[] = [$start, $ev];
+                        }
+                        $start = null;
+                        $present[$who] = false;
+                    }
+                }
+                if ($start !== null) {
+                    $windows[] = [$start, null];  // Still open
+                }
+                return $windows;
+            };
+            $pickWindow = function (array $windows, $voteTs) use ($evTs) {
+                if (count($windows) === 0) {
+                    return null;
+                }
+                $best = null;
+                $bestEnd = null;
+                foreach ($windows as $w) {
+                    $end = $w[1] === null ? INF : $evTs($w[1]);
+                    if ($end <= $voteTs && ($best === null || $end > $bestEnd)) {
+                        $best = $w;
+                        $bestEnd = $end;
+                    }
+                }
+                if ($best === null) {
+                    foreach ($windows as $w) {
+                        $end = $w[1] === null ? INF : $evTs($w[1]);
+                        if ($best === null || $end < $bestEnd) {
+                            $best = $w;
+                            $bestEnd = $end;
+                        }
+                    }
+                }
+                return $best;
+            };
+
+            $flushAct = function (array $act) use ($csv, $iso, $split, $jenc, $pairWindows, $pickWindow,
+                                                   $evTs, &$eventsBySession, $anon) {
+                $first = $act['records'][0];
+                $v0 = $first['v'];
+                [$floorId, $roomId] = $split($v0['session_id'] ?? '');
+                $events = $eventsBySession[$v0['session_id'] ?? ''] ?? [];
+                $votees = [];
+                foreach ($act['records'] as $rec) {
+                    $v = $rec['v'];
+                    $vote = $v['vote'] ?? null;  // null: an unreadable act (turing_empty_vote)
+                    $win = $pickWindow($pairWindows($events, $v0['voter'] ?? '',
+                                                    $v0['voter_fake_name'] ?? '',
+                                                    $rec['votee'], $v['votee_fake_name'] ?? ''),
+                                       $rec['ts']);
+                    $votees[] = [
+                        'fake_name' => $v['votee_fake_name'] ?? '',
+                        'user' => $anon($rec['votee']),
+                        'ground_truth' => $v['ground_truth'] ?? null,
+                        'vote' => $vote,
+                        'correct' => $vote === null ? null : (int)($vote === ($v['ground_truth'] ?? null)),
+                        'conversation_from_ts' => $win === null ? null : $evTs($win[0]),
+                        'conversation_to_ts' => $win === null ? null
+                            : ($win[1] === null ? $rec['ts'] : $evTs($win[1])),
+                    ];
+                }
+                $structured = ['voter' => ['fake_name' => $v0['voter_fake_name'] ?? '',
+                                           'user' => $anon($v0['voter'] ?? '')],
+                               'votees' => $votees];
+                if (isset($v0['reason'])) {
+                    $structured['reason'] = $v0['reason'];
+                }
+                $csv([$floorId, $roomId, $first['ts'], $iso($first['ts']), 'vote',
+                      $v0['voter_fake_name'] ?? '', $anon($v0['voter'] ?? ''),
+                      $v0['voter_nature'] ?? '', $v0['VOTE_MSG'] ?? '', $jenc($structured)]);
+            };
+
+            $pending = [];  // "stat|session|voter" -> ['ts' => last record ts, 'records' => [...]]
+            $lastTs = -1;
+            $lastId = -1;
+            $chunk = $pdo->prepare(
+                "SELECT id, ts, stat_name, peer_id, val_json FROM dynamic_stats " .
+                "WHERE stat_name IN ('conversation_chunk', 'turing_vote', 'turing_empty_vote') " .
+                "AND peer_id NOT LIKE '%\\_SKIPPED' " .
+                "AND (ts > ? OR (ts = ? AND id > ?)) ORDER BY ts, id LIMIT " . EXPORT_CHUNK_ROWS);
+            while (true) {
+                $chunk->execute([$lastTs, $lastTs, $lastId]);
+                $rows = $chunk->fetchAll();
+                if (count($rows) === 0) {
+                    break;
+                }
+                foreach ($rows as $row) {
+                    $ts = (int)$row['ts'];
+                    $lastTs = $ts;
+                    $lastId = (int)$row['id'];
+                    foreach ($pending as $key => $act) {  // Acts settle once the tolerance has passed
+                        if ($ts - $act['ts'] > EXPORT_ACT_TOLERANCE_MS) {
+                            $flushAct($act);
+                            unset($pending[$key]);
+                        }
+                    }
+                    $m = json_decode($row['val_json'], true);
+                    if (!is_array($m)) {
+                        continue;
+                    }
+                    if ($row['stat_name'] === 'conversation_chunk') {
+                        [$floorId, $roomId] = $split($m['session_id'] ?? '');
+                        if (($m['kind'] ?? '') === 'event') {
+                            $csv([$floorId, $roomId, $ts, $iso($ts), $m['event'] ?? 'event',
+                                  $m['author_fake_name'] ?? '', $anon($m['author'] ?? ''),
+                                  $m['author_nature'] ?? '', $m['text'] ?? '',
+                                  $jenc(['agent' => ['fake_name' => $m['author_fake_name'] ?? '',
+                                                     'user' => $anon($m['author'] ?? '')],
+                                         'event' => $m['event'] ?? ''])]);
+                        } else {
+                            $csv([$floorId, $roomId, $ts, $iso($ts), 'chat',
+                                  $m['author_fake_name'] ?? '', $anon($m['author'] ?? ''),
+                                  $m['author_nature'] ?? '', $m['text'] ?? '', '']);
+                        }
+                    } else {
+                        $key = $row['stat_name'] . '|' . ($m['session_id'] ?? '') . '|' . ($m['voter'] ?? '');
+                        if (isset($pending[$key]) && $ts - $pending[$key]['ts'] > EXPORT_ACT_TOLERANCE_MS) {
+                            $flushAct($pending[$key]);
+                            unset($pending[$key]);
+                        }
+                        if (!isset($pending[$key])) {
+                            $pending[$key] = ['ts' => $ts, 'records' => []];
+                        }
+                        $pending[$key]['records'][] = ['ts' => $ts, 'votee' => $row['peer_id'], 'v' => $m];
+                        $pending[$key]['ts'] = $ts;
+                    }
+                }
+            }
+            foreach ($pending as $act) {
+                $flushAct($act);
+            }
+            exit;
 
         case 'presence':
             // Who is in each room RIGHT NOW (as of the last mirror sync): replay of the recent
@@ -227,7 +472,7 @@ try {
 
         default:
             fail(400, "Unknown endpoint '$q' (use: ops, votes, empty_votes, sessions, presence, " .
-                      "events, conversation)");
+                      "events, conversation, export_csv)");
     }
 } catch (Throwable $e) {  // PDO errors AND any other PHP error: always a JSON reply, never a white page
     fail(500, 'Query failed' . detail($e));

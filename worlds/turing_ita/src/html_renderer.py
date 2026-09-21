@@ -721,8 +721,11 @@ tr.gridjs-tr:hover td.gridjs-td{{
         >
       </div>
       <div class="ctrl-sep"></div>
-      <!-- Human-votes-only filter (selects the '@h' precomputed variant of the active scope) -->
-      <label class="ctrl-check"><input type="checkbox" onchange="toggleHumanOnly(this.checked)"> Human votes only</label>
+      <!-- Voter-nature filters, mutually exclusive (they select the '@h' / '@a' / '@b' precomputed
+           variants of the active scope); the balanced one only exists in Best Fooling mode -->
+      <label class="ctrl-check"><input type="checkbox" id="flt-h" onchange="setVoterFilter('@h', this.checked)"> Human votes only</label>
+      <label class="ctrl-check"><input type="checkbox" id="flt-a" onchange="setVoterFilter('@a', this.checked)"> AI votes only</label>
+      <label class="ctrl-check" id="flt-b-label"><input type="checkbox" id="flt-b" onchange="setVoterFilter('@b', this.checked)"> Balance Human/AI votes</label>
       <div class="ctrl-sep"></div>
       <!-- LB toggle group -->
       <div class="ctrl-lb">
@@ -813,13 +816,14 @@ tr.gridjs-tr:hover td.gridjs-td{{
      ═══════════════════════════════════════════════════ */
   var DEFAULT='{default_scope}';
   var _activeScope=DEFAULT;
-  var _humanOnly=false;
+  var _voterFilter='';  /* '' (all votes) | '@h' (human voters only) | '@a' (AI voters only)
+                           | '@b' (balanced human/AI average, Best Fooling only) */
 
-  /* The EFFECTIVE scope key: the '@h' suffix selects the human-votes-only precomputed variant
-     (panels, cards and grids all exist twice, once per variant); the scope BUTTONS stay keyed on
-     the base scope */
+  /* The EFFECTIVE scope key: the '@h' / '@a' suffix selects the voter-nature precomputed variant
+     (panels, cards and grids all exist once per variant); the scope BUTTONS stay keyed on the
+     base scope */
   function effScope(){{
-    return _activeScope+(_humanOnly?'@h':'');
+    return _activeScope+_voterFilter;
   }}
 
   function applyScope(){{
@@ -843,11 +847,15 @@ tr.gridjs-tr:hover td.gridjs-td{{
   }}
   window.switchScope=switchScope;
 
-  function toggleHumanOnly(v){{
-    _humanOnly=!!v;
+  function setVoterFilter(suffix,on){{
+    _voterFilter=on?suffix:'';  /* checking one box unchecks the others */
+    ['@h','@a','@b'].forEach(function(s){{
+      var el=document.getElementById('flt-'+s.charAt(1));
+      if(el) el.checked=(_voterFilter===s);
+    }});
     applyScope();
   }}
-  window.toggleHumanOnly=toggleHumanOnly;
+  window.setVoterFilter=setVoterFilter;
 
   /* ═══════════════════════════════════════════════════
      LEADERBOARD TOGGLE
@@ -856,6 +864,10 @@ tr.gridjs-tr:hover td.gridjs-td{{
 
   function switchLB(key){{
     _activeLB=key;
+    /* The balanced filter only exists in Best Fooling: leaving it drops the filter and its checkbox */
+    var bl=document.getElementById('flt-b-label');
+    if(bl) bl.style.display=(key==='fooling')?'':'none';
+    if(key!=='fooling' && _voterFilter==='@b') setVoterFilter('@b',false);
     document.querySelectorAll('.lb-panel').forEach(function(el){{
       el.classList.toggle('visible',el.dataset.lb===key);
     }});

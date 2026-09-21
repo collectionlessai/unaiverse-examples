@@ -147,6 +147,8 @@ a.circle-card:hover { border-color:var(--border-strong); text-decoration:none }
   padding:6px 14px; cursor:pointer; transition:all .15s ease;
 }
 .ctrl-btn:hover { background:var(--hover-bg) }
+a.ctrl-btn { display:inline-block; text-decoration:none }
+a.ctrl-btn:hover { text-decoration:none }
 .ctrl-btn.active { background:var(--tab-active-bg); color:var(--tab-active-text); border-color:var(--primary) }
 .topic-chip { font-size:.72rem; padding:4px 10px }
 .ctrl-topics { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 }
