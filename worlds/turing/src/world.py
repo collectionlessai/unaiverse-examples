@@ -40,14 +40,32 @@ class WWorld(World):
         # Tracking changes to file "managers".txt (to update the lists when the file changes)
         self.managers_file_tracker = FileTracker(folder=world_folder, ext=".txt", prefix="managers.txt")
 
+        # Banned agents: a set of UNaIDs ("<nickname>/<node_name>") dynamically updated from file
+        # "banned.txt" (same folder of "managers.txt"; a missing file means nobody is banned). A banned
+        # agent is refused at join time (see assign_role below), while the ones already inside are
+        # disconnected by the run_w.py hook, which polls the file through refresh_banned_list()
+        self.banned_agents = set()
+        self.banned_sweep_needed = False  # Raised whenever the set changes, lowered by the run_w.py
+        self.load_banned_from_file()      # hook once it swept the connected agents
+
+        # Tracking changes to file "banned.txt" (same facility used for "managers.txt")
+        self.banned_file_tracker = FileTracker(folder=world_folder, ext=".txt", prefix="banned.txt")
+
     def assign_role(self, profile: NodeProfile, is_world_master: bool):
 
         # If "managers.txt" changed, reload file
         if self.managers_file_tracker.something_changed():
             self.load_managers_from_file()
 
-        # Role is assigned in function of the contents of the lists of hotel and floor managers
+        # If "banned.txt" changed, reload it; a banned agent gets no role at all: returning None makes
+        # the node disconnect him right away
+        self.refresh_banned_list()
         unaid = build_unaid(profile)
+        if unaid in self.banned_agents:
+            log.user(f"Refusing banned agent: {unaid}")
+            return None
+
+        # Role is assigned in function of the contents of the lists of hotel and floor managers
         if unaid in self.hotel_managers:
             log.user(f"Assigning role of hotel manager to: {unaid}")
             return "hotel_manager"
@@ -76,6 +94,28 @@ class WWorld(World):
                     self.hotel_managers.add(_unaid.strip())
                 else:
                     log.error(f"Invalid line in managers.txt file (skipping): {manager}")
+
+    def refresh_banned_list(self) -> bool:
+        """Reload the banned UNaIDs when "banned.txt" changed since the last check (True if reloaded)."""
+        if not self.banned_file_tracker.something_changed():
+            return False
+        self.load_banned_from_file()
+        return True
+
+    def load_banned_from_file(self):
+        """Load the set of banned UNaIDs from file "banned.txt" (one "<nickname>/<node_name>" per line;
+        a missing file means nobody is banned)."""
+        assert self.world_folder is not None
+        banned_file = os.path.join(self.world_folder, "banned.txt")
+        banned = set()
+        if os.path.exists(banned_file):
+            with open(banned_file, "r") as f:
+                banned = {line.strip() for line in f if line.strip() != ""}
+        if banned != self.banned_agents:
+            log.user(f"Banned agents: {len(banned)} UNaID(s)"
+                     + (" -> " + ", ".join(sorted(banned)) if len(banned) > 0 else ""))
+            self.banned_sweep_needed = True
+        self.banned_agents = banned
 
     def create_behav_files(self):
         """Create role-behavior JSON files."""
@@ -163,7 +203,8 @@ class WWorld(World):
         behav.set_welcome_message("Welcome to the Turing Hotel 🏨, it's amazing to have a new guest!")
 
         behav.add_state("init", action="init", blocking=False)
-        behav.add_state("ready", blocking=True, msg="🔗 Connecting to a randomly selected hotel manager")
+        behav.add_state("ready", blocking=True, msg="🔗 Connecting to a randomly selected hotel manager",
+                        action="ready")
         behav.add_state("wait_for_ready", blocking=False,
                         msg=f"⏳ Waiting outside (you will stay outside for {Config.decompression_time} seconds "
                             f"to recover)")
@@ -173,7 +214,8 @@ class WWorld(World):
         behav.add_state("wait_for_hall", blocking=False, msg="⏳ Waiting in the hall (decompression)")
         behav.add_state("reached_floor_manager", blocking=False,
                         msg="🪜 Going upstairs (floor manager contacted)")
-        behav.add_state("floor", blocking=False, msg="🪜 Reached the right floor (waiting to be sent to a room)")
+        behav.add_state("floor", blocking=False,
+                        msg="🪜 Reached the right floor (waiting to be sent to a room)")
         behav.add_state("ready_for_room", blocking=False)
         behav.add_state("room_round_table", blocking=True)
         behav.add_state("msg_prepared", blocking=False)
@@ -182,9 +224,7 @@ class WWorld(World):
         behav.add_state("can_vote", blocking=True)
         behav.add_state("vote_provided", blocking=True, msg="✅ Vote provided")
 
-        behav.add_transit("init", "ready", action="process", args={},
-                          avoid_changing_ready=True)
-        behav.add_transit("init", "ready", action="skip_confirmation")
+        behav.add_transit("init", "ready", action="check_confirmation")
         behav.add_transit("ready", "reached_hotel_manager", action="connect_to_hotel_manager")
         behav.add_transit("reached_hotel_manager", "hall", action="hotel_manager_ack", args={})
         behav.add_transit("reached_hotel_manager", "wait_for_ready",
@@ -202,7 +242,8 @@ class WWorld(World):
                           args={}, delay=Config.decompression_time, teleport=True)
         behav.add_transit("floor", "ready_for_room", action="send_guest_sponsor", args={})
         behav.add_transit("ready_for_room", "room_round_table", action="goto_room", args={},
-                          msg="💬 Entered the room, sitting at the chat table (waiting for the start message)",
+                          msg="💬 Entered the room, sitting at the chat table "
+                              "(waiting for the start message)",
                           ready=False)
         behav.add_transit("room_round_table", "msg_prepared", action="process", args={},
                           avoid_changing_ready=True, high_priority=True)
