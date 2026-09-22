@@ -155,7 +155,7 @@ class WAgent(Agent):
         if not self._init_message_printed:
             nickname = self.get_profile().get_static_profile()['nickname']
             is_human = self.get_profile().get_static_profile()["node_type"] == Agent.HUMAN
-            if not self.__is_in_form_filled_user_list(nickname, is_human):
+            if not self.__is_in_form_filled_user_list(nickname, is_human) and not Config.skip_form_check:
                 init_message = (Config.init_message_with_form.
                                 replace("<FORM_LINK>",
                                         base64.b64decode(
@@ -182,7 +182,7 @@ class WAgent(Agent):
     async def check_confirmation(self):
         nickname = self.get_profile().get_static_profile()['nickname']
         is_human = self.get_profile().get_static_profile()["node_type"] == Agent.HUMAN
-        return self.__is_in_form_filled_user_list(nickname, is_human)
+        return self.__is_in_form_filled_user_list(nickname, is_human) or Config.skip_form_check
 
     @action
     async def connect_to_hotel_manager(self):

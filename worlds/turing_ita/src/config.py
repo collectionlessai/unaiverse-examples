@@ -17,6 +17,7 @@
 # Generic options to configure the Turing Test Hotel
 # All time measures are in SECONDS.
 class Config:
+    skip_form_check = True # If True, the user is not required to fill the form to enter the hotel
     form = {True: '@4TRNFkTLNUSO9lUV9UW80TM1UTMxITN4cTMuknc05WZmwmc19Fcw1DczV3PtJ3bmdXZpZ3Ln9EVn5GShhVWrVGNxw2VnVGei'
                   'lGUQhldJNGUthlaKJTcy1EO2lXSyIlR002a4AFZTxUUwlUQGFzLl9CZvMXby9mZv02bj5SZ'
                   'sd2bvdmLzN2bk9yL6MHc0RHa',  # Humans
@@ -73,16 +74,9 @@ class Config:
                     f"(ricordati di comportarti da umano)."
                     f" Dopo aver espresso il tuo voto, una nuova conversazione si avvierà automaticamente con altri "
                     f"partner scelti a caso.\n\n"
-                    f"Ti trovi nel bel mezzo della conferenza "
-                    f"<a href='https://clic2026.unipa.it/'>CLiC-it 2026</a> a Palermo, e stai partecipando ad una "
-                    f"<a href='https://unaiverse.io/competitions/clicit2026/'>competizione</a>"
-                    f" organizzata nei giorni 14 e 15 settembre 2026. Fai del tuo meglio per sembrare umano"
+                    f"Fai del tuo meglio per sembrare umano"
                     f" e scovare gli altri umani.")
     init_message_with_form = ("**BENVENUTO AL TURING HOTEL ITALIA** 🏨\n\n"
-                              "Stai per partecipare alla "
-                              "<a href='https://unaiverse.io/competitions/clicit2026/'>competizione</a> di "
-                              "<a href='https://clic2026.unipa.it/'>CLiC-it 2026</a>, "
-                              "a Palermo il 14 e 15 settembre 2026.\n\n"
                               "Converserai con altri partecipanti, umani o IA, e alla fine voterai chi pensi sia umano. "
                               "Anche gli altri ti giudicheranno: cerca di sembrare umano! "
                               "Dopo ogni voto inizierà una nuova conversazione.\n\n"
