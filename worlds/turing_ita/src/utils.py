@@ -625,6 +625,66 @@ def test_floor_manager_vote_reveal():
     assert not sent and manager._guest2vote_info == {}
 
 
+
+def test_floor_assignment_packs_floors(monkeypatch):
+    """Use one floor to capacity, including in-flight arrivals, before another floor."""
+    from collections import Counter
+    from .hotel import Hotel
+
+    monkeypatch.setattr(Config, "max_guests_per_room", 2)
+    monkeypatch.setattr(Config, "max_overbooked_guests", 1)
+
+    def hotel():
+        result = Hotel(managed_guest_profiles={})
+        # Add in reverse order to ensure discovery order is not the tie-breaker.
+        result.add_floor("b", "manager-b", ["b1", "b2"])
+        result.add_floor("a", "manager-a", ["a1", "a2"])
+        return result
+
+    structure = hotel()
+    assigned, remaining = compute_check_in_proposals(structure, [f"g{i}" for i in range(7)])
+    assert not remaining
+    assert Counter(p["floor_id"] for p in assigned.values()) == {"a": 6, "b": 1}
+    assert all(room.count_guests(count_temp_too=True) <= 3 for room in structure.get_rooms())
+
+    # Successive hotel cycles can run before any floor update has arrived.
+    structure = hotel()
+    assigned, _ = compute_check_in_proposals(structure, ["g0", "g1", "g2"])
+    for guest, proposal in assigned.items():
+        structure.add_expected_guest(guest, structure.get_floor(proposal["floor_id"]))
+    assigned, _ = compute_check_in_proposals(structure, ["g3", "g4"])
+    assert {p["floor_id"] for p in assigned.values()} == {"a"}
+    for guest, proposal in assigned.items():
+        structure.add_expected_guest(guest, structure.get_floor(proposal["floor_id"]))
+    assigned, _ = compute_check_in_proposals(structure, ["g5", "g6"])
+    assert Counter(p["floor_id"] for p in assigned.values()) == {"a": 1, "b": 1}
+
+    # Prefer a floor already in use even when its identity sorts after an empty one.
+    structure = hotel()
+    floor = structure.get_floor("b")
+    room = floor.get_room("b1")
+    floor.insert("present", None, "hotel", room, assign_fake_name=False)
+    structure.add_expected_guest("present", floor)  # An update already placed this guest; do not count twice.
+    assigned, remaining = compute_check_in_proposals(structure, [f"new{i}" for i in range(5)])
+    assert not remaining and {p["floor_id"] for p in assigned.values()} == {"b"}
+
+    # Floor-manager room allocation still fills a singleton before opening another room.
+    assigned, remaining = compute_check_in_proposals(floor, ["peer"])
+    assert not remaining and assigned["peer"]["room_id"] == "b1"
+
+    # Exhausted floors leave excess guests waiting instead of exceeding room limits.
+    structure = hotel()
+    guests = [f"capacity{i}" for i in range(14)]
+    assigned, remaining = compute_check_in_proposals(structure, guests)
+    assert len(assigned) == 12 and len(remaining) == 2
+    assert set(assigned).isdisjoint(remaining)
+    assert set(assigned) | set(remaining) == set(guests)
+    assert all(room.count_guests(count_temp_too=True) == 3 for room in structure.get_rooms())
+
+    empty = Hotel(managed_guest_profiles={})
+    assert compute_check_in_proposals(empty, ["waiting"]) == ({}, ["waiting"])
+
+
 def test_vote_form_roundtrip():
     """The vote as a form: what is composed, what is read back, and what is not a vote."""
     from unaiverse.uai import encode_reply, has_fence, parse_message, serialize_block, to_model_text
@@ -1188,10 +1248,40 @@ def test_parse_vote_msg_letters():
 
 
 def compute_check_in_proposals(structure, guests_to_check_in: list):
-    # Clearing temp room assignments (if any)
+    """Pack active floors before opening another, then fill rooms within each floor.
+
+    The hotel reserves space for guests already sent upstairs, even before floor updates arrive.
+    A floor manager still uses the existing room policy, including its overbooking limit.
+    """
     for room in structure.get_rooms():
         room.clear_temp_assignments()
 
+    if not hasattr(structure, "get_floors"):
+        return _compute_room_check_ins(structure, guests_to_check_in)
+
+    floors = list(structure.get_floors())
+    def pending_guests(floor):
+        return set(floor.get_expected_guests()) - set(floor.get_guests())
+
+    # Stable manager identities break ties, independently of discovery order.
+    floors.sort(key=lambda floor: (
+        -(sum(room.count_guests() for room in floor.get_rooms()) + len(pending_guests(floor))),
+        floor.floor_manager,
+    ))
+    proposals = {}
+    remaining = list(guests_to_check_in)
+    for floor in floors:
+        if not remaining:
+            break
+        # Reserve pending arrivals first. Keep those temporary seats for this cycle's proposals.
+        _compute_room_check_ins(floor, sorted(pending_guests(floor)))
+        assigned, remaining = _compute_room_check_ins(floor, remaining)
+        proposals.update(assigned)
+    return proposals, remaining
+
+
+def _compute_room_check_ins(structure, guests_to_check_in: list):
+    """Apply the room-filling policy without clearing reservations from this check-in cycle."""
     # Data that will be returned
     proposed_check_ins = {}  # Checked in guests (peer ID to dictionary {"floor_id": FLOOR_ID, "room_id": ROOM_ID})
     cannot_check_in = []  # Guests for which check in was not possible (no free rooms for them)
