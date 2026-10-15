@@ -43,6 +43,7 @@ class GuestStatus(Enum):
     TOLD_TO_MOVE_TO_VOTING_BOOTH = "MOVE>VOTING"
     JUST_ARRIVED_IN_VOTING_BOOTH = ">VOTING"
     IN_VOTING_BOOTH = "VOTING"
+    AWAITING_VOTE_DATA = "VOTE>RESULT"
 
 
 class WAgent(Agent):
@@ -181,7 +182,6 @@ class WAgent(Agent):
         # Let's distinguish if we are in the context of a callback from a vote-process-operation-completed,
         # or if we are just calling the method somewhere else
         callback_from_process_vote = False
-        _guest = guest  # TODO
         if guest is None:
             assert interaction is not None
 
@@ -200,8 +200,6 @@ class WAgent(Agent):
         # Getting info
         hotel_manager = self.floor.get_hotel_manager_of(guest)
         room = self.floor.get_room_of(guest)
-
-        vote_result = None
 
         # Saving vote-related info
         if callback_from_process_vote:
@@ -245,15 +243,19 @@ class WAgent(Agent):
             if guest in self._guest2vote_info:
                 self._guest2vote_info[guest][1] = vote_dict
 
-            # Carry the reveal with the hall transition so it is rendered before disconnection.
             if interaction.completion_reason == CompletionReason.OK:
-                # An independent stream reader keeps the hotel-manager collector's delivery intact.
-                vote_stream = self.get_stream("processor", guest, data_type="text")
-                if vote_stream is not None and guest in self._guest2vote_info:
-                    vote_uuid = self._guest2vote_info[guest][0]
-                    vote_dict["vote"] = vote_stream.get(requested_by="vote_result", uuid=vote_uuid)
-                vote_result = build_vote_result_wire(vote_dict)
+                # Completion and stream delivery are independent. Keep the guest connected until
+                # send_votes receives the actual answer and builds the reveal from that same packet.
+                room.set_status(guest, GuestStatus.AWAITING_VOTE_DATA)
+                return True
 
+        pending = self._guest2vote_info.get(guest)
+        voted = callback_from_process_vote or (pending is not None and pending[1] is not None)
+        return await self.__return_guest_to_hall(guest, hotel_manager, voted=voted)
+
+    async def __return_guest_to_hall(self, guest: str, hotel_manager: str,
+                                     voted: bool, vote_result: str | None = None):
+        """Display the optional reveal before the hall transition disconnects the floor manager."""
         # Telling hotel manager that we reset our state touch with the floor manager he suggested
         # Independent peers, independent sends.
         hm_ret, g_ret = await asyncio.gather(
@@ -264,7 +266,7 @@ class WAgent(Agent):
                       volatile=True),
             self.send(action_name="goto_hall",
                       action_kwargs={"msg": vote_result} if vote_result else {},
-                      from_state="can_vote" if not callback_from_process_vote else "vote_provided",
+                      from_state="vote_provided" if voted else "can_vote",
                       target=guest,
                       volatile=True),
             return_exceptions=True
@@ -380,6 +382,13 @@ class WAgent(Agent):
                                    target=guest):
                 await self.disconnect(guest)
             room.set_status(guest, GuestStatus.TOLD_TO_MOVE_TO_VOTING_BOOTH)
+            return True
+
+        # A completed processor must not get another vote prompt while its output is in transit.
+        if room.get_status(guest) == GuestStatus.AWAITING_VOTE_DATA:
+            if room.get_time_in_current_status(guest) > Config.survey_reply_time:
+                log.error(f"Vote output did not arrive for guest {guest}; returning to the hall")
+                await self.guest_back_to_hall(guest)
             return True
 
         # Too much time in voting booth: GET OUT OF THE ROOM!
@@ -638,7 +647,7 @@ class WAgent(Agent):
         to_remove = []
 
         # Votes are expected to be found on the guest's processor, with a UUID that we saved in advance
-        for guest, (vote_interaction_uuid, vote_dict, _) in self._guest2vote_info.items():
+        for guest, (vote_interaction_uuid, vote_dict, _) in list(self._guest2vote_info.items()):
             if vote_dict is None:
 
                 # If the vote_dict is None, then the guest was asked to go to the voting booth and was asked for a vote,
@@ -665,13 +674,18 @@ class WAgent(Agent):
             vote_dict["vote"] = vote_msg
             hotel_manager = vote_dict["hotel_manager"]
 
+            # The UI and the hotel manager use the exact same received vote, after delivery.
+            if self.floor.is_in_a_room(guest):
+                await self.__return_guest_to_hall(
+                    guest, hotel_manager, voted=True, vote_result=build_vote_result_wire(vote_dict))
+
             if hotel_manager not in list_of_vote_dicts_by_hotel_manager:
                 list_of_vote_dicts_by_hotel_manager[hotel_manager] = []
             list_of_vote_dicts_by_hotel_manager[hotel_manager].append(vote_dict)
             to_remove.append(guest)
 
         for guest in to_remove:
-            del self._guest2vote_info[guest]
+            self._guest2vote_info.pop(guest, None)
 
         # We send all the collected votes to each hotel manager (recall that a hotel manager only gets votes from
         # the guests that he sponsored), by loading in on our "votes" stream, paired with an "empty" interaction

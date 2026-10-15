@@ -515,69 +515,114 @@ def test_vote_result_never_calls_processor(monkeypatch):
 
 
 def test_floor_manager_vote_reveal():
-    """Only a completed vote carries the private reveal with the guest's hall transition."""
+    """Early and late stream delivery both produce a scored reveal from the recorded vote."""
     import asyncio
-    from types import SimpleNamespace
+    import json
+    from types import MethodType, SimpleNamespace
     from unaiverse.interaction import CompletionReason
-
-    async def load_manager():
-        # The role installs its executor at import time, so import it inside a live loop.
-        from .floor_manager import WAgent
-        return WAgent
-    WAgent = asyncio.run(load_manager())
-
     from unaiverse.streams import Stream
     from unaiverse.streams.dataprops import DataProps
     from unaiverse.uai import encode_reply
+
+    async def load_manager():
+        # The role installs its executor at import time, so import it inside a live loop.
+        from .floor_manager import GuestStatus, WAgent
+        return GuestStatus, WAgent
+    GuestStatus, WAgent = asyncio.run(load_manager())
     vote_form = build_vote_form(["Roy"], form_id="received")
     vote_wire = encode_reply(vote_form, {"roy": VOTE_AI})
-    stream = Stream(props=DataProps(name="processor", data_type="text"))
-    stream.set(vote_wire, uuid="vote-uuid")
 
-    sent = []
-    ejected = []
-    room = SimpleNamespace(
-        id="room", fake_name_of=lambda guest: "Ivy",
-        get_fake_names_seen_by=lambda alias: {"Roy", "Ivy"},
-        get_unaid_of=lambda guest: "private-voter-id",
-        get_ground_truth_of=lambda guest: VOTE_HUMAN,
-        get_ground_truth_of_fake_name=lambda alias: VOTE_AI,
-        get_unaid_of_fake_name=lambda alias: "private-ai-id",
-        guest_whose_fake_name_is=lambda alias: "bot",
-        count_messages_recv_by=lambda **kwargs: 1,
-    )
-    floor = SimpleNamespace(id="floor", is_in_a_room=lambda guest: True,
-                            get_hotel_manager_of=lambda guest: "hotel",
-                            get_room_of=lambda guest: room)
-    async def send(**kwargs):
-        sent.append(kwargs)
-        return True
-    manager = SimpleNamespace(floor=floor, get_peer_id=lambda: "manager", send=send,
-                              _guest2vote_info={"guest": ["vote-uuid", None, vote_form]},
-                              get_stream=lambda *args, **kwargs: stream,
-                              _WAgent__eject_and_clear_guest=ejected.append)
-    completed = SimpleNamespace(target=["guest"], completion_reason=CompletionReason.OK)
+    def setup():
+        sent, ejected, statuses = [], [], []
+        stream = Stream(props=DataProps(name="processor", data_type="text"))
+        room = SimpleNamespace(
+            id="room", fake_name_of=lambda guest: "Ivy",
+            get_fake_names_seen_by=lambda alias: {"Roy", "Ivy"},
+            get_unaid_of=lambda guest: "private-voter-id",
+            get_ground_truth_of=lambda guest: VOTE_HUMAN,
+            get_ground_truth_of_fake_name=lambda alias: VOTE_AI,
+            get_unaid_of_fake_name=lambda alias: "private-ai-id",
+            guest_whose_fake_name_is=lambda alias: "bot",
+            count_messages_recv_by=lambda **kwargs: 1,
+            set_status=lambda guest, status: statuses.append(status),
+            get_status=lambda guest: statuses[-1] if statuses else GuestStatus.IN_VOTING_BOOTH,
+            count_human_guests=lambda: 1,
+            age=0,
+        )
+        room.get_time_in_current_status = lambda guest: room.age
+        floor = SimpleNamespace(id="floor", is_in_a_room=lambda guest: guest not in ejected,
+                                get_hotel_manager_of=lambda guest: "hotel",
+                                get_room_of=lambda guest: room)
+        async def send(**kwargs):
+            sent.append(kwargs)
+            return True
+        manager = SimpleNamespace(floor=floor, get_peer_id=lambda: "manager", send=send,
+                                  _guest2vote_info={"guest": ["vote-uuid", None, vote_form]},
+                                  world_agents={"guest": object()},
+                                  get_stream=lambda *args, **kwargs: stream,
+                                  _WAgent__eject_and_clear_guest=ejected.append)
+        manager._WAgent__return_guest_to_hall = MethodType(WAgent._WAgent__return_guest_to_hall, manager)
+        manager.guest_back_to_hall = MethodType(WAgent.guest_back_to_hall, manager)
+        return manager, stream, sent, ejected, statuses
+
+    for early_delivery in (False, True):
+        manager, stream, sent, ejected, statuses = setup()
+        if early_delivery:
+            stream.set(vote_wire, uuid="vote-uuid")
+        completed = SimpleNamespace(target=["guest"], completion_reason=CompletionReason.OK)
+        assert asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed)) is True
+        assert statuses == [GuestStatus.AWAITING_VOTE_DATA]
+        assert not sent and not ejected
+        if not early_delivery:
+            # Completion can arrive first. No reveal and no disconnection before the answer arrives.
+            assert asyncio.run(WAgent.send_votes(manager)) is False
+            assert not sent and not ejected
+            assert manager._guest2vote_info["guest"][1]["vote"] is None
+            stream.set(vote_wire, uuid="vote-uuid")
+        assert asyncio.run(WAgent.send_votes(manager)) is True
+        hall = next(s for s in sent if s.get("action_name") == "goto_hall")
+        assert hall["target"] == "guest" and hall["from_state"] == "vote_provided"
+        reveal = hall["action_kwargs"]["msg"]
+        assert reveal.startswith("[vote_result] ") and "private-" not in reveal
+        assert f"| Roy | Bot | Bot | ✅ {Config.vote_result_correct} |" in reveal
+        assert Config.vote_result_no_vote not in reveal
+        assert ejected == ["guest"]
+        packet = json.loads(next(s["data_samples"]["votes"] for s in sent if "data_samples" in s))[0]
+        assert packet["vote"] == vote_wire and packet["vote_form"] == vote_form
+        assert packet["ground_truth"] == {"Roy": [VOTE_AI, "private-ai-id"]}
+        assert manager._guest2vote_info == {}
+        sent.clear()
+        assert asyncio.run(WAgent.send_votes(manager)) is False
+        assert not sent  # A later tick cannot send a duplicate result or vote.
+
+    manager, stream, sent, ejected, statuses = setup()
+    completed = SimpleNamespace(target=["guest"], completion_reason=CompletionReason.TIMEOUT)
     assert asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed)) is True
-    hall = next(s for s in sent if s["action_name"] == "goto_hall")
-    assert hall["target"] == "guest" and hall["from_state"] == "vote_provided"
-    assert hall["action_kwargs"]["msg"].startswith("[vote_result] ")
-    assert "private-" not in hall["action_kwargs"]["msg"]
-    assert ejected == ["guest"]
-    assert f"| Roy | Bot | Bot | ✅ {Config.vote_result_correct} |" in hall["action_kwargs"]["msg"]
-    assert manager._guest2vote_info["guest"][1]["vote"] == vote_wire
-    assert stream.get(requested_by="send_votes", uuid="vote-uuid") == vote_wire
-    # The stored vote packet is still available for the existing hotel-manager pipeline.
-    assert manager._guest2vote_info["guest"][1]["ground_truth"] == {"Roy": (VOTE_AI, "private-ai-id")}
-
-    sent.clear()
-    completed.completion_reason = CompletionReason.TIMEOUT
-    assert asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed)) is True
-    assert not sent
-
-    # An explicit removal before voting retains the original return-to-hall behavior.
+    assert not sent and not ejected
+    # Explicit removal before voting still returns from can_vote, with no reveal.
     assert asyncio.run(WAgent.guest_back_to_hall(manager, guest="guest")) is True
     hall = next(s for s in sent if s["action_name"] == "goto_hall")
     assert hall["from_state"] == "can_vote" and hall["action_kwargs"] == {}
+
+    # Missing output cannot strand a guest indefinitely or trigger another processor request.
+    manager, stream, sent, ejected, statuses = setup()
+    completed.completion_reason = CompletionReason.OK
+    asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed))
+    assert asyncio.run(WAgent._WAgent__handle_single_guest_by_status(manager, "guest")) is True
+    assert not sent
+    manager.floor.get_room_of("guest").age = Config.survey_reply_time + 1
+    assert asyncio.run(WAgent._WAgent__handle_single_guest_by_status(manager, "guest")) is True
+    hall = next(s for s in sent if s.get("action_name") == "goto_hall")
+    assert hall["from_state"] == "vote_provided" and hall["action_kwargs"] == {}
+    assert ejected == ["guest"]
+
+    # A peer who disconnects while the answer is in transit is removed without a fake result.
+    manager, stream, sent, ejected, statuses = setup()
+    completed.completion_reason = CompletionReason.OK
+    asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed))
+    manager.world_agents.clear()
+    assert asyncio.run(WAgent.send_votes(manager)) is False
+    assert not sent and manager._guest2vote_info == {}
 
 
 def test_vote_form_roundtrip():
