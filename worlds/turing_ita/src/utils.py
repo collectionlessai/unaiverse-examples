@@ -11,7 +11,7 @@ from rich.table import Table
 from rich.console import Group
 from unaiverse.utils.logger import log
 from unaiverse.utils.misc import build_unaid
-from unaiverse.uai import (ISSUE_UNKNOWN_OPTION, ReplyEvent, build_form, describe_answer, find_reply, gen_id,
+from unaiverse.uai import (ISSUE_UNKNOWN_OPTION, ReplyEvent, build_form, compose_chart, describe_answer, find_reply, gen_id,
                                 has_fence, interactive_fields, normalize_label, parse_message, parse_reply,
                                 serialize_block)
 
@@ -82,6 +82,31 @@ def build_survey_wire(fake_name: str, other_fake_names: list[str]) -> tuple[str,
             log.error(f"Unable to compose the vote form, sending the plain request: {e}")
             vote_form = None
     return format_message(Config.manager_fake_name, survey), vote_form
+
+
+def build_vote_result_wire(vote_dict: dict) -> str:
+    """Reveal the saved session roster, even after peers have left the room.
+
+    Only aliases and natures go on the wire; account identities remain in the vote record.
+    The voter is included so the chart and the list describe the same complete roster.
+    """
+    roster = {alias: info[0] for alias, info in vote_dict["ground_truth"].items()}
+    roster[vote_dict["voter_fake_name"]] = vote_dict["voter_nature"]
+    humans = sum(nature == VOTE_HUMAN for nature in roster.values())
+    bots = sum(nature == VOTE_AI for nature in roster.values())
+    chart = compose_chart(
+        "bar",
+        [{"label": Config.vote_result_humans, "points": [[Config.vote_result_humans, humans]]},
+         {"label": Config.vote_result_ai, "points": [[Config.vote_result_ai, bots]]}],
+        f"{Config.vote_result_humans}: {humans} · {Config.vote_result_ai}: {bots}",
+    )
+    rows = [f"- {alias}: {Config.vote_result_human_label if nature == VOTE_HUMAN else 'Bot'}"
+            for alias, nature in sorted(roster.items())]
+    body = "\n\n".join([
+        f"### {Config.vote_result_title}", Config.vote_result_context, chart,
+        f"**{Config.vote_result_roster_title}**", "\n".join(rows),
+    ])
+    return format_message(Config.manager_fake_name, "[vote_result] \n\n" + body)
 
 
 def vote_list_values(form_spec: dict, text: str) -> tuple[dict[str, str] | None, list[str] | None]:
@@ -366,6 +391,109 @@ def parse_vote_msg(
                             results[norm(agents[i])] = classify(m.group(1))
 
     return results
+
+
+
+def test_vote_result_reveal(monkeypatch):
+    """A reveal survives room cleanup and reaches the log without becoming another model turn."""
+    import asyncio
+    from types import SimpleNamespace
+    from unaiverse.uai import to_model_text
+    from .guest import WAgent
+
+    record = {"voter_fake_name": "Ivy", "voter_nature": VOTE_HUMAN,
+              "ground_truth": {"Roy": (VOTE_AI, "private-ai-id"),
+                               "Ada": (VOTE_HUMAN, "private-human-id")}}
+    wire = build_vote_result_wire(record)
+    assert wire.startswith("[vote_result] ")
+    parts = parse_message(wire)
+    chart = next(p["spec"] for p in parts if p["type"] == "data")
+    assert chart["chart"] == "bar"
+    assert chart["series"] == [
+        {"label": Config.vote_result_humans, "points": [[Config.vote_result_humans, 2]]},
+        {"label": Config.vote_result_ai, "points": [[Config.vote_result_ai, 1]]},
+    ]
+    assert wire.index("```uai") < wire.index("- Ada:")
+    assert f"- Ada: {Config.vote_result_human_label}" in wire
+    assert f"- Ivy: {Config.vote_result_human_label}" in wire
+    assert "- Roy: Bot" in wire
+    assert "private-" not in wire
+    plain = to_model_text(wire)
+    assert f"{Config.vote_result_humans}: 2" in plain and "```" not in plain
+
+    # Even an ignored chat session shows the reveal, once, before goto_hall completes.
+    printed = []
+    monkeypatch.setattr(log, "user", printed.append)
+    guest = SimpleNamespace(_ignore_messages=True)
+    async def status(msg):
+        return await WAgent.get_status_msg(guest, msg)
+    guest.get_status_msg = status
+    assert asyncio.run(WAgent.goto_hall(guest, msg=wire)) is True
+    assert printed == [strip_service_tag(wire)]
+    assert asyncio.run(WAgent.goto_hall(guest)) is True
+    assert len(printed) == 1
+
+    # Single-nature and empty-peer sessions still retain both bars, including the zero.
+    for nature in (VOTE_HUMAN, VOTE_AI):
+        single = build_vote_result_wire({"voter_fake_name": "Ivy", "voter_nature": nature,
+                                         "ground_truth": {}})
+        spec = next(p["spec"] for p in parse_message(single) if p["type"] == "data")
+        assert [s["points"][0][1] for s in spec["series"]] == ([1, 0] if nature == VOTE_HUMAN else [0, 1])
+
+
+
+def test_floor_manager_vote_reveal():
+    """Only a completed vote carries the private reveal with the guest's hall transition."""
+    import asyncio
+    from types import SimpleNamespace
+    from unaiverse.interaction import CompletionReason
+
+    async def load_manager():
+        # The role installs its executor at import time, so import it inside a live loop.
+        from .floor_manager import WAgent
+        return WAgent
+    WAgent = asyncio.run(load_manager())
+
+    sent = []
+    ejected = []
+    room = SimpleNamespace(
+        id="room", fake_name_of=lambda guest: "Ivy",
+        get_fake_names_seen_by=lambda alias: {"Roy", "Ivy"},
+        get_unaid_of=lambda guest: "private-voter-id",
+        get_ground_truth_of=lambda guest: VOTE_HUMAN,
+        get_ground_truth_of_fake_name=lambda alias: VOTE_AI,
+        get_unaid_of_fake_name=lambda alias: "private-ai-id",
+        guest_whose_fake_name_is=lambda alias: "bot",
+        count_messages_recv_by=lambda **kwargs: 1,
+    )
+    floor = SimpleNamespace(id="floor", is_in_a_room=lambda guest: True,
+                            get_hotel_manager_of=lambda guest: "hotel",
+                            get_room_of=lambda guest: room)
+    async def send(**kwargs):
+        sent.append(kwargs)
+        return True
+    manager = SimpleNamespace(floor=floor, get_peer_id=lambda: "manager", send=send,
+                              _guest2vote_info={"guest": ["vote-uuid", None, None]},
+                              _WAgent__eject_and_clear_guest=ejected.append)
+    completed = SimpleNamespace(target=["guest"], completion_reason=CompletionReason.OK)
+    assert asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed)) is True
+    hall = next(s for s in sent if s["action_name"] == "goto_hall")
+    assert hall["target"] == "guest" and hall["from_state"] == "vote_provided"
+    assert hall["action_kwargs"]["msg"].startswith("[vote_result] ")
+    assert "private-" not in hall["action_kwargs"]["msg"]
+    assert ejected == ["guest"]
+    # The stored vote packet is still available for the existing hotel-manager pipeline.
+    assert manager._guest2vote_info["guest"][1]["ground_truth"] == {"Roy": (VOTE_AI, "private-ai-id")}
+
+    sent.clear()
+    completed.completion_reason = CompletionReason.TIMEOUT
+    assert asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed)) is True
+    assert not sent
+
+    # An explicit removal before voting retains the original return-to-hall behavior.
+    assert asyncio.run(WAgent.guest_back_to_hall(manager, guest="guest")) is True
+    hall = next(s for s in sent if s["action_name"] == "goto_hall")
+    assert hall["from_state"] == "can_vote" and hall["action_kwargs"] == {}
 
 
 def test_vote_form_roundtrip():

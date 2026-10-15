@@ -171,7 +171,10 @@ class WAgent(Agent):
         return True
 
     @action
-    async def goto_hall(self):
+    async def goto_hall(self, msg: str | None = None):
+        # The reveal must be displayed before entering the hall can disconnect this manager.
+        if msg is not None:
+            await self.get_status_msg(msg)
         return True
 
     @action
@@ -289,6 +292,11 @@ class WAgent(Agent):
 
             # A violation notice must reach whoever is playing even before any room started (the guest is
             # about to be disconnected): there is no turn to take, it is only printed below
+            pass
+
+        elif msg.startswith("[vote_result]"):
+
+            # A private post-vote reveal is display-only, including when chat input is ignored.
             pass
 
         elif self._ignore_messages:

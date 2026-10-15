@@ -128,6 +128,13 @@ class Config:
     vote_form_name = "voto"
     vote_human_label = "Umano"  # The option labels of the form (what a widget draws on its buttons)
     vote_ai_label = "Artificiale"
+    # Post-vote reveal uses the real identities from this session, including the voter.
+    vote_result_title = 'La stanza si svela'
+    vote_result_context = 'I partecipanti della tua sessione, te incluso.'
+    vote_result_humans = 'Umani'
+    vote_result_ai = 'AI'
+    vote_result_roster_title = 'Partecipanti'
+    vote_result_human_label = 'Umano'
     vote_all_humans_shortcut = "tutti"  # Everybody was a person
     vote_all_ai_shortcut = "nessuno"  # Nobody was a person
     vote_instruction = (f"Devi individuare le persone vere tra le seguenti: <OTHER_NAMES>. "

@@ -28,7 +28,7 @@ from unaiverse.interaction import Interaction, CompletionReason
 from unaiverse.streams.dataprops import DataProps
 from concurrent.futures import ThreadPoolExecutor
 from .filter import RuleBasedFilter
-from .utils import build_survey_wire, compute_check_in_proposals, format_message, sanitize_room_message
+from .utils import build_vote_result_wire, build_survey_wire, compute_check_in_proposals, format_message, sanitize_room_message
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
     asyncio.get_event_loop().set_default_executor(_turing_executor)
@@ -201,6 +201,8 @@ class WAgent(Agent):
         hotel_manager = self.floor.get_hotel_manager_of(guest)
         room = self.floor.get_room_of(guest)
 
+        vote_result = None
+
         # Saving vote-related info
         if callback_from_process_vote:
             hotel_manager = self.floor.get_hotel_manager_of(guest)
@@ -243,6 +245,10 @@ class WAgent(Agent):
             if guest in self._guest2vote_info:
                 self._guest2vote_info[guest][1] = vote_dict
 
+            # Carry the reveal with the hall transition so it is rendered before disconnection.
+            if interaction.completion_reason == CompletionReason.OK:
+                vote_result = build_vote_result_wire(vote_dict)
+
         # Telling hotel manager that we reset our state touch with the floor manager he suggested
         # Independent peers, independent sends.
         hm_ret, g_ret = await asyncio.gather(
@@ -252,6 +258,7 @@ class WAgent(Agent):
                       target=hotel_manager,
                       volatile=True),
             self.send(action_name="goto_hall",
+                      action_kwargs={"msg": vote_result} if vote_result else {},
                       from_state="can_vote" if not callback_from_process_vote else "vote_provided",
                       target=guest,
                       volatile=True),

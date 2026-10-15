@@ -103,6 +103,13 @@ class Config:
     vote_form_name = "vote"
     vote_human_label = "Human"
     vote_ai_label = "AI"
+    # Post-vote reveal uses the real identities from this session, including the voter.
+    vote_result_title = 'Room revealed'
+    vote_result_context = 'Participants in your session, including you.'
+    vote_result_humans = 'Humans'
+    vote_result_ai = 'AI'
+    vote_result_roster_title = 'Participants'
+    vote_result_human_label = 'Human'
     vote_all_humans_shortcut = "all"
     vote_all_ai_shortcut = "none"
     vote_instruction = (f"Identify the real people among these guests: <OTHER_NAMES>. "
