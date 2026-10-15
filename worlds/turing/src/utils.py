@@ -98,7 +98,7 @@ def build_vote_result_wire(vote_dict: dict) -> str:
         "bar",
         [{"label": Config.vote_result_humans, "points": [[Config.vote_result_humans, humans]]},
          {"label": Config.vote_result_ai, "points": [[Config.vote_result_ai, bots]]}],
-        f"{Config.vote_result_humans}: {humans} · {Config.vote_result_ai}: {bots}",
+        f"{Config.vote_result_humans}: {humans} - {Config.vote_result_ai}: {bots}",
     )
     # Use the exact form and canonical answer received, never infer a vote from the raw prose.
     votes = read_vote(vote_dict.get("vote"), vote_dict.get("vote_form"))
@@ -109,16 +109,16 @@ def build_vote_result_wire(vote_dict: dict) -> str:
         actual = Config.vote_result_human_label if nature == VOTE_HUMAN else "Bot"
         row = f"- {alias}: {actual}"
         if alias == vote_dict["voter_fake_name"]:
-            row += f" · {Config.vote_result_self}"
+            row += f" - {Config.vote_result_self}"
         elif alias in votes:
             chosen = Config.vote_result_human_label if votes[alias] == VOTE_HUMAN else "Bot"
             is_correct = votes[alias] == nature
             total += 1
             correct += is_correct
             outcome = f"✅ {Config.vote_result_correct}" if is_correct else f"❌ {Config.vote_result_wrong}"
-            row += f" — {outcome} · {Config.vote_result_your_vote}: {chosen}"
+            row += f" - {outcome} - {Config.vote_result_your_vote}: {chosen}"
         else:
-            row += f" — {Config.vote_result_no_vote}"
+            row += f" - {Config.vote_result_no_vote}"
         rows.append(row)
     score = Config.vote_result_score.format(correct=correct, total=total) if total else ""
     body = "\n\n".join(part for part in [
@@ -445,10 +445,10 @@ def test_vote_result_reveal(monkeypatch):
     record["vote_form"] = form
     record["vote"] = encode_reply(form, {"roy": VOTE_HUMAN, "ada": VOTE_HUMAN})
     scored = build_vote_result_wire(record)
-    assert f"- Ada: {Config.vote_result_human_label} — ✅ {Config.vote_result_correct}" in scored
-    assert f"- Roy: Bot — ❌ {Config.vote_result_wrong} · {Config.vote_result_your_vote}: {Config.vote_result_human_label}" in scored
+    assert f"- Ada: {Config.vote_result_human_label} - ✅ {Config.vote_result_correct}" in scored
+    assert f"- Roy: Bot - ❌ {Config.vote_result_wrong} - {Config.vote_result_your_vote}: {Config.vote_result_human_label}" in scored
     assert Config.vote_result_score.format(correct=1, total=2) in scored
-    assert f"- Ivy: {Config.vote_result_human_label} · {Config.vote_result_self}" in scored
+    assert f"- Ivy: {Config.vote_result_human_label} - {Config.vote_result_self}" in scored
     assert "private-" not in scored
 
     # Missing, invalid and unrelated replies must not be labelled as wrong guesses.
@@ -459,8 +459,8 @@ def test_vote_result_reveal(monkeypatch):
         assert Config.vote_result_no_vote in unavailable
     record["vote"] = encode_reply(form, {"roy": VOTE_AI})
     partial = build_vote_result_wire(record)
-    assert f"- Roy: Bot — ✅ {Config.vote_result_correct}" in partial
-    assert f"- Ada: {Config.vote_result_human_label} — {Config.vote_result_no_vote}" in partial
+    assert f"- Roy: Bot - ✅ {Config.vote_result_correct}" in partial
+    assert f"- Ada: {Config.vote_result_human_label} - {Config.vote_result_no_vote}" in partial
     assert Config.vote_result_score.format(correct=1, total=1) in partial
 
     # Even an ignored chat session shows the reveal, once, before goto_hall completes.
@@ -533,7 +533,7 @@ def test_floor_manager_vote_reveal():
     assert hall["action_kwargs"]["msg"].startswith("[vote_result] ")
     assert "private-" not in hall["action_kwargs"]["msg"]
     assert ejected == ["guest"]
-    assert f"- Roy: Bot — ✅ {Config.vote_result_correct} · {Config.vote_result_your_vote}: Bot" in hall["action_kwargs"]["msg"]
+    assert f"- Roy: Bot - ✅ {Config.vote_result_correct} - {Config.vote_result_your_vote}: Bot" in hall["action_kwargs"]["msg"]
     assert manager._guest2vote_info["guest"][1]["vote"] == vote_wire
     assert stream.get(requested_by="send_votes", uuid="vote-uuid") == vote_wire
     # The stored vote packet is still available for the existing hotel-manager pipeline.
