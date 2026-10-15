@@ -100,12 +100,31 @@ def build_vote_result_wire(vote_dict: dict) -> str:
          {"label": Config.vote_result_ai, "points": [[Config.vote_result_ai, bots]]}],
         f"{Config.vote_result_humans}: {humans} · {Config.vote_result_ai}: {bots}",
     )
-    rows = [f"- {alias}: {Config.vote_result_human_label if nature == VOTE_HUMAN else 'Bot'}"
-            for alias, nature in sorted(roster.items())]
-    body = "\n\n".join([
+    # Use the exact form and canonical answer received, never infer a vote from the raw prose.
+    votes = read_vote(vote_dict.get("vote"), vote_dict.get("vote_form"))
+    rows = []
+    correct = 0
+    total = 0
+    for alias, nature in sorted(roster.items()):
+        actual = Config.vote_result_human_label if nature == VOTE_HUMAN else "Bot"
+        row = f"- {alias}: {actual}"
+        if alias == vote_dict["voter_fake_name"]:
+            row += f" · {Config.vote_result_self}"
+        elif alias in votes:
+            chosen = Config.vote_result_human_label if votes[alias] == VOTE_HUMAN else "Bot"
+            is_correct = votes[alias] == nature
+            total += 1
+            correct += is_correct
+            outcome = f"✅ {Config.vote_result_correct}" if is_correct else f"❌ {Config.vote_result_wrong}"
+            row += f" — {outcome} · {Config.vote_result_your_vote}: {chosen}"
+        else:
+            row += f" — {Config.vote_result_no_vote}"
+        rows.append(row)
+    score = Config.vote_result_score.format(correct=correct, total=total) if total else ""
+    body = "\n\n".join(part for part in [
         f"### {Config.vote_result_title}", Config.vote_result_context, chart,
-        f"**{Config.vote_result_roster_title}**", "\n".join(rows),
-    ])
+        f"**{Config.vote_result_roster_title}**", "\n".join(rows), score,
+    ] if part)
     return format_message(Config.manager_fake_name, "[vote_result] \n\n" + body)
 
 
@@ -398,7 +417,7 @@ def test_vote_result_reveal(monkeypatch):
     """A reveal survives room cleanup and reaches the log without becoming another model turn."""
     import asyncio
     from types import SimpleNamespace
-    from unaiverse.uai import to_model_text
+    from unaiverse.uai import encode_reply, to_model_text
     from .guest import WAgent
 
     record = {"voter_fake_name": "Ivy", "voter_nature": VOTE_HUMAN,
@@ -420,6 +439,29 @@ def test_vote_result_reveal(monkeypatch):
     assert "private-" not in wire
     plain = to_model_text(wire)
     assert f"{Config.vote_result_humans}: 2" in plain and "```" not in plain
+
+    # The saved answer makes correct and wrong guesses explicit; self is never scored.
+    form = build_vote_form(["Roy", "Ada"], form_id="results")
+    record["vote_form"] = form
+    record["vote"] = encode_reply(form, {"roy": VOTE_HUMAN, "ada": VOTE_HUMAN})
+    scored = build_vote_result_wire(record)
+    assert f"- Ada: {Config.vote_result_human_label} — ✅ {Config.vote_result_correct}" in scored
+    assert f"- Roy: Bot — ❌ {Config.vote_result_wrong} · {Config.vote_result_your_vote}: {Config.vote_result_human_label}" in scored
+    assert Config.vote_result_score.format(correct=1, total=2) in scored
+    assert f"- Ivy: {Config.vote_result_human_label} · {Config.vote_result_self}" in scored
+    assert "private-" not in scored
+
+    # Missing, invalid and unrelated replies must not be labelled as wrong guesses.
+    for answer in (None, "Roy", encode_reply(dict(form, id="other"), {"roy": VOTE_HUMAN})):
+        record["vote"] = answer
+        unavailable = build_vote_result_wire(record)
+        assert "✅" not in unavailable and "❌" not in unavailable
+        assert Config.vote_result_no_vote in unavailable
+    record["vote"] = encode_reply(form, {"roy": VOTE_AI})
+    partial = build_vote_result_wire(record)
+    assert f"- Roy: Bot — ✅ {Config.vote_result_correct}" in partial
+    assert f"- Ada: {Config.vote_result_human_label} — {Config.vote_result_no_vote}" in partial
+    assert Config.vote_result_score.format(correct=1, total=1) in partial
 
     # Even an ignored chat session shows the reveal, once, before goto_hall completes.
     printed = []
@@ -454,6 +496,14 @@ def test_floor_manager_vote_reveal():
         return WAgent
     WAgent = asyncio.run(load_manager())
 
+    from unaiverse.streams import Stream
+    from unaiverse.streams.dataprops import DataProps
+    from unaiverse.uai import encode_reply
+    vote_form = build_vote_form(["Roy"], form_id="received")
+    vote_wire = encode_reply(vote_form, {"roy": VOTE_AI})
+    stream = Stream(props=DataProps(name="processor", data_type="text"))
+    stream.set(vote_wire, uuid="vote-uuid")
+
     sent = []
     ejected = []
     room = SimpleNamespace(
@@ -473,7 +523,8 @@ def test_floor_manager_vote_reveal():
         sent.append(kwargs)
         return True
     manager = SimpleNamespace(floor=floor, get_peer_id=lambda: "manager", send=send,
-                              _guest2vote_info={"guest": ["vote-uuid", None, None]},
+                              _guest2vote_info={"guest": ["vote-uuid", None, vote_form]},
+                              get_stream=lambda *args, **kwargs: stream,
                               _WAgent__eject_and_clear_guest=ejected.append)
     completed = SimpleNamespace(target=["guest"], completion_reason=CompletionReason.OK)
     assert asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed)) is True
@@ -482,6 +533,9 @@ def test_floor_manager_vote_reveal():
     assert hall["action_kwargs"]["msg"].startswith("[vote_result] ")
     assert "private-" not in hall["action_kwargs"]["msg"]
     assert ejected == ["guest"]
+    assert f"- Roy: Bot — ✅ {Config.vote_result_correct} · {Config.vote_result_your_vote}: Bot" in hall["action_kwargs"]["msg"]
+    assert manager._guest2vote_info["guest"][1]["vote"] == vote_wire
+    assert stream.get(requested_by="send_votes", uuid="vote-uuid") == vote_wire
     # The stored vote packet is still available for the existing hotel-manager pipeline.
     assert manager._guest2vote_info["guest"][1]["ground_truth"] == {"Roy": (VOTE_AI, "private-ai-id")}
 

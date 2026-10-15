@@ -110,6 +110,12 @@ class Config:
     vote_result_ai = 'AI'
     vote_result_roster_title = 'Participants'
     vote_result_human_label = 'Human'
+    vote_result_correct = 'Correct'
+    vote_result_wrong = 'Incorrect'
+    vote_result_your_vote = 'Your vote'
+    vote_result_no_vote = 'Vote unavailable'
+    vote_result_self = 'You'
+    vote_result_score = 'You identified {correct} out of {total} participants correctly.'
     vote_all_humans_shortcut = "all"
     vote_all_ai_shortcut = "none"
     vote_instruction = (f"Identify the real people among these guests: <OTHER_NAMES>. "

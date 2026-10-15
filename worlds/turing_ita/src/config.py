@@ -135,6 +135,12 @@ class Config:
     vote_result_ai = 'AI'
     vote_result_roster_title = 'Partecipanti'
     vote_result_human_label = 'Umano'
+    vote_result_correct = 'Corretto'
+    vote_result_wrong = 'Sbagliato'
+    vote_result_your_vote = 'Il tuo voto'
+    vote_result_no_vote = 'Voto non disponibile'
+    vote_result_self = 'Tu'
+    vote_result_score = 'Hai indovinato {correct} su {total} partecipanti.'
     vote_all_humans_shortcut = "tutti"  # Everybody was a person
     vote_all_ai_shortcut = "nessuno"  # Nobody was a person
     vote_instruction = (f"Devi individuare le persone vere tra le seguenti: <OTHER_NAMES>. "

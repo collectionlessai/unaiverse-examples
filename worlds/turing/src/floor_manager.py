@@ -247,6 +247,11 @@ class WAgent(Agent):
 
             # Carry the reveal with the hall transition so it is rendered before disconnection.
             if interaction.completion_reason == CompletionReason.OK:
+                # An independent stream reader keeps the hotel-manager collector's delivery intact.
+                vote_stream = self.get_stream("processor", guest, data_type="text")
+                if vote_stream is not None and guest in self._guest2vote_info:
+                    vote_uuid = self._guest2vote_info[guest][0]
+                    vote_dict["vote"] = vote_stream.get(requested_by="vote_result", uuid=vote_uuid)
                 vote_result = build_vote_result_wire(vote_dict)
 
         # Telling hotel manager that we reset our state touch with the floor manager he suggested
