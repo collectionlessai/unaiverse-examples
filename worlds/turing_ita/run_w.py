@@ -10,7 +10,7 @@ from src.mirror import make_mirror_hook, MirrorMySQLTarget
 world = WWorld()
 
 # Stats mirroring
-MIRROR_PERIOD = 30.
+MIRROR_PERIOD = 0.
 mirror_hook = None
 if MIRROR_PERIOD > 0:
     config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src", "config.mirror")
