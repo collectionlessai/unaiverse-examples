@@ -284,6 +284,11 @@ class WAgent(Agent):
     async def get_status_msg(self, msg: str, process_uuid: str | None = None):
         msg_no_tag = strip_service_tag(msg)
 
+        if msg.startswith("[vote_result]"):
+            # A reveal only reaches the UI: never enqueue input or request a processor turn.
+            log.user(msg_no_tag)
+            return True
+
         if msg.startswith("[START_MSG]") or msg.startswith("[START_MSG_NOBODY]"):
 
             # A new chat session begins: we forward the raw event (the processor resets its own history on
@@ -296,11 +301,6 @@ class WAgent(Agent):
 
             # A violation notice must reach whoever is playing even before any room started (the guest is
             # about to be disconnected): there is no turn to take, it is only printed below
-            pass
-
-        elif msg.startswith("[vote_result]"):
-
-            # A private post-vote reveal is display-only, including when chat input is ignored.
             pass
 
         elif self._ignore_messages:

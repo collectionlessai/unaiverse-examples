@@ -56,17 +56,17 @@ class Config:
     # It is the ASCII RECORD SEPARATOR, a character no chat message can contain (the guest strips it from
     # every event before batching), so events keep their internal newlines and splitting is lossless
     event_separator = "\x1e"
-    init_message = ("**WELCOME TO THE TURING HOTEL** 🏨\n\n"
+    init_message = ("### WELCOME TO THE TURING HOTEL 🏨\n\n"
                     "This is a hotel of rooms running a multi-agent Turing test, where you are both "
-                    "the judge ⚖️ and a conversation partner 🗣️!\n"
+                    "the judge ⚖️ and a conversation partner 🗣️!\n\n"
                     "You will enter a room with strangers who may be humans 🧑 or AI agents 🤖. "
                     "They could also all be human, or all be AI.\n\n"
                     "At the end, vote for the guests you think were human, based on your conversation. "
-                    "The others will judge you too, so try to seem human! "
+                    "The others will judge you too, so **try to seem human!**\n\n"
                     "After you vote, a new conversation will start automatically with randomly selected partners.")
-    init_message_with_form = ("**WELCOME TO THE TURING HOTEL** 🏨\n\n"
+    init_message_with_form = ("### WELCOME TO THE TURING HOTEL 🏨\n\n"
                               "You will chat with other participants, human or AI, then vote for those "
-                              "you think were human. They will judge you too: try to seem human! "
+                              "you think were human. They will judge you too: **try to seem human!**\n\n"
                               "A new conversation starts after each vote.\n\n"
                               "## Before you enter\n\n"
                               "**Complete the required registration form.** You only need to do this once.\n\n"
@@ -76,17 +76,17 @@ class Config:
                      f"other guests are:\n\n"
                      f"<OTHER_NAMES>\n\n"
                      f"This conversation is independent of any previous ones, so familiar names may belong "
-                     f"to different partners.\n"
-                     f"The conversation lasts at most {test_duration} seconds. You can type "
-                     f"'{exit_trigger_message}' at any time to leave the room and vote "
-                     f"(write only '{exit_trigger_message}', without quotes or any other text). "
-                     f"Each message must contain at most {max_message_size} characters, including spaces.")
+                     f"to different partners.\n\n"
+                     f"The conversation lasts at most **{test_duration} seconds**.\n\nYou can type "
+                     f"`'{exit_trigger_message}'` at any time to leave the room and vote "
+                     f"(write only `'{exit_trigger_message}'`, without quotes or any other text).\n\n"
+                     f"Each message must contain at most **{max_message_size} characters**, including spaces.")
     start_message_nobody = (f"[START_MSG_NOBODY] Welcome! Your name is **<YOUR_NAME>** and you are "
-                            f"alone for now.\n"
-                            f"The conversation lasts at most {test_duration} seconds. You can type "
-                            f"'{exit_trigger_message}' at any time to leave the room and vote "
-                            f"(write only '{exit_trigger_message}', without quotes or any other text). "
-                            f"Each message must contain at most {max_message_size} characters, including spaces.")
+                            f"alone for now.\n\n"
+                            f"The conversation lasts at most **{test_duration} seconds**.\n\nYou can type "
+                            f"`'{exit_trigger_message}'` at any time to leave the room and vote "
+                            f"(write only `'{exit_trigger_message}'`, without quotes or any other text).\n\n"
+                            f"Each message must contain at most **{max_message_size} characters**, including spaces.")
     joined_message = "[JOINED_MSG] A new agent joined the room: **<SOME_NAME>**"
     left_message = "[LEFT_MSG] An agent left the room: **<SOME_NAME>**"
     disconnected_message = "[DISCO_MSG] An agent disconnected: **<SOME_NAME>**"
@@ -110,6 +110,9 @@ class Config:
     vote_result_ai = 'AI'
     vote_result_roster_title = 'Participants'
     vote_result_human_label = 'Human'
+    vote_result_alias_header = 'Pseudonym'
+    vote_result_actual_header = 'Actual identity'
+    vote_result_outcome_header = 'Result'
     vote_result_correct = 'Correct'
     vote_result_wrong = 'Incorrect'
     vote_result_your_vote = 'Your vote'

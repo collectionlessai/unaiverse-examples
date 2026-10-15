@@ -102,28 +102,32 @@ def build_vote_result_wire(vote_dict: dict) -> str:
     )
     # Use the exact form and canonical answer received, never infer a vote from the raw prose.
     votes = read_vote(vote_dict.get("vote"), vote_dict.get("vote_form"))
-    rows = []
+    rows = [
+        f"| {Config.vote_result_alias_header} | {Config.vote_result_actual_header} | "
+        f"{Config.vote_result_your_vote} | {Config.vote_result_outcome_header} |",
+        "| :--- | :--- | :--- | :--- |",
+    ]
     correct = 0
     total = 0
     for alias, nature in sorted(roster.items()):
         actual = Config.vote_result_human_label if nature == VOTE_HUMAN else "Bot"
-        row = f"- {alias}: {actual}"
+        chosen = "—"
         if alias == vote_dict["voter_fake_name"]:
-            row += f" - {Config.vote_result_self}"
+            outcome = Config.vote_result_self
         elif alias in votes:
             chosen = Config.vote_result_human_label if votes[alias] == VOTE_HUMAN else "Bot"
             is_correct = votes[alias] == nature
             total += 1
             correct += is_correct
             outcome = f"✅ {Config.vote_result_correct}" if is_correct else f"❌ {Config.vote_result_wrong}"
-            row += f" - {outcome} - {Config.vote_result_your_vote}: {chosen}"
         else:
-            row += f" - {Config.vote_result_no_vote}"
-        rows.append(row)
+            outcome = Config.vote_result_no_vote
+        # Alias values come from the world's fixed room-name list, not participant text.
+        rows.append(f"| {alias} | {actual} | {chosen} | {outcome} |")
     score = Config.vote_result_score.format(correct=correct, total=total) if total else ""
     body = "\n\n".join(part for part in [
         f"### {Config.vote_result_title}", Config.vote_result_context, chart,
-        f"**{Config.vote_result_roster_title}**", "\n".join(rows), score,
+        f"**{Config.vote_result_roster_title}**", "\n".join(rows), f"**{score}**" if score else "",
     ] if part)
     return format_message(Config.manager_fake_name, "[vote_result] \n\n" + body)
 
@@ -432,10 +436,10 @@ def test_vote_result_reveal(monkeypatch):
         {"label": Config.vote_result_humans, "points": [[Config.vote_result_humans, 2]]},
         {"label": Config.vote_result_ai, "points": [[Config.vote_result_ai, 1]]},
     ]
-    assert wire.index("```uai") < wire.index("- Ada:")
-    assert f"- Ada: {Config.vote_result_human_label}" in wire
-    assert f"- Ivy: {Config.vote_result_human_label}" in wire
-    assert "- Roy: Bot" in wire
+    assert wire.index("```uai") < wire.index("| Ada |")
+    assert f"| Ada | {Config.vote_result_human_label} |" in wire
+    assert f"| Ivy | {Config.vote_result_human_label} |" in wire
+    assert "| Roy | Bot |" in wire
     assert "private-" not in wire
     plain = to_model_text(wire)
     assert f"{Config.vote_result_humans}: 2" in plain and "```" not in plain
@@ -445,10 +449,10 @@ def test_vote_result_reveal(monkeypatch):
     record["vote_form"] = form
     record["vote"] = encode_reply(form, {"roy": VOTE_HUMAN, "ada": VOTE_HUMAN})
     scored = build_vote_result_wire(record)
-    assert f"- Ada: {Config.vote_result_human_label} - ✅ {Config.vote_result_correct}" in scored
-    assert f"- Roy: Bot - ❌ {Config.vote_result_wrong} - {Config.vote_result_your_vote}: {Config.vote_result_human_label}" in scored
+    assert f"| Ada | {Config.vote_result_human_label} | {Config.vote_result_human_label} | ✅ {Config.vote_result_correct} |" in scored
+    assert f"| Roy | Bot | {Config.vote_result_human_label} | ❌ {Config.vote_result_wrong} |" in scored
     assert Config.vote_result_score.format(correct=1, total=2) in scored
-    assert f"- Ivy: {Config.vote_result_human_label} - {Config.vote_result_self}" in scored
+    assert f"| Ivy | {Config.vote_result_human_label} | — | {Config.vote_result_self} |" in scored
     assert "private-" not in scored
 
     # Missing, invalid and unrelated replies must not be labelled as wrong guesses.
@@ -459,8 +463,8 @@ def test_vote_result_reveal(monkeypatch):
         assert Config.vote_result_no_vote in unavailable
     record["vote"] = encode_reply(form, {"roy": VOTE_AI})
     partial = build_vote_result_wire(record)
-    assert f"- Roy: Bot - ✅ {Config.vote_result_correct}" in partial
-    assert f"- Ada: {Config.vote_result_human_label} - {Config.vote_result_no_vote}" in partial
+    assert f"| Roy | Bot | Bot | ✅ {Config.vote_result_correct} |" in partial
+    assert f"| Ada | {Config.vote_result_human_label} | — | {Config.vote_result_no_vote} |" in partial
     assert Config.vote_result_score.format(correct=1, total=1) in partial
 
     # Even an ignored chat session shows the reveal, once, before goto_hall completes.
@@ -482,6 +486,32 @@ def test_vote_result_reveal(monkeypatch):
         spec = next(p["spec"] for p in parse_message(single) if p["type"] == "data")
         assert [s["points"][0][1] for s in spec["series"]] == ([1, 0] if nature == VOTE_HUMAN else [0, 1])
 
+
+
+
+def test_vote_result_never_calls_processor(monkeypatch):
+    """A reveal is log-only, both during and after a session, even with a process UUID."""
+    import asyncio
+    from types import SimpleNamespace
+    from .guest import WAgent
+
+    printed = []
+    monkeypatch.setattr(log, "user", printed.append)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Vote results must never reach the processor")
+
+    wire = build_vote_result_wire({"voter_fake_name": "Ivy", "voter_nature": VOTE_HUMAN,
+                                   "ground_truth": {"Roy": (VOTE_AI, "private-id")}})
+    for ignored in (False, True):
+        events = ["previous chat event"]
+        guest = SimpleNamespace(_ignore_messages=ignored, _pending_events=events,
+                                _WAgent__push_to_processor=forbidden, process=forbidden,
+                                send=forbidden, uai_remember_form=forbidden,
+                                stdin=SimpleNamespace(set=forbidden))
+        assert asyncio.run(WAgent.get_status_msg(guest, msg=wire, process_uuid="unused")) is True
+        assert guest._pending_events == ["previous chat event"]
+        assert guest._ignore_messages is ignored
+    assert printed == [strip_service_tag(wire)] * 2
 
 
 def test_floor_manager_vote_reveal():
@@ -533,7 +563,7 @@ def test_floor_manager_vote_reveal():
     assert hall["action_kwargs"]["msg"].startswith("[vote_result] ")
     assert "private-" not in hall["action_kwargs"]["msg"]
     assert ejected == ["guest"]
-    assert f"- Roy: Bot - ✅ {Config.vote_result_correct} - {Config.vote_result_your_vote}: Bot" in hall["action_kwargs"]["msg"]
+    assert f"| Roy | Bot | Bot | ✅ {Config.vote_result_correct} |" in hall["action_kwargs"]["msg"]
     assert manager._guest2vote_info["guest"][1]["vote"] == vote_wire
     assert stream.get(requested_by="send_votes", uuid="vote-uuid") == vote_wire
     # The stored vote packet is still available for the existing hotel-manager pipeline.
