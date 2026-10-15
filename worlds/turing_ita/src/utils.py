@@ -11,7 +11,7 @@ from rich.table import Table
 from rich.console import Group
 from unaiverse.utils.logger import log
 from unaiverse.utils.misc import build_unaid
-from unaiverse.uai import (ISSUE_UNKNOWN_OPTION, ReplyEvent, build_form, describe_answer, find_reply, gen_id,
+from unaiverse.uai import (ISSUE_UNKNOWN_OPTION, ReplyEvent, build_form, compose_chart, describe_answer, find_reply, gen_id,
                                 has_fence, interactive_fields, normalize_label, parse_message, parse_reply,
                                 serialize_block)
 
@@ -82,6 +82,54 @@ def build_survey_wire(fake_name: str, other_fake_names: list[str]) -> tuple[str,
             log.error(f"Unable to compose the vote form, sending the plain request: {e}")
             vote_form = None
     return format_message(Config.manager_fake_name, survey), vote_form
+
+
+def build_vote_result_wire(vote_dict: dict) -> str:
+    """Reveal the saved session roster, even after peers have left the room.
+
+    Only aliases and natures go on the wire; account identities remain in the vote record.
+    The voter is included so the chart and the list describe the same complete roster.
+    """
+    roster = {alias: info[0] for alias, info in vote_dict["ground_truth"].items()}
+    roster[vote_dict["voter_fake_name"]] = vote_dict["voter_nature"]
+    humans = sum(nature == VOTE_HUMAN for nature in roster.values())
+    bots = sum(nature == VOTE_AI for nature in roster.values())
+    chart = compose_chart(
+        "bar",
+        [{"label": Config.vote_result_humans, "points": [[Config.vote_result_humans, humans]]},
+         {"label": Config.vote_result_ai, "points": [[Config.vote_result_ai, bots]]}],
+        f"{Config.vote_result_humans}: {humans} - {Config.vote_result_ai}: {bots}",
+    )
+    # Use the exact form and canonical answer received, never infer a vote from the raw prose.
+    votes = read_vote(vote_dict.get("vote"), vote_dict.get("vote_form"))
+    rows = [
+        f"| {Config.vote_result_alias_header} | {Config.vote_result_actual_header} | "
+        f"{Config.vote_result_your_vote} | {Config.vote_result_outcome_header} |",
+        "| :--- | :--- | :--- | :--- |",
+    ]
+    correct = 0
+    total = 0
+    for alias, nature in sorted(roster.items()):
+        actual = Config.vote_result_human_label if nature == VOTE_HUMAN else "Bot"
+        chosen = "—"
+        if alias == vote_dict["voter_fake_name"]:
+            outcome = Config.vote_result_self
+        elif alias in votes:
+            chosen = Config.vote_result_human_label if votes[alias] == VOTE_HUMAN else "Bot"
+            is_correct = votes[alias] == nature
+            total += 1
+            correct += is_correct
+            outcome = f"✅ {Config.vote_result_correct}" if is_correct else f"❌ {Config.vote_result_wrong}"
+        else:
+            outcome = Config.vote_result_no_vote
+        # Alias values come from the world's fixed room-name list, not participant text.
+        rows.append(f"| {alias} | {actual} | {chosen} | {outcome} |")
+    score = Config.vote_result_score.format(correct=correct, total=total) if total else ""
+    body = "\n\n".join(part for part in [
+        f"### {Config.vote_result_title}", Config.vote_result_context, chart,
+        f"**{Config.vote_result_roster_title}**", "\n".join(rows), f"**{score}**" if score else "",
+    ] if part)
+    return format_message(Config.manager_fake_name, "[vote_result] \n\n" + body)
 
 
 def vote_list_values(form_spec: dict, text: str) -> tuple[dict[str, str] | None, list[str] | None]:
@@ -331,7 +379,7 @@ def parse_vote_msg(
             if n not in results:
                 results[n] = label
 
-    # Pattern 4: Answer-framing — "my guess is Ben, Cal" → human
+    # Pattern 4: Answer-framing - "my guess is Ben, Cal" → human
     frame = (r'(?:(?:my|I)\s+)?(?:guess|vote|answer|pick|choice|bet)'
              r'\s+(?:is|would\s+be|goes?\s+to|for)\s+')
     p_frame = re.compile(
@@ -351,7 +399,7 @@ def parse_vote_msg(
             for t in tokens:
                 results[norm(t)] = 'human'
 
-    # Pattern 6: Positional keywords — "bot, bot" or "human, bot, human"
+    # Pattern 6: Positional keywords - "bot, bot" or "human, bot, human"
     # When no agent names appear in the text, map keywords to agents by position
     if not results and len(all_agents) > 0:
         if not re.search(r'\b' + agent_re + r'\b', text, re.IGNORECASE):
@@ -366,6 +414,275 @@ def parse_vote_msg(
                             results[norm(agents[i])] = classify(m.group(1))
 
     return results
+
+
+
+def test_vote_result_reveal(monkeypatch):
+    """A reveal survives room cleanup and reaches the log without becoming another model turn."""
+    import asyncio
+    from types import SimpleNamespace
+    from unaiverse.uai import encode_reply, to_model_text
+    from .guest import WAgent
+
+    record = {"voter_fake_name": "Ivy", "voter_nature": VOTE_HUMAN,
+              "ground_truth": {"Roy": (VOTE_AI, "private-ai-id"),
+                               "Ada": (VOTE_HUMAN, "private-human-id")}}
+    wire = build_vote_result_wire(record)
+    assert wire.startswith("[vote_result] ")
+    parts = parse_message(wire)
+    chart = next(p["spec"] for p in parts if p["type"] == "data")
+    assert chart["chart"] == "bar"
+    assert chart["series"] == [
+        {"label": Config.vote_result_humans, "points": [[Config.vote_result_humans, 2]]},
+        {"label": Config.vote_result_ai, "points": [[Config.vote_result_ai, 1]]},
+    ]
+    assert wire.index("```uai") < wire.index("| Ada |")
+    assert f"| Ada | {Config.vote_result_human_label} |" in wire
+    assert f"| Ivy | {Config.vote_result_human_label} |" in wire
+    assert "| Roy | Bot |" in wire
+    assert "private-" not in wire
+    plain = to_model_text(wire)
+    assert f"{Config.vote_result_humans}: 2" in plain and "```" not in plain
+
+    # The saved answer makes correct and wrong guesses explicit; self is never scored.
+    form = build_vote_form(["Roy", "Ada"], form_id="results")
+    record["vote_form"] = form
+    record["vote"] = encode_reply(form, {"roy": VOTE_HUMAN, "ada": VOTE_HUMAN})
+    scored = build_vote_result_wire(record)
+    assert f"| Ada | {Config.vote_result_human_label} | {Config.vote_result_human_label} | ✅ {Config.vote_result_correct} |" in scored
+    assert f"| Roy | Bot | {Config.vote_result_human_label} | ❌ {Config.vote_result_wrong} |" in scored
+    assert Config.vote_result_score.format(correct=1, total=2) in scored
+    assert f"| Ivy | {Config.vote_result_human_label} | — | {Config.vote_result_self} |" in scored
+    assert "private-" not in scored
+
+    # Missing, invalid and unrelated replies must not be labelled as wrong guesses.
+    for answer in (None, "Roy", encode_reply(dict(form, id="other"), {"roy": VOTE_HUMAN})):
+        record["vote"] = answer
+        unavailable = build_vote_result_wire(record)
+        assert "✅" not in unavailable and "❌" not in unavailable
+        assert Config.vote_result_no_vote in unavailable
+    record["vote"] = encode_reply(form, {"roy": VOTE_AI})
+    partial = build_vote_result_wire(record)
+    assert f"| Roy | Bot | Bot | ✅ {Config.vote_result_correct} |" in partial
+    assert f"| Ada | {Config.vote_result_human_label} | — | {Config.vote_result_no_vote} |" in partial
+    assert Config.vote_result_score.format(correct=1, total=1) in partial
+
+    # Even an ignored chat session shows the reveal, once, before goto_hall completes.
+    printed = []
+    monkeypatch.setattr(log, "user", printed.append)
+    guest = SimpleNamespace(_ignore_messages=True)
+    async def status(msg):
+        return await WAgent.get_status_msg(guest, msg)
+    guest.get_status_msg = status
+    assert asyncio.run(WAgent.goto_hall(guest, msg=wire)) is True
+    assert printed == [strip_service_tag(wire)]
+    assert asyncio.run(WAgent.goto_hall(guest)) is True
+    assert len(printed) == 1
+
+    # Single-nature and empty-peer sessions still retain both bars, including the zero.
+    for nature in (VOTE_HUMAN, VOTE_AI):
+        single = build_vote_result_wire({"voter_fake_name": "Ivy", "voter_nature": nature,
+                                         "ground_truth": {}})
+        spec = next(p["spec"] for p in parse_message(single) if p["type"] == "data")
+        assert [s["points"][0][1] for s in spec["series"]] == ([1, 0] if nature == VOTE_HUMAN else [0, 1])
+
+
+
+
+def test_vote_result_never_calls_processor(monkeypatch):
+    """A reveal is log-only, both during and after a session, even with a process UUID."""
+    import asyncio
+    from types import SimpleNamespace
+    from .guest import WAgent
+
+    printed = []
+    monkeypatch.setattr(log, "user", printed.append)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Vote results must never reach the processor")
+
+    wire = build_vote_result_wire({"voter_fake_name": "Ivy", "voter_nature": VOTE_HUMAN,
+                                   "ground_truth": {"Roy": (VOTE_AI, "private-id")}})
+    for ignored in (False, True):
+        events = ["previous chat event"]
+        guest = SimpleNamespace(_ignore_messages=ignored, _pending_events=events,
+                                _WAgent__push_to_processor=forbidden, process=forbidden,
+                                send=forbidden, uai_remember_form=forbidden,
+                                stdin=SimpleNamespace(set=forbidden))
+        assert asyncio.run(WAgent.get_status_msg(guest, msg=wire, process_uuid="unused")) is True
+        assert guest._pending_events == ["previous chat event"]
+        assert guest._ignore_messages is ignored
+    assert printed == [strip_service_tag(wire)] * 2
+
+
+def test_floor_manager_vote_reveal():
+    """Early and late stream delivery both produce a scored reveal from the recorded vote."""
+    import asyncio
+    import json
+    from types import MethodType, SimpleNamespace
+    from unaiverse.interaction import CompletionReason
+    from unaiverse.streams import Stream
+    from unaiverse.streams.dataprops import DataProps
+    from unaiverse.uai import encode_reply
+
+    async def load_manager():
+        # The role installs its executor at import time, so import it inside a live loop.
+        from .floor_manager import GuestStatus, WAgent
+        return GuestStatus, WAgent
+    GuestStatus, WAgent = asyncio.run(load_manager())
+    vote_form = build_vote_form(["Roy"], form_id="received")
+    vote_wire = encode_reply(vote_form, {"roy": VOTE_AI})
+
+    def setup():
+        sent, ejected, statuses = [], [], []
+        stream = Stream(props=DataProps(name="processor", data_type="text"))
+        room = SimpleNamespace(
+            id="room", fake_name_of=lambda guest: "Ivy",
+            get_fake_names_seen_by=lambda alias: {"Roy", "Ivy"},
+            get_unaid_of=lambda guest: "private-voter-id",
+            get_ground_truth_of=lambda guest: VOTE_HUMAN,
+            get_ground_truth_of_fake_name=lambda alias: VOTE_AI,
+            get_unaid_of_fake_name=lambda alias: "private-ai-id",
+            guest_whose_fake_name_is=lambda alias: "bot",
+            count_messages_recv_by=lambda **kwargs: 1,
+            set_status=lambda guest, status: statuses.append(status),
+            get_status=lambda guest: statuses[-1] if statuses else GuestStatus.IN_VOTING_BOOTH,
+            count_human_guests=lambda: 1,
+            age=0,
+        )
+        room.get_time_in_current_status = lambda guest: room.age
+        floor = SimpleNamespace(id="floor", is_in_a_room=lambda guest: guest not in ejected,
+                                get_hotel_manager_of=lambda guest: "hotel",
+                                get_room_of=lambda guest: room)
+        async def send(**kwargs):
+            sent.append(kwargs)
+            return True
+        manager = SimpleNamespace(floor=floor, get_peer_id=lambda: "manager", send=send,
+                                  _guest2vote_info={"guest": ["vote-uuid", None, vote_form]},
+                                  world_agents={"guest": object()},
+                                  get_stream=lambda *args, **kwargs: stream,
+                                  _WAgent__eject_and_clear_guest=ejected.append)
+        manager._WAgent__return_guest_to_hall = MethodType(WAgent._WAgent__return_guest_to_hall, manager)
+        manager.guest_back_to_hall = MethodType(WAgent.guest_back_to_hall, manager)
+        return manager, stream, sent, ejected, statuses
+
+    for early_delivery in (False, True):
+        manager, stream, sent, ejected, statuses = setup()
+        if early_delivery:
+            stream.set(vote_wire, uuid="vote-uuid")
+        completed = SimpleNamespace(target=["guest"], completion_reason=CompletionReason.OK)
+        assert asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed)) is True
+        assert statuses == [GuestStatus.AWAITING_VOTE_DATA]
+        assert not sent and not ejected
+        if not early_delivery:
+            # Completion can arrive first. No reveal and no disconnection before the answer arrives.
+            assert asyncio.run(WAgent.send_votes(manager)) is False
+            assert not sent and not ejected
+            assert manager._guest2vote_info["guest"][1]["vote"] is None
+            stream.set(vote_wire, uuid="vote-uuid")
+        assert asyncio.run(WAgent.send_votes(manager)) is True
+        hall = next(s for s in sent if s.get("action_name") == "goto_hall")
+        assert hall["target"] == "guest" and hall["from_state"] == "vote_provided"
+        reveal = hall["action_kwargs"]["msg"]
+        assert reveal.startswith("[vote_result] ") and "private-" not in reveal
+        assert f"| Roy | Bot | Bot | ✅ {Config.vote_result_correct} |" in reveal
+        assert Config.vote_result_no_vote not in reveal
+        assert ejected == ["guest"]
+        packet = json.loads(next(s["data_samples"]["votes"] for s in sent if "data_samples" in s))[0]
+        assert packet["vote"] == vote_wire and packet["vote_form"] == vote_form
+        assert packet["ground_truth"] == {"Roy": [VOTE_AI, "private-ai-id"]}
+        assert manager._guest2vote_info == {}
+        sent.clear()
+        assert asyncio.run(WAgent.send_votes(manager)) is False
+        assert not sent  # A later tick cannot send a duplicate result or vote.
+
+    manager, stream, sent, ejected, statuses = setup()
+    completed = SimpleNamespace(target=["guest"], completion_reason=CompletionReason.TIMEOUT)
+    assert asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed)) is True
+    assert not sent and not ejected
+    # Explicit removal before voting still returns from can_vote, with no reveal.
+    assert asyncio.run(WAgent.guest_back_to_hall(manager, guest="guest")) is True
+    hall = next(s for s in sent if s["action_name"] == "goto_hall")
+    assert hall["from_state"] == "can_vote" and hall["action_kwargs"] == {}
+
+    # Missing output cannot strand a guest indefinitely or trigger another processor request.
+    manager, stream, sent, ejected, statuses = setup()
+    completed.completion_reason = CompletionReason.OK
+    asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed))
+    assert asyncio.run(WAgent._WAgent__handle_single_guest_by_status(manager, "guest")) is True
+    assert not sent
+    manager.floor.get_room_of("guest").age = Config.survey_reply_time + 1
+    assert asyncio.run(WAgent._WAgent__handle_single_guest_by_status(manager, "guest")) is True
+    hall = next(s for s in sent if s.get("action_name") == "goto_hall")
+    assert hall["from_state"] == "vote_provided" and hall["action_kwargs"] == {}
+    assert ejected == ["guest"]
+
+    # A peer who disconnects while the answer is in transit is removed without a fake result.
+    manager, stream, sent, ejected, statuses = setup()
+    completed.completion_reason = CompletionReason.OK
+    asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed))
+    manager.world_agents.clear()
+    assert asyncio.run(WAgent.send_votes(manager)) is False
+    assert not sent and manager._guest2vote_info == {}
+
+
+
+def test_floor_assignment_packs_floors(monkeypatch):
+    """Use one floor to capacity, including in-flight arrivals, before another floor."""
+    from collections import Counter
+    from .hotel import Hotel
+
+    monkeypatch.setattr(Config, "max_guests_per_room", 2)
+    monkeypatch.setattr(Config, "max_overbooked_guests", 1)
+
+    def hotel():
+        result = Hotel(managed_guest_profiles={})
+        # Add in reverse order to ensure discovery order is not the tie-breaker.
+        result.add_floor("b", "manager-b", ["b1", "b2"])
+        result.add_floor("a", "manager-a", ["a1", "a2"])
+        return result
+
+    structure = hotel()
+    assigned, remaining = compute_check_in_proposals(structure, [f"g{i}" for i in range(7)])
+    assert not remaining
+    assert Counter(p["floor_id"] for p in assigned.values()) == {"a": 6, "b": 1}
+    assert all(room.count_guests(count_temp_too=True) <= 3 for room in structure.get_rooms())
+
+    # Successive hotel cycles can run before any floor update has arrived.
+    structure = hotel()
+    assigned, _ = compute_check_in_proposals(structure, ["g0", "g1", "g2"])
+    for guest, proposal in assigned.items():
+        structure.add_expected_guest(guest, structure.get_floor(proposal["floor_id"]))
+    assigned, _ = compute_check_in_proposals(structure, ["g3", "g4"])
+    assert {p["floor_id"] for p in assigned.values()} == {"a"}
+    for guest, proposal in assigned.items():
+        structure.add_expected_guest(guest, structure.get_floor(proposal["floor_id"]))
+    assigned, _ = compute_check_in_proposals(structure, ["g5", "g6"])
+    assert Counter(p["floor_id"] for p in assigned.values()) == {"a": 1, "b": 1}
+
+    # Prefer a floor already in use even when its identity sorts after an empty one.
+    structure = hotel()
+    floor = structure.get_floor("b")
+    room = floor.get_room("b1")
+    floor.insert("present", None, "hotel", room, assign_fake_name=False)
+    structure.add_expected_guest("present", floor)  # An update already placed this guest; do not count twice.
+    assigned, remaining = compute_check_in_proposals(structure, [f"new{i}" for i in range(5)])
+    assert not remaining and {p["floor_id"] for p in assigned.values()} == {"b"}
+
+    # Floor-manager room allocation still fills a singleton before opening another room.
+    assigned, remaining = compute_check_in_proposals(floor, ["peer"])
+    assert not remaining and assigned["peer"]["room_id"] == "b1"
+
+    # Exhausted floors leave excess guests waiting instead of exceeding room limits.
+    structure = hotel()
+    guests = [f"capacity{i}" for i in range(14)]
+    assigned, remaining = compute_check_in_proposals(structure, guests)
+    assert len(assigned) == 12 and len(remaining) == 2
+    assert set(assigned).isdisjoint(remaining)
+    assert set(assigned) | set(remaining) == set(guests)
+    assert all(room.count_guests(count_temp_too=True) == 3 for room in structure.get_rooms())
+
+    empty = Hotel(managed_guest_profiles={})
+    assert compute_check_in_proposals(empty, ["waiting"]) == ({}, ["waiting"])
 
 
 def test_vote_form_roundtrip():
@@ -931,10 +1248,40 @@ def test_parse_vote_msg_letters():
 
 
 def compute_check_in_proposals(structure, guests_to_check_in: list):
-    # Clearing temp room assignments (if any)
+    """Pack active floors before opening another, then fill rooms within each floor.
+
+    The hotel reserves space for guests already sent upstairs, even before floor updates arrive.
+    A floor manager still uses the existing room policy, including its overbooking limit.
+    """
     for room in structure.get_rooms():
         room.clear_temp_assignments()
 
+    if not hasattr(structure, "get_floors"):
+        return _compute_room_check_ins(structure, guests_to_check_in)
+
+    floors = list(structure.get_floors())
+    def pending_guests(floor):
+        return set(floor.get_expected_guests()) - set(floor.get_guests())
+
+    # Stable manager identities break ties, independently of discovery order.
+    floors.sort(key=lambda floor: (
+        -(sum(room.count_guests() for room in floor.get_rooms()) + len(pending_guests(floor))),
+        floor.floor_manager,
+    ))
+    proposals = {}
+    remaining = list(guests_to_check_in)
+    for floor in floors:
+        if not remaining:
+            break
+        # Reserve pending arrivals first. Keep those temporary seats for this cycle's proposals.
+        _compute_room_check_ins(floor, sorted(pending_guests(floor)))
+        assigned, remaining = _compute_room_check_ins(floor, remaining)
+        proposals.update(assigned)
+    return proposals, remaining
+
+
+def _compute_room_check_ins(structure, guests_to_check_in: list):
+    """Apply the room-filling policy without clearing reservations from this check-in cycle."""
     # Data that will be returned
     proposed_check_ins = {}  # Checked in guests (peer ID to dictionary {"floor_id": FLOOR_ID, "room_id": ROOM_ID})
     cannot_check_in = []  # Guests for which check in was not possible (no free rooms for them)

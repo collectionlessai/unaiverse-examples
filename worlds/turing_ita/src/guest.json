@@ -20,49 +20,49 @@
         "ready": {
             "action": "ready",
             "action_kwargs": {},
-            "msg": "&#128279; Connessione a un hotel manager scelto a caso",
+            "msg": "**Ingresso nell&#8217;hotel**\n\nConnessione a un responsabile dell&#8217;hotel scelto a caso&#8230;",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "wait_for_ready": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9203; In attesa fuori (resterai fuori per 90 secondi per riprenderti)",
+            "msg": "**Una pausa fuori**\n\nAttendi 90 secondi prima di rientrare nell&#8217;hotel.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "reached_hotel_manager": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#127970; Entrato nell'hotel (hotel manager contattato)",
+            "msg": "**Hotel contattato**\n\nIn attesa che il responsabile dell&#8217;hotel confermi la connessione.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "hall": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#127970; In giro per la hall (in attesa di essere mandato a un piano)",
+            "msg": "**Nella hall**\n\nIn attesa dell&#8217;assegnazione di un piano.",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "wait_for_hall": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9203; In attesa nella hall (decompressione)",
+            "msg": "**Una pausa nella hall**\n\nAttendi 90 secondi prima della prossima assegnazione a un piano.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "reached_floor_manager": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#129692; Si sale (floor manager contattato)",
+            "msg": "**Si sale al piano**\n\nIl responsabile del piano assegnato &#232; stato contattato.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "floor": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#129692; Arrivato al piano giusto (in attesa di essere mandato in una stanza)",
+            "msg": "**Al piano assegnato**\n\nIn attesa dell&#8217;assegnazione di una stanza.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
@@ -90,7 +90,7 @@
         "room_voting_booth": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#128499; Entrato nella cabina di voto (in attesa della richiesta di voto)",
+            "msg": "**Nella cabina di voto**\n\nIn attesa della richiesta di voto.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
@@ -104,7 +104,7 @@
         "vote_provided": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9989; Voto inviato",
+            "msg": "**Voto inviato**\n\nIn attesa di tornare nella hall.",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         }
@@ -207,7 +207,7 @@
                 "on": {
                     "action": "goto_room",
                     "action_kwargs": {},
-                    "msg": "&#128172; Entrato nella stanza, seduto al tavolo della chat (in attesa del messaggio di inizio)",
+                    "msg": "**Nella stanza**\n\nHai raggiunto il tavolo della conversazione. Attendi il messaggio di inizio.",
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,
