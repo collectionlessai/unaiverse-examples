@@ -106,8 +106,6 @@ class Config:
     # Post-vote reveal uses the real identities from this session, including the voter.
     vote_result_title = 'Room revealed'
     vote_result_context = 'Participants in your session, including you.'
-    vote_result_humans = 'Humans'
-    vote_result_ai = 'AI'
     vote_result_roster_title = 'Participants'
     vote_result_human_label = 'Human'
     vote_result_alias_header = 'Pseudonym'

@@ -88,18 +88,11 @@ def build_vote_result_wire(vote_dict: dict) -> str:
     """Reveal the saved session roster, even after peers have left the room.
 
     Only aliases and natures go on the wire; account identities remain in the vote record.
-    The voter is included so the chart and the list describe the same complete roster.
+    The voter is included so the list describes the complete roster; the chart only counts the voter's
+    scored guesses (correct vs. incorrect), and it is omitted when no guess could be scored.
     """
     roster = {alias: info[0] for alias, info in vote_dict["ground_truth"].items()}
     roster[vote_dict["voter_fake_name"]] = vote_dict["voter_nature"]
-    humans = sum(nature == VOTE_HUMAN for nature in roster.values())
-    bots = sum(nature == VOTE_AI for nature in roster.values())
-    chart = compose_chart(
-        "bar",
-        [{"label": Config.vote_result_humans, "points": [[Config.vote_result_humans, humans]]},
-         {"label": Config.vote_result_ai, "points": [[Config.vote_result_ai, bots]]}],
-        f"{Config.vote_result_humans}: {humans} - {Config.vote_result_ai}: {bots}",
-    )
     # Use the exact form and canonical answer received, never infer a vote from the raw prose.
     votes = read_vote(vote_dict.get("vote"), vote_dict.get("vote_form"))
     rows = [
@@ -125,6 +118,13 @@ def build_vote_result_wire(vote_dict: dict) -> str:
         # Alias values come from the world's fixed room-name list, not participant text.
         rows.append(f"| {alias} | {actual} | {chosen} | {outcome} |")
     score = Config.vote_result_score.format(correct=correct, total=total) if total else ""
+    wrong = total - correct
+    chart = compose_chart(
+        "bar",
+        [{"label": Config.vote_result_correct, "points": [[Config.vote_result_correct, correct]]},
+         {"label": Config.vote_result_wrong, "points": [[Config.vote_result_wrong, wrong]]}],
+        f"{Config.vote_result_correct}: {correct} - {Config.vote_result_wrong}: {wrong}",
+    ) if total else ""
     body = "\n\n".join(part for part in [
         f"### {Config.vote_result_title}", Config.vote_result_context, chart,
         f"**{Config.vote_result_roster_title}**", "\n".join(rows), f"**{score}**" if score else "",
@@ -429,26 +429,27 @@ def test_vote_result_reveal(monkeypatch):
                                "Ada": (VOTE_HUMAN, "private-human-id")}}
     wire = build_vote_result_wire(record)
     assert wire.startswith("[vote_result] ")
-    parts = parse_message(wire)
-    chart = next(p["spec"] for p in parts if p["type"] == "data")
-    assert chart["chart"] == "bar"
-    assert chart["series"] == [
-        {"label": Config.vote_result_humans, "points": [[Config.vote_result_humans, 2]]},
-        {"label": Config.vote_result_ai, "points": [[Config.vote_result_ai, 1]]},
-    ]
-    assert wire.index("```uai") < wire.index("| Ada |")
+    # Without a scored guess there is nothing to chart: only the roster is revealed.
+    assert not any(p["type"] == "data" for p in parse_message(wire))
     assert f"| Ada | {Config.vote_result_human_label} |" in wire
     assert f"| Ivy | {Config.vote_result_human_label} |" in wire
     assert "| Roy | Bot |" in wire
     assert "private-" not in wire
-    plain = to_model_text(wire)
-    assert f"{Config.vote_result_humans}: 2" in plain and "```" not in plain
 
     # The saved answer makes correct and wrong guesses explicit; self is never scored.
     form = build_vote_form(["Roy", "Ada"], form_id="results")
     record["vote_form"] = form
     record["vote"] = encode_reply(form, {"roy": VOTE_HUMAN, "ada": VOTE_HUMAN})
     scored = build_vote_result_wire(record)
+    chart = next(p["spec"] for p in parse_message(scored) if p["type"] == "data")
+    assert chart["chart"] == "bar"
+    assert chart["series"] == [
+        {"label": Config.vote_result_correct, "points": [[Config.vote_result_correct, 1]]},
+        {"label": Config.vote_result_wrong, "points": [[Config.vote_result_wrong, 1]]},
+    ]
+    assert scored.index("```uai") < scored.index("| Ada |")
+    plain = to_model_text(scored)
+    assert f"{Config.vote_result_correct}: 1" in plain and "```" not in plain
     assert f"| Ada | {Config.vote_result_human_label} | {Config.vote_result_human_label} | ✅ {Config.vote_result_correct} |" in scored
     assert f"| Roy | Bot | {Config.vote_result_human_label} | ❌ {Config.vote_result_wrong} |" in scored
     assert Config.vote_result_score.format(correct=1, total=2) in scored
@@ -479,12 +480,10 @@ def test_vote_result_reveal(monkeypatch):
     assert asyncio.run(WAgent.goto_hall(guest)) is True
     assert len(printed) == 1
 
-    # Single-nature and empty-peer sessions still retain both bars, including the zero.
-    for nature in (VOTE_HUMAN, VOTE_AI):
-        single = build_vote_result_wire({"voter_fake_name": "Ivy", "voter_nature": nature,
-                                         "ground_truth": {}})
-        spec = next(p["spec"] for p in parse_message(single) if p["type"] == "data")
-        assert [s["points"][0][1] for s in spec["series"]] == ([1, 0] if nature == VOTE_HUMAN else [0, 1])
+    # An all-correct vote still retains both bars, including the zero.
+    record["vote"] = encode_reply(form, {"roy": VOTE_AI, "ada": VOTE_HUMAN})
+    spec = next(p["spec"] for p in parse_message(build_vote_result_wire(record)) if p["type"] == "data")
+    assert [s["points"][0][1] for s in spec["series"]] == [2, 0]
 
 
 
