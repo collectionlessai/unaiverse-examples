@@ -1247,40 +1247,10 @@ def test_parse_vote_msg_letters():
 
 
 def compute_check_in_proposals(structure, guests_to_check_in: list):
-    """Pack active floors before opening another, then fill rooms within each floor.
-
-    The hotel reserves space for guests already sent upstairs, even before floor updates arrive.
-    A floor manager still uses the existing room policy, including its overbooking limit.
-    """
+    # Clearing temp room assignments (if any)
     for room in structure.get_rooms():
         room.clear_temp_assignments()
 
-    if not hasattr(structure, "get_floors"):
-        return _compute_room_check_ins(structure, guests_to_check_in)
-
-    floors = list(structure.get_floors())
-    def pending_guests(floor):
-        return set(floor.get_expected_guests()) - set(floor.get_guests())
-
-    # Stable manager identities break ties, independently of discovery order.
-    floors.sort(key=lambda floor: (
-        -(sum(room.count_guests() for room in floor.get_rooms()) + len(pending_guests(floor))),
-        floor.floor_manager,
-    ))
-    proposals = {}
-    remaining = list(guests_to_check_in)
-    for floor in floors:
-        if not remaining:
-            break
-        # Reserve pending arrivals first. Keep those temporary seats for this cycle's proposals.
-        _compute_room_check_ins(floor, sorted(pending_guests(floor)))
-        assigned, remaining = _compute_room_check_ins(floor, remaining)
-        proposals.update(assigned)
-    return proposals, remaining
-
-
-def _compute_room_check_ins(structure, guests_to_check_in: list):
-    """Apply the room-filling policy without clearing reservations from this check-in cycle."""
     # Data that will be returned
     proposed_check_ins = {}  # Checked in guests (peer ID to dictionary {"floor_id": FLOOR_ID, "room_id": ROOM_ID})
     cannot_check_in = []  # Guests for which check in was not possible (no free rooms for them)

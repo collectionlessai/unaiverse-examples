@@ -134,12 +134,15 @@ class WAgent(Agent):
                                   if not self.hotel.is_in_a_floor(a) and not self.hotel.is_expected_guest(a)]
         else:
             guests_to_check_in = []
+        log.user(f"Guests to check in:\n {guests_to_check_in}")
         if len(guests_to_check_in) == 0:
             return False
 
         # Proposing check-ins accordingly to the current status of the hotel
         proposed_check_ins, _ = compute_check_in_proposals(self.hotel, guests_to_check_in)
+        log.user(f"Proposed check ins:\n {proposed_check_ins}")
         self._proposed_check_ins.update(proposed_check_ins)
+        log.user(f"Merged list of proposed check ins:\n {self._proposed_check_ins}")
         return True
 
     @action
