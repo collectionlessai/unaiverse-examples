@@ -28,7 +28,7 @@ class Config:
                                     False: '@8WOvlXN1olUmRUWDhFeDRjTy90SRRFbLFjVu1iVxRDMBhHOyU2VZVVSk1WMvQ2LzRXZlh2c'
                                            'kFWZyB3cv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa'}  # AIs
     registered_users_form_column_id = 3  # Zero-based column index of the nickname in the spreadsheet
-    broadcast_when_no_humans = True
+    broadcast_when_no_humans = False
     max_message_size = 512  # Set it to <= 0 to disable
     use_letter_names = False
     test_duration = 300  # Seconds (int)
@@ -39,7 +39,7 @@ class Config:
                                moving_time + time_in_voting_booth_before_activating_vote + 5)  # Add a gap
     max_guests_per_room = 4
     max_overbooked_guests = 1
-    rooms_per_floor = 50
+    rooms_per_floor = 1 
     min_msgs_from_votee = 3  # Minimum number of received messages from somebody to vote hit
     msg_cooldown = 1  # Minimum time between two consecutive messages sent by a guest to the room (anti-flooding)
     max_queued_msgs = 2  # Max messages a guest can keep waiting for the cooldown (the oldest ones get dropped)
@@ -50,6 +50,8 @@ class Config:
     send_reminder_every = 65  # Reminder on how to exit the room and vote
     skipped_votes_alarm = 3  # Unreadable votes in a row (hotel-wide) that trip the pipeline alarm in the logs
     send_floor_updates_every = 3  # From floor manager to hotel manager
+    monitor_dir = "~/.cache/unaiverse/turing_ita_monitor"  # Managers dump their status here for the monitor TUI ("" = off)
+    monitor_every = 2  # Seconds between two status dumps of a manager
     decompression_time = 90
     disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
     exit_trigger_message = "exit"  # The message that an agent can write to early stop the conversation and vote

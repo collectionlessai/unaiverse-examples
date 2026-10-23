@@ -626,7 +626,8 @@ def test_floor_manager_vote_reveal():
 
 
 def test_floor_assignment_packs_floors(monkeypatch):
-    """Use one floor to capacity, including in-flight arrivals, before another floor."""
+    """Fill lonely guests hotel-wide, count in-flight arrivals, open new rooms on the busiest floor before
+    overbooking, and do not send a guest back to the room he just left."""
     from collections import Counter
     from .hotel import Hotel
 
@@ -643,8 +644,8 @@ def test_floor_assignment_packs_floors(monkeypatch):
     structure = hotel()
     assigned, remaining = compute_check_in_proposals(structure, [f"g{i}" for i in range(7)])
     assert not remaining
-    assert Counter(p["floor_id"] for p in assigned.values()) == {"a": 6, "b": 1}
-    assert all(room.count_guests(count_temp_too=True) <= 3 for room in structure.get_rooms())
+    assert Counter(p["floor_id"] for p in assigned.values()) == {"a": 4, "b": 3}
+    assert all(room.count_guests(count_temp_too=True) <= 2 for room in structure.get_rooms())
 
     # Successive hotel cycles can run before any floor update has arrived.
     structure = hotel()
@@ -652,11 +653,11 @@ def test_floor_assignment_packs_floors(monkeypatch):
     for guest, proposal in assigned.items():
         structure.add_expected_guest(guest, structure.get_floor(proposal["floor_id"]))
     assigned, _ = compute_check_in_proposals(structure, ["g3", "g4"])
-    assert {p["floor_id"] for p in assigned.values()} == {"a"}
+    assert Counter(p["floor_id"] for p in assigned.values()) == {"a": 1, "b": 1}
     for guest, proposal in assigned.items():
         structure.add_expected_guest(guest, structure.get_floor(proposal["floor_id"]))
     assigned, _ = compute_check_in_proposals(structure, ["g5", "g6"])
-    assert Counter(p["floor_id"] for p in assigned.values()) == {"a": 1, "b": 1}
+    assert {p["floor_id"] for p in assigned.values()} == {"b"}
 
     # Prefer a floor already in use even when its identity sorts after an empty one.
     structure = hotel()
@@ -665,7 +666,7 @@ def test_floor_assignment_packs_floors(monkeypatch):
     floor.insert("present", None, "hotel", room, assign_fake_name=False)
     structure.add_expected_guest("present", floor)  # An update already placed this guest; do not count twice.
     assigned, remaining = compute_check_in_proposals(structure, [f"new{i}" for i in range(5)])
-    assert not remaining and {p["floor_id"] for p in assigned.values()} == {"b"}
+    assert not remaining and Counter(p["floor_id"] for p in assigned.values()) == {"b": 3, "a": 2}
 
     # Floor-manager room allocation still fills a singleton before opening another room.
     assigned, remaining = compute_check_in_proposals(floor, ["peer"])
@@ -679,6 +680,53 @@ def test_floor_assignment_packs_floors(monkeypatch):
     assert set(assigned).isdisjoint(remaining)
     assert set(assigned) | set(remaining) == set(guests)
     assert all(room.count_guests(count_temp_too=True) == 3 for room in structure.get_rooms())
+
+    # A lonely guest on another floor comes before a busier floor (e.g., the room a guest just left)
+    structure = hotel()
+    floor_a, floor_b = structure.get_floor("a"), structure.get_floor("b")
+    floor_a.insert("busy", None, "hotel", floor_a.get_room("a1"), assign_fake_name=False)
+    floor_a.insert("busier", None, "hotel", floor_a.get_room("a1"), assign_fake_name=False)
+    floor_b.insert("lonely", None, "hotel", floor_b.get_room("b1"), assign_fake_name=False)
+    monkeypatch.setattr(Config, "max_guests_per_room", 3)
+    assigned, _ = compute_check_in_proposals(structure, ["back"])
+    assert assigned["back"] == {"floor_id": "b", "room_id": "b1"}
+
+    # Same, when the lonely guest was just sent upstairs and no floor update reported him yet
+    structure = hotel()
+    floor_a = structure.get_floor("a")
+    floor_a.insert("busy", None, "hotel", floor_a.get_room("a1"), assign_fake_name=False)
+    floor_a.insert("busier", None, "hotel", floor_a.get_room("a1"), assign_fake_name=False)
+    structure.add_expected_guest("in_flight", structure.get_floor("b"))
+    assigned, _ = compute_check_in_proposals(structure, ["back"])
+    assert assigned["back"]["floor_id"] == "b"
+
+    # A guest waits alone in a new room rather than overbooking a full one
+    monkeypatch.setattr(Config, "max_guests_per_room", 2)
+    structure = hotel()
+    floor_a = structure.get_floor("a")
+    for room_id in ("a1", "a2"):
+        for i in range(2):
+            floor_a.insert(f"{room_id}-{i}", None, "hotel", floor_a.get_room(room_id), assign_fake_name=False)
+    assigned, _ = compute_check_in_proposals(structure, ["new"])
+    assert assigned["new"]["floor_id"] == "b"
+
+    # The room a guest just left is avoided, even when it has a lonely guest or some free spots...
+    for left_behind in (["mate"], ["mate", "other"]):
+        structure = hotel()
+        floor_a = structure.get_floor("a")
+        for guest in left_behind:
+            floor_a.insert(guest, None, "hotel", floor_a.get_room("a1"), assign_fake_name=False)
+        assigned, _ = compute_check_in_proposals(structure, ["back", "new"], {"back": "a1"})
+        assert assigned["back"]["room_id"] != "a1"
+
+    # ... but it is better than waiting in the hall
+    structure = hotel()
+    for floor in structure.get_floors():
+        for room in floor.get_rooms():
+            for i in range(3 if room.id != "a1" else 2):
+                floor.insert(f"{room.id}-{i}", None, "hotel", room, assign_fake_name=False)
+    assigned, remaining = compute_check_in_proposals(structure, ["back"], {"back": "a1"})
+    assert not remaining and assigned["back"]["room_id"] == "a1"
 
     empty = Hotel(managed_guest_profiles={})
     assert compute_check_in_proposals(empty, ["waiting"]) == ({}, ["waiting"])
@@ -1247,137 +1295,96 @@ def test_parse_vote_msg_letters():
     print(f"\n{passed}/{total} passed")
 
 
-def compute_check_in_proposals(structure, guests_to_check_in: list):
-    """Pack active floors before opening another, then fill rooms within each floor.
+def compute_check_in_proposals(structure, guests_to_check_in: list, previous_rooms: dict | None = None):
+    """Propose a room to each guest: rooms with a lonely guest first, then rooms with some free spots, then
+    a new room (on the busiest floor, when the structure is the hotel), and overbooking only when there is
+    no empty room left.
 
-    The hotel reserves space for guests already sent upstairs, even before floor updates arrive.
-    A floor manager still uses the existing room policy, including its overbooking limit.
+    Opening a new room means that a guest waits alone for somebody else: this is preferred to crowding a
+    room beyond its capacity. The room-filling priority is hotel-wide: a lonely guest on a floor is served
+    before a busier floor gets more people. In the hotel, the guests already sent upstairs but not yet
+    reported by the floor updates keep their seats, otherwise the rooms they are going to look emptier than
+    they are (and a new guest ends up alone, or back to the only room that looks populated).
+
+    previous_rooms (guest -> room ID) are the rooms the guests just left: a guest is sent back to his
+    previous room only if there is no other room for him.
     """
+    # Clearing temp room assignments (if any)
     for room in structure.get_rooms():
         room.clear_temp_assignments()
 
-    if not hasattr(structure, "get_floors"):
-        return _compute_room_check_ins(structure, guests_to_check_in)
+    # Reserving the seats of the guests in flight (the floor will pick their rooms with this same policy)
+    if hasattr(structure, "get_floors"):
+        for floor in structure.get_floors():
+            pending_guests = sorted(set(floor.get_expected_guests()) - set(floor.get_guests()))
+            if len(pending_guests) > 0:
+                _compute_room_check_ins(floor, pending_guests)
 
-    floors = list(structure.get_floors())
-    def pending_guests(floor):
-        return set(floor.get_expected_guests()) - set(floor.get_guests())
-
-    # Stable manager identities break ties, independently of discovery order.
-    floors.sort(key=lambda floor: (
-        -(sum(room.count_guests() for room in floor.get_rooms()) + len(pending_guests(floor))),
-        floor.floor_manager,
-    ))
-    proposals = {}
-    remaining = list(guests_to_check_in)
-    for floor in floors:
-        if not remaining:
-            break
-        # Reserve pending arrivals first. Keep those temporary seats for this cycle's proposals.
-        _compute_room_check_ins(floor, sorted(pending_guests(floor)))
-        assigned, remaining = _compute_room_check_ins(floor, remaining)
-        proposals.update(assigned)
-    return proposals, remaining
+    return _compute_room_check_ins(structure, guests_to_check_in, previous_rooms)
 
 
-def _compute_room_check_ins(structure, guests_to_check_in: list):
+def _compute_room_check_ins(structure, guests_to_check_in: list, previous_rooms: dict | None = None):
     """Apply the room-filling policy without clearing reservations from this check-in cycle."""
     # Data that will be returned
     proposed_check_ins = {}  # Checked in guests (peer ID to dictionary {"floor_id": FLOOR_ID, "room_id": ROOM_ID})
     cannot_check_in = []  # Guests for which check in was not possible (no free rooms for them)
+    previous_rooms = previous_rooms if previous_rooms is not None else {}
 
-    # Shuffling guests waiting in the hall
+    def floor_of(_room):
+        return structure.get_floor_of_room(_room.id) if hasattr(structure, "get_floor_of_room") else structure
+
+    # In the hotel, a new room is opened on the busiest floor, to keep the active floors packed
+    # (stable manager identities break ties, so all the hotel managers open the same floor)
+    def busiest_floor_first(_room):
+        if not hasattr(structure, "get_floor_of_room"):
+            return 0, ""
+        _floor = floor_of(_room)
+        return -sum(r.count_guests(count_temp_too=True) for r in _floor.get_rooms()), _floor.floor_manager
+
+    def best_room(_rooms):
+        """The room with the highest priority (None if no room can accept a guest)."""
+        _lonely, _free, _empty, _overbooked = [], [], [], []
+        for _room in _rooms:
+            _count = _room.count_guests(count_temp_too=True)
+            if _count == 0:
+                _empty.append(_room)
+            elif _room.are_fake_names_clashing():
+                continue
+            elif _count == 1:
+                _lonely.append(_room)
+            elif _count < Config.max_guests_per_room:
+                _free.append(_room)
+            elif _count < Config.max_guests_per_room + Config.max_overbooked_guests:
+                _overbooked.append(_room)
+
+        # Guests are spread over the rooms of the same kind (the less crowded first, ties are random)
+        for _candidates in (_lonely, _free):
+            if len(_candidates) > 0:
+                return min(_candidates, key=lambda r: r.count_guests(count_temp_too=True))
+        if len(_empty) > 0:
+            return sorted(_empty, key=busiest_floor_first)[0]
+        if len(_overbooked) > 0:
+            return min(_overbooked, key=lambda r: r.count_guests(count_temp_too=True))
+        return None
+
+    # Shuffling guests waiting in the hall and rooms (rooms order breaks ties)
     guests_to_check_in = random.sample(guests_to_check_in, len(guests_to_check_in))
+    rooms = random.sample(list(structure.get_rooms()), len(structure.rooms))
 
-    # Init counters and conditioning variables
-    g = 0
-    sc = 0
-    so = 0
-    critical_rooms = []
-    ordinary_rooms = []
-    randomize_rooms_considering_updated_counts = True
+    # Consider guests one by one, re-counting room occupation (temp assignments included) each time
+    for g, guest in enumerate(guests_to_check_in):
+        previous_room = previous_rooms.get(guest)
+        room = best_room([r for r in rooms if r.id != previous_room])
+        if room is None:
+            room = best_room(rooms)  # The previous room is better than waiting in the hall
 
-    # Consider guests one by one
-    while g < len(guests_to_check_in):
+        # No ways, no spots left at all
+        if room is None:
+            cannot_check_in = guests_to_check_in[g:]
+            break
 
-        # We shuffle and re-count room occupation at the beginning and whenever we looped over all the rooms
-        if randomize_rooms_considering_updated_counts:
-
-            # Shuffling rooms (all of them, despite being full or empty or whatever)
-            rooms = random.sample(list(structure.get_rooms()), len(structure.rooms))
-
-            # Filtering: rooms with only 1 guest (critical rooms)
-            critical_rooms = [r for r in rooms
-                              if r.count_guests(count_temp_too=True) == 1 and
-                              not r.are_fake_names_clashing()]
-
-            # Filtering: rooms with that can still accept guests (ordinary rooms)
-            ordinary_rooms = [r for r in rooms
-                              if (1 < r.count_guests(count_temp_too=True) < Config.max_guests_per_room) and
-                              not r.are_fake_names_clashing()]
-
-            # Ops, no free spots in rooms with somebody already there: go overbooking!
-            # (of course, there are no critical rooms in this case)
-            if len(critical_rooms) + len(ordinary_rooms) == 0:
-                ordinary_rooms = [r for r in rooms
-                                  if (1 < r.count_guests(count_temp_too=True) < (Config.max_guests_per_room +
-                                                                                 Config.max_overbooked_guests) and
-                                      not r.are_fake_names_clashing())]
-
-            # Ops (x2), overbooking did not help! Let's consider empty rooms, one by one
-            if len(critical_rooms) + len(ordinary_rooms) == 0:
-                empty_rooms = [r for r in rooms
-                               if r.count_guests(count_temp_too=True) == 0]
-                if len(empty_rooms) > 0:
-                    ordinary_rooms = [empty_rooms[0]]  # We only take the first one, so we will fill it before switching
-
-            # Ops (x3), no ways, no spots left at all, ...
-            if len(critical_rooms) + len(ordinary_rooms) == 0:
-                cannot_check_in = guests_to_check_in[g:]
-                return proposed_check_ins, cannot_check_in
-
-            # Blocking re-counts
-            randomize_rooms_considering_updated_counts = False
-
-        # Getting guest
-        guest = guests_to_check_in[g]
-
-        # First: try to send the guest to one of the critical rooms
-        if sc < len(critical_rooms):
-            room = critical_rooms[sc]
-            if hasattr(structure, "get_floor_of_room"):
-                floor = structure.get_floor_of_room(room.id)
-            else:
-                floor = structure
-            sc += 1
-
-            # If the floor is valid, we assign the guest to it
-            proposed_check_ins[guest] = {"floor_id": floor.id, "room_id": room.id}
-            room.add_temp_assignment(guest)
-
-        # Second: we try to send the guest somewhere else, using a general criterion
-        if guest not in proposed_check_ins and so < len(ordinary_rooms):
-            room = ordinary_rooms[so]
-            if hasattr(structure, "get_floor_of_room"):
-                floor = structure.get_floor_of_room(room.id)
-            else:
-                floor = structure
-            so += 1
-
-            # If the floor is valid, we assign the guest to it
-            proposed_check_ins[guest] = {"floor_id": floor.id, "room_id": room.id}
-            room.add_temp_assignment(guest)
-
-        # Third: if we went over all the rooms, we recount their occupation (considering also temp assignments
-        # we did so far) and we will go over them again
-        if so >= len(ordinary_rooms):
-            sc = 0  # Reset
-            so = 0  # Reset
-            randomize_rooms_considering_updated_counts = True
-
-        # If the current guest was checked-in, we move to the next one, otherwise we will reconsider the guest
-        if guest in proposed_check_ins:
-            g += 1
+        proposed_check_ins[guest] = {"floor_id": floor_of(room).id, "room_id": room.id}
+        room.add_temp_assignment(guest)
 
     return proposed_check_ins, cannot_check_in
 

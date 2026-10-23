@@ -23,12 +23,14 @@ from .config import Config
 from unaiverse.custom import Custom
 from unaiverse.streams import Stream
 from unaiverse.utils.logger import log
+from unaiverse.utils.misc import build_unaid
 from unaiverse.agent import Agent, action
 from unaiverse.interaction import Interaction, CompletionReason
 from unaiverse.streams.dataprops import DataProps
 from concurrent.futures import ThreadPoolExecutor
 from .filter import RuleBasedFilter
-from .utils import build_vote_result_wire, build_survey_wire, compute_check_in_proposals, format_message, sanitize_room_message
+from .utils import (build_vote_result_wire, build_survey_wire, compute_check_in_proposals, dump_monitor_status,
+                    format_message, sanitize_room_message)
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
     asyncio.get_event_loop().set_default_executor(_turing_executor)
@@ -143,6 +145,37 @@ class WAgent(Agent):
         connected_guests = self.get_agents_by_role("guest")
         self.floor.print(f"[Managed/Connected] Hotel managers: */{len(connected_hotel_managers)} "
                          f"| Guests: {len(self.floor.get_guests())}/{len(connected_guests)}")
+
+        # Status for the monitor TUI
+        dump_monitor_status(self, "floor_manager", lambda: self.__monitor_status(connected_hotel_managers,
+                                                                                 connected_guests))
+
+    def __monitor_status(self, connected_hotel_managers: list, connected_guests: list) -> dict:
+        """The status of this floor, as the monitor TUI shows it (see utils.dump_monitor_status)."""
+        rooms = []
+        for room in self.floor.get_rooms():
+            guests = []
+            for guest in room.get_guests():
+                status = room.get_status(guest)
+                guests.append({"peer_id": guest,
+                               "unaid": room.get_unaid_of(guest),
+                               "fake_name": room.fake_name_of(guest),
+                               "human": bool(room.is_human(guest)),
+                               "status": status.value if status is not None else None,
+                               "time_in_status": room.get_time_in_current_status(guest),
+                               "time_in_room": room.get_time_spent_in_room_by(guest),
+                               "hotel_manager": self.floor.get_hotel_manager_of(guest),
+                               "wants_to_exit": guest in self._wants_to_exit,
+                               "severe_strikes": self._severe_strikes.get(guest, 0)})
+            rooms.append({"id": room.id, "fake_names_clashing": room.are_fake_names_clashing(), "guests": guests})
+        return {"floor_id": self.floor.id,
+                "rooms": rooms,
+                "connected_hotel_managers": len(connected_hotel_managers),
+                "connected_guests": len(connected_guests),
+                "waiting_for_room": [build_unaid(self.world_agents.get(guest)) or guest
+                                     for guest in self._sponsored_guests if not self.floor.is_in_a_room(guest)],
+                "awaiting_votes": len(self._guest2vote_info),
+                "update_tag": self._floor_update_tag}
 
     @action
     async def guest_joined_room(self, interaction: Interaction | None = None):

@@ -23,7 +23,7 @@ class Config:
     form = {}
     registered_users_form_sheets = {}
     registered_users_form_column_id = 3  # Zero-based nickname column in the registration sheet
-    broadcast_when_no_humans = True
+    broadcast_when_no_humans = False
     max_message_size = 512  # Set it to <= 0 to disable
     use_letter_names = False
     test_duration = 300  # Seconds (int)
