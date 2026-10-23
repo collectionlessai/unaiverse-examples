@@ -23,12 +23,14 @@ from .config import Config
 from unaiverse.custom import Custom
 from unaiverse.streams import Stream
 from unaiverse.utils.logger import log
+from unaiverse.utils.misc import build_unaid
 from unaiverse.agent import Agent, action
 from unaiverse.interaction import Interaction, CompletionReason
 from unaiverse.streams.dataprops import DataProps
 from concurrent.futures import ThreadPoolExecutor
 from .filter import RuleBasedFilter
-from .utils import build_survey_wire, compute_check_in_proposals, format_message, sanitize_room_message
+from .utils import (build_vote_result_wire, build_survey_wire, compute_check_in_proposals, dump_monitor_status,
+                    format_message, sanitize_room_message)
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
     asyncio.get_event_loop().set_default_executor(_turing_executor)
@@ -43,6 +45,7 @@ class GuestStatus(Enum):
     TOLD_TO_MOVE_TO_VOTING_BOOTH = "MOVE>VOTING"
     JUST_ARRIVED_IN_VOTING_BOOTH = ">VOTING"
     IN_VOTING_BOOTH = "VOTING"
+    AWAITING_VOTE_DATA = "VOTE>RESULT"
 
 
 class WAgent(Agent):
@@ -143,6 +146,37 @@ class WAgent(Agent):
         self.floor.print(f"[Managed/Connected] Hotel managers: */{len(connected_hotel_managers)} "
                          f"| Guests: {len(self.floor.get_guests())}/{len(connected_guests)}")
 
+        # Status for the monitor TUI
+        dump_monitor_status(self, "floor_manager", lambda: self.__monitor_status(connected_hotel_managers,
+                                                                                 connected_guests))
+
+    def __monitor_status(self, connected_hotel_managers: list, connected_guests: list) -> dict:
+        """The status of this floor, as the monitor TUI shows it (see utils.dump_monitor_status)."""
+        rooms = []
+        for room in self.floor.get_rooms():
+            guests = []
+            for guest in room.get_guests():
+                status = room.get_status(guest)
+                guests.append({"peer_id": guest,
+                               "unaid": room.get_unaid_of(guest),
+                               "fake_name": room.fake_name_of(guest),
+                               "human": bool(room.is_human(guest)),
+                               "status": status.value if status is not None else None,
+                               "time_in_status": room.get_time_in_current_status(guest),
+                               "time_in_room": room.get_time_spent_in_room_by(guest),
+                               "hotel_manager": self.floor.get_hotel_manager_of(guest),
+                               "wants_to_exit": guest in self._wants_to_exit,
+                               "severe_strikes": self._severe_strikes.get(guest, 0)})
+            rooms.append({"id": room.id, "fake_names_clashing": room.are_fake_names_clashing(), "guests": guests})
+        return {"floor_id": self.floor.id,
+                "rooms": rooms,
+                "connected_hotel_managers": len(connected_hotel_managers),
+                "connected_guests": len(connected_guests),
+                "waiting_for_room": [build_unaid(self.world_agents.get(guest)) or guest
+                                     for guest in self._sponsored_guests if not self.floor.is_in_a_room(guest)],
+                "awaiting_votes": len(self._guest2vote_info),
+                "update_tag": self._floor_update_tag}
+
     @action
     async def guest_joined_room(self, interaction: Interaction | None = None):
         """Callback triggered when a guest confirmed to have joined a room."""
@@ -181,7 +215,6 @@ class WAgent(Agent):
         # Let's distinguish if we are in the context of a callback from a vote-process-operation-completed,
         # or if we are just calling the method somewhere else
         callback_from_process_vote = False
-        _guest = guest  # TODO
         if guest is None:
             assert interaction is not None
 
@@ -243,6 +276,19 @@ class WAgent(Agent):
             if guest in self._guest2vote_info:
                 self._guest2vote_info[guest][1] = vote_dict
 
+            if interaction.completion_reason == CompletionReason.OK:
+                # Completion and stream delivery are independent. Keep the guest connected until
+                # send_votes receives the actual answer and builds the reveal from that same packet.
+                room.set_status(guest, GuestStatus.AWAITING_VOTE_DATA)
+                return True
+
+        pending = self._guest2vote_info.get(guest)
+        voted = callback_from_process_vote or (pending is not None and pending[1] is not None)
+        return await self.__return_guest_to_hall(guest, hotel_manager, voted=voted)
+
+    async def __return_guest_to_hall(self, guest: str, hotel_manager: str,
+                                     voted: bool, vote_result: str | None = None):
+        """Display the optional reveal before the hall transition disconnects the floor manager."""
         # Telling hotel manager that we reset our state touch with the floor manager he suggested
         # Independent peers, independent sends.
         hm_ret, g_ret = await asyncio.gather(
@@ -252,7 +298,8 @@ class WAgent(Agent):
                       target=hotel_manager,
                       volatile=True),
             self.send(action_name="goto_hall",
-                      from_state="can_vote" if not callback_from_process_vote else "vote_provided",
+                      action_kwargs={"msg": vote_result} if vote_result else {},
+                      from_state="vote_provided" if voted else "can_vote",
                       target=guest,
                       volatile=True),
             return_exceptions=True
@@ -289,13 +336,16 @@ class WAgent(Agent):
                                   if not self.floor.is_in_a_room(a)]
         else:
             guests_to_check_in = []
+        log.user(f"Guests to check in:\n {guests_to_check_in}")
         if len(guests_to_check_in) == 0:
             return False
 
         # Proposing check-ins accordingly to the current status of the hotel
         # If there is no room left, some guests will be reconsidered in the future
         proposed_check_ins, _ = compute_check_in_proposals(self.floor, guests_to_check_in)
+        log.user(f"Proposed check ins:\n {proposed_check_ins}")
         self._proposed_check_ins.update(proposed_check_ins)
+        log.user(f"Merged list of proposed check ins:\n {self._proposed_check_ins}")
         return True
 
     @action
@@ -368,6 +418,13 @@ class WAgent(Agent):
                                    target=guest):
                 await self.disconnect(guest)
             room.set_status(guest, GuestStatus.TOLD_TO_MOVE_TO_VOTING_BOOTH)
+            return True
+
+        # A completed processor must not get another vote prompt while its output is in transit.
+        if room.get_status(guest) == GuestStatus.AWAITING_VOTE_DATA:
+            if room.get_time_in_current_status(guest) > Config.survey_reply_time:
+                log.error(f"Vote output did not arrive for guest {guest}; returning to the hall")
+                await self.guest_back_to_hall(guest)
             return True
 
         # Too much time in voting booth: GET OUT OF THE ROOM!
@@ -626,7 +683,7 @@ class WAgent(Agent):
         to_remove = []
 
         # Votes are expected to be found on the guest's processor, with a UUID that we saved in advance
-        for guest, (vote_interaction_uuid, vote_dict, _) in self._guest2vote_info.items():
+        for guest, (vote_interaction_uuid, vote_dict, _) in list(self._guest2vote_info.items()):
             if vote_dict is None:
 
                 # If the vote_dict is None, then the guest was asked to go to the voting booth and was asked for a vote,
@@ -653,13 +710,18 @@ class WAgent(Agent):
             vote_dict["vote"] = vote_msg
             hotel_manager = vote_dict["hotel_manager"]
 
+            # The UI and the hotel manager use the exact same received vote, after delivery.
+            if self.floor.is_in_a_room(guest):
+                await self.__return_guest_to_hall(
+                    guest, hotel_manager, voted=True, vote_result=build_vote_result_wire(vote_dict))
+
             if hotel_manager not in list_of_vote_dicts_by_hotel_manager:
                 list_of_vote_dicts_by_hotel_manager[hotel_manager] = []
             list_of_vote_dicts_by_hotel_manager[hotel_manager].append(vote_dict)
             to_remove.append(guest)
 
         for guest in to_remove:
-            del self._guest2vote_info[guest]
+            self._guest2vote_info.pop(guest, None)
 
         # We send all the collected votes to each hotel manager (recall that a hotel manager only gets votes from
         # the guests that he sponsored), by loading in on our "votes" stream, paired with an "empty" interaction

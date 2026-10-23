@@ -14,6 +14,7 @@
 """
 import sys
 import copy
+import time
 import json
 import asyncio
 from .room import Room
@@ -24,7 +25,8 @@ from unaiverse.utils.logger import log
 from unaiverse.agent import Agent, action
 from concurrent.futures import ThreadPoolExecutor
 from unaiverse.networking.node.profile import NodeProfile
-from .utils import read_vote, vote_words, compute_check_in_proposals
+from unaiverse.utils.misc import build_unaid
+from .utils import read_vote, vote_words, compute_check_in_proposals, dump_monitor_status
 if not getattr(sys, "_turing_executor", None):
     _turing_executor = ThreadPoolExecutor(max_workers=128)
     asyncio.get_event_loop().set_default_executor(_turing_executor)
@@ -55,6 +57,12 @@ class WAgent(Agent):
         # the 3-seconds update cadence and reset the floor)
         self._ejected_ahead = {}
 
+        # The room where each guest had his last conversation (guest -> (room id, time)): a guest coming back
+        # from the hall is not sent there again, if there is another room for him (see
+        # compute_check_in_proposals). Only a completed conversation counts: a guest dropped by a floor
+        # (e.g., too slow to join) or disconnected never met anybody, and he can go back there
+        self._previous_rooms = {}
+
         # Agents fake names
         self.fake_names = Room.make_fake_names(letters=Config.use_letter_names)
 
@@ -76,6 +84,38 @@ class WAgent(Agent):
                          f"| Guests: {len(self.hotel.get_guests())}/{len(connected_guests)}\n"
                          f"Last update: " + self._last_update_received_at +
                          "  | Last check-in: " + self._last_guest_send_to_floor_at)
+
+        # Status for the monitor TUI
+        dump_monitor_status(self, "hotel_manager", lambda: self.__monitor_status(connected_floor_managers,
+                                                                                 connected_guests))
+
+    def __monitor_status(self, connected_floor_managers: list, connected_guests: list) -> dict:
+        """The hotel as this manager sees it, for the monitor TUI (see utils.dump_monitor_status)."""
+        def _guest(_guest_id: str) -> dict:
+            _profile = self.hotel.get_profile_of(_guest_id)
+            return {"peer_id": _guest_id,
+                    "unaid": build_unaid(_profile) or _guest_id,
+                    "human": _profile is not None and _profile.get_static_profile()["node_type"] == Agent.HUMAN}
+
+        floors = []
+        for floor in self.hotel.get_floors():
+            floors.append({"floor_id": floor.id,
+                           "floor_manager": floor.floor_manager,
+                           "floor_manager_unaid": build_unaid(self.world_agents.get(floor.floor_manager)),
+                           "update_tag": self._floor_update_tags.get(floor.id),
+                           "rooms": [{"id": room.id, "guests": [_guest(g) for g in room.get_guests()]}
+                                     for room in floor.get_rooms()],
+                           "in_flight": [_guest(g) for g in floor.get_expected_guests()
+                                         if not floor.is_in_a_room(g)]})
+        return {"floors": floors,
+                "connected_floor_managers": len(connected_floor_managers),
+                "connected_guests": len(connected_guests),
+                "hall": [_guest(g) for g in connected_guests
+                         if not self.hotel.is_in_a_floor(g) and not self.hotel.is_expected_guest(g)],
+                "ejected_ahead": len(self._ejected_ahead),
+                "skipped_votes_in_a_row": self._skipped_votes_in_a_row,
+                "last_update": self._last_update_received_at,
+                "last_check_in": self._last_guest_send_to_floor_at}
 
     def remove_floor_by_floor_manager(self, floor_manager: str):
         floor = self.hotel.get_floor_by_manager(floor_manager)
@@ -134,12 +174,20 @@ class WAgent(Agent):
                                   if not self.hotel.is_in_a_floor(a) and not self.hotel.is_expected_guest(a)]
         else:
             guests_to_check_in = []
+        log.user(f"Guests to check in:\n {guests_to_check_in}")
         if len(guests_to_check_in) == 0:
             return False
 
         # Proposing check-ins accordingly to the current status of the hotel
-        proposed_check_ins, _ = compute_check_in_proposals(self.hotel, guests_to_check_in)
+        # (the room a guest left is forgotten after a while, e.g., when he is the last one around)
+        now = time.time()
+        self._previous_rooms = {g: (r, t) for g, (r, t) in self._previous_rooms.items()
+                                if now - t < 2 * Config.test_duration}
+        previous_rooms = {g: r for g, (r, _) in self._previous_rooms.items()}
+        proposed_check_ins, _ = compute_check_in_proposals(self.hotel, guests_to_check_in, previous_rooms)
+        log.user(f"Proposed check ins:\n {proposed_check_ins}")
         self._proposed_check_ins.update(proposed_check_ins)
+        log.user(f"Merged list of proposed check ins:\n {self._proposed_check_ins}")
         return True
 
     @action
@@ -750,5 +798,8 @@ class WAgent(Agent):
     @action
     async def guest_back_to_hall(self, guest: str | None = None):
         assert guest is not None
+        floor = self.hotel.get_floor_of(guest)
+        if floor is not None and floor.is_in_a_room(guest):
+            self._previous_rooms[guest] = (floor.get_room_of(guest).id, time.time())
         self.__eject_ahead_of_updates(guest)
         return True

@@ -175,7 +175,10 @@ class WAgent(Agent):
         return True
 
     @action
-    async def goto_hall(self):
+    async def goto_hall(self, msg: str | None = None):
+        # The reveal must be displayed before entering the hall can disconnect this manager.
+        if msg is not None:
+            await self.get_status_msg(msg)
         return True
 
     @action
@@ -280,6 +283,11 @@ class WAgent(Agent):
     @action
     async def get_status_msg(self, msg: str, process_uuid: str | None = None):
         msg_no_tag = strip_service_tag(msg)
+
+        if msg.startswith("[vote_result]"):
+            # A reveal only reaches the UI: never enqueue input or request a processor turn.
+            log.user(msg_no_tag)
+            return True
 
         if msg.startswith("[START_MSG]") or msg.startswith("[START_MSG_NOBODY]"):
 

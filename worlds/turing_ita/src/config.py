@@ -39,7 +39,7 @@ class Config:
                                moving_time + time_in_voting_booth_before_activating_vote + 5)  # Add a gap
     max_guests_per_room = 4
     max_overbooked_guests = 1
-    rooms_per_floor = 50
+    rooms_per_floor = 1 
     min_msgs_from_votee = 3  # Minimum number of received messages from somebody to vote hit
     msg_cooldown = 1  # Minimum time between two consecutive messages sent by a guest to the room (anti-flooding)
     max_queued_msgs = 2  # Max messages a guest can keep waiting for the cooldown (the oldest ones get dropped)
@@ -50,6 +50,8 @@ class Config:
     send_reminder_every = 65  # Reminder on how to exit the room and vote
     skipped_votes_alarm = 3  # Unreadable votes in a row (hotel-wide) that trip the pipeline alarm in the logs
     send_floor_updates_every = 3  # From floor manager to hotel manager
+    monitor_dir = "~/.cache/unaiverse/turing_ita_monitor"  # Managers dump their status here for the monitor TUI ("" = off)
+    monitor_every = 2  # Seconds between two status dumps of a manager
     decompression_time = 90
     disconnect_non_responsive_managers_after = 30  # When "connect" is triggered, time to wait for the handshake
     exit_trigger_message = "exit"  # The message that an agent can write to early stop the conversation and vote
@@ -61,24 +63,24 @@ class Config:
     # It is the ASCII RECORD SEPARATOR, a character no chat message can contain (the guest strips it from
     # every event before batching), so events keep their internal newlines and splitting is lossless
     event_separator = "\x1e"
-    init_message = (f"**BENVENUTO AL TURING HOTEL ITALIA** 🏨\n\n"
+    init_message = (f"### BENVENUTO AL TURING HOTEL ITALIA 🏨\n\n"
                     f"È una destinazione unica, "
                     f"fatta di stanze che realizzano il Test di Turing multi-agente, dove sarai sia "
-                    f"il giudice ⚖️ sia un partner di conversazione 🗣️!\n"
+                    f"il giudice ⚖️ sia un partner di conversazione 🗣️!\n\n"
                     f"Verrai inviato in una stanza dove incontrerai altri sconosciuti "
                     f"(sia umani 🧑 che artificiali 🤖, ma magari anche tutti umani 🧑🧑 o nessuno umano 🤖🤖) "
                     f"con cui potrai interagire.\n\n"
                     f"Alla fine, ti verrà chiesto di esprimere il tuo voto per scovare chi sono gli umani. "
                     f"Deciderai in base a come i partner della conversazione interagiscono con te e tra di loro. "
                     f"Attenzione perché anche gli altri giudicheranno se tu sei un umano 🧑 o un agente artificiale 🤖 "
-                    f"(ricordati di comportarti da umano)."
+                    f"**(ricordati di comportarti da umano).**\n\n"
                     f" Dopo aver espresso il tuo voto, una nuova conversazione si avvierà automaticamente con altri "
                     f"partner scelti a caso.\n\n"
                     f"Fai del tuo meglio per sembrare umano"
                     f" e scovare gli altri umani.")
-    init_message_with_form = ("**BENVENUTO AL TURING HOTEL ITALIA** 🏨\n\n"
+    init_message_with_form = ("### BENVENUTO AL TURING HOTEL ITALIA 🏨\n\n"
                               "Converserai con altri partecipanti, umani o IA, e alla fine voterai chi pensi sia umano. "
-                              "Anche gli altri ti giudicheranno: cerca di sembrare umano! "
+                              "Anche gli altri ti giudicheranno: **cerca di sembrare umano!**\n\n"
                               "Dopo ogni voto inizierà una nuova conversazione.\n\n"
                               "## Per entrare\n\n"
                               "**Compila il modulo di adesione obbligatorio.** Basta farlo una volta.\n\n"
@@ -89,20 +91,20 @@ class Config:
                      f"<OTHER_NAMES>\n\n"
                      f"Questa conversazione non è collegata a nessuna delle precedenti (se ne hai già avute), "
                      f"quindi anche se vedi nomi già"
-                     f" visti in passato non è detto che siano gli stessi partner di prima.\n"
-                     f"La conversazione dura al massimo {test_duration} secondi e puoi scrivere "
-                     f"'{exit_trigger_message}' in qualunque "
+                     f" visti in passato non è detto che siano gli stessi partner di prima.\n\n"
+                     f"La conversazione dura al massimo **{test_duration} secondi** e puoi scrivere "
+                     f"`'{exit_trigger_message}'` in qualunque "
                      f"momento per lasciare subito la stanza "
-                     f"(scrivi solo '{exit_trigger_message}' senza apici e senza scrivere altro)."
-                     f"Ogni messaggio che invii deve avere al massimo {max_message_size} caratteri (spazi inclusi).")
+                     f"(scrivi solo `'{exit_trigger_message}'` senza apici e senza scrivere altro).\n\n"
+                     f"Ogni messaggio che invii deve avere al massimo **{max_message_size} caratteri** (spazi inclusi).")
     start_message_nobody = (f"[START_MSG_NOBODY] Benvenuto/a, ti chiami **<YOUR_NAME>** e "
-                            f"per ora sei solo/a.\n"
-                            f"La conversazione dura al massimo {test_duration} secondi e "
+                            f"per ora sei solo/a.\n\n"
+                            f"La conversazione dura al massimo **{test_duration} secondi** e "
                             f"puoi scrivere "
-                            f"'{exit_trigger_message}' in qualunque "
+                            f"`'{exit_trigger_message}'` in qualunque "
                             f"momento per lasciare subito la stanza "
-                            f"(scrivi solo '{exit_trigger_message}' senza apici e senza scrivere altro)."
-                            f"Ogni messaggio che invii deve avere al massimo {max_message_size} caratteri (spazi inclusi).")
+                            f"(scrivi solo `'{exit_trigger_message}'` senza apici e senza scrivere altro).\n\n"
+                            f"Ogni messaggio che invii deve avere al massimo **{max_message_size} caratteri** (spazi inclusi).")
     joined_message = f"[JOINED_MSG] Un nuovo agente è entrato nella stanza: **<SOME_NAME>**"
     left_message = f"[LEFT_MSG] Un agente ha lasciato la stanza: **<SOME_NAME>**"
     disconnected_message = f"[DISCO_MSG] Un agente si è disconnesso: **<SOME_NAME>**"
@@ -128,6 +130,20 @@ class Config:
     vote_form_name = "voto"
     vote_human_label = "Umano"  # The option labels of the form (what a widget draws on its buttons)
     vote_ai_label = "Artificiale"
+    # Post-vote reveal uses the real identities from this session, including the voter.
+    vote_result_title = 'La stanza si svela'
+    vote_result_context = 'I partecipanti della tua sessione, te incluso.'
+    vote_result_roster_title = 'Partecipanti'
+    vote_result_human_label = 'Umano'
+    vote_result_alias_header = 'Pseudonimo'
+    vote_result_actual_header = 'Identità reale'
+    vote_result_outcome_header = 'Esito'
+    vote_result_correct = 'Corretto'
+    vote_result_wrong = 'Sbagliato'
+    vote_result_your_vote = 'Il tuo voto'
+    vote_result_no_vote = 'Voto non disponibile'
+    vote_result_self = 'Tu'
+    vote_result_score = 'Hai indovinato {correct} su {total} partecipanti.'
     vote_all_humans_shortcut = "tutti"  # Everybody was a person
     vote_all_ai_shortcut = "nessuno"  # Nobody was a person
     vote_instruction = (f"Devi individuare le persone vere tra le seguenti: <OTHER_NAMES>. "
