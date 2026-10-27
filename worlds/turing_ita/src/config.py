@@ -17,7 +17,7 @@
 # Generic options to configure the Turing Test Hotel
 # All time measures are in SECONDS.
 class Config:
-    skip_form_check = False # If True, the user is not required to fill the form to enter the hotel
+    skip_form_check = True # If True, the user is not required to fill the form to enter the hotel
     form = {True: '@4TRNFkTLNUSO9lUV9UW80TM1UTMxITN4cTMuknc05WZmwmc19Fcw1DczV3PtJ3bmdXZpZ3LRFmRLFWYUFHcLx2cz1SUJRzQO'
                   'NlaNp0UsFTO1dzNzVkcJhkamxkdLJjM2lGN6plZTxUUwlUQGFzLl9CZvMXby9mZv02bj5S'
                   'Zsd2bvdmLzN2bk9yL6MHc0RHa',  # Humans
