@@ -17,16 +17,17 @@
 # Generic options to configure the Turing Test Hotel
 # All time measures are in SECONDS.
 class Config:
-    skip_form_check = True # If True, the user is not required to fill the form to enter the hotel
-    form = {True: '@4TRNFkTLNUSO9lUV9UW80TM1UTMxITN4cTMuknc05WZmwmc19Fcw1DczV3PtJ3bmdXZpZ3Ln9EVn5GShhVWrVGNxw2VnVGei'
-                  'lGUQhldJNGUthlaKJTcy1EO2lXSyIlR002a4AFZTxUUwlUQGFzLl9CZvMXby9mZv02bj5SZ'
-                  'sd2bvdmLzN2bk9yL6MHc0RHa',  # Humans
-            False: '@c2bsFWak1DczV3PtJ3bmdXZpZ3LBZ3NBhUSP92ZaNXM3dValBXel5WLkd2VwcXW1FGTjF2R1FXY0gUZK9USYJWd3hjZTxUU'
-                   'wlUQGFzLl9CZvMXby9mZv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa'}  # AIs
-    registered_users_form_sheets = {True: '@MmbxsWQWpXYT1EaQRTNvFnaPFVSxs2TrhjQ6p0N4gVLkVWQYlzMoFlU0EWMvQ2LzRXZlh2ck'
-                                          'FWZyB3cv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa',  # Humans
-                                    False: '@8WOvlXN1olUmRUWDhFeDRjTy90SRRFbLFjVu1iVxRDMBhHOyU2VZVVSk1WMvQ2LzRXZlh2c'
-                                           'kFWZyB3cv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa'}  # AIs
+    skip_form_check = False # If True, the user is not required to fill the form to enter the hotel
+    form = {True: '@4TRNFkTLNUSO9lUV9UW80TM1UTMxITN4cTMuknc05WZmwmc19Fcw1DczV3PtJ3bmdXZpZ3LRFmRLFWYUFHcLx2cz1SUJRzQO'
+                  'NlaNp0UsFTO1dzNzVkcJhkamxkdLJjM2lGN6plZTxUUwlUQGFzLl9CZvMXby9mZv02bj5S'
+                  'Zsd2bvdmLzN2bk9yL6MHc0RHa',  # Humans
+            False: '@4TRNFkTLNUSO9lUV9UW80TM1UTMxITN4cTMuknc05WZmwmc19Fcw1DczV3PtJ3bmdXZpZ3LRFmRLFWYUFHcLx2cz1SUJRzQO'
+                  'NlaNp0UsFTO1dzNzVkcJhkamxkdLJjM2lGN6plZTxUUwlUQGFzLl9CZvMXby9mZv02bj5S'
+                  'Zsd2bvdmLzN2bk9yL6MHc0RHa'}  # AIs (right now it is the same)
+    registered_users_form_sheets = {True: '@MmbxsWQWpXYT1EaQRTNvFnaPFVSxs2TrhjQ6p0N4gVLkVWQYlzMoFlU0EWMvQ2LzRXZlh2ckF'
+                                          'WZyB3cv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa',  # Humans
+                                    False: '@MmbxsWQWpXYT1EaQRTNvFnaPFVSxs2TrhjQ6p0N4gVLkVWQYlzMoFlU0EWMvQ2LzRXZlh2ckF'
+                                           'WZyB3cv02bj5SZsd2bvdmLzN2bk9yL6MHc0RHa'}  # AIs (right now it is the same)
     registered_users_form_column_id = 3  # Zero-based column index of the nickname in the spreadsheet
     broadcast_when_no_humans = False
     max_message_size = 512  # Set it to <= 0 to disable
