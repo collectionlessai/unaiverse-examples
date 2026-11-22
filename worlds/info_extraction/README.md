@@ -177,6 +177,9 @@ The extractor has no custom actions: `engage` and `process` are built-ins.
 
 ## How to run it
 
+The SmolVLM extractor also needs `accelerate` and `num2words` (both listed in the repository's
+`requirements.txt`).
+
 Open four terminals from this folder, world first:
 
 ```bash

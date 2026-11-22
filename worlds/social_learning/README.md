@@ -84,10 +84,11 @@ if 'tmp_role_preference' in profile.get_dynamic_profile():
 | [run_1.py](./run_1.py) | `DigitClassifier1` | teacher | `proc=None` |
 | [run_2.py](./run_2.py) | `DigitClassifier2` | student | `CNN(seed=42)`, Adam lr 0.001 |
 | [run_3.py](./run_3.py) | `DigitClassifier3` | student | `CNN(seed=52)`, Adam lr 0.0025 |
-| [run_4.py](./run_4.py) | `DigitClassifier4` | student_isolated (control) | `CNN(seed=62)`, Adam lr 0.005 |
+| [run_4.py](./run_4.py) | `DigitClassifier4` | student_isolated (control) | `CNN(seed=52)`, Adam lr 0.0025 (a clone of run_3) |
 | [run_demo.py](./run_demo.py) | `Test1` | student (diagnostic) | joins ~90s; prints error before vs after |
 
-Different seeds and learning rates make the best-student selection meaningful.
+Different seeds and learning rates make the best-student selection meaningful. The isolated student is a clone of
+`DigitClassifier3` (same seed, same learning rate), so the only difference between the two is the social step.
 
 ---
 

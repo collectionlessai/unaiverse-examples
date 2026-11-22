@@ -74,7 +74,7 @@ class WWorld(World):
                           args={"action_name": "process",
                                 "streams": ["<agent>:squLfLa"],
                                 "num_steps": 1000,
-                                "wait_completion": True}, ready=True)
+                                "wait_completion": True}, ready=True, avoid_changing_ready=True)
         behav.add_transit("hard_exam_in_progress", "eval_time_again", action="nop")
         behav.add_state("eval_time_again", action="evaluate",
                         args={"stream_hash": "<agent>:squLfLa", "how": "mse", "steps": 1000, "re_offset": True})

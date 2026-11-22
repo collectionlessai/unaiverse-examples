@@ -137,6 +137,11 @@ class WAgent(Agent):
         best_student = next(iter(self._valid_cmp_agents))  # This set has only 1 element
         other_not_isolated_students = not_isolated_students - {best_student}
 
+        # An isolated student has no public stream the others could read from: it cannot teach its peers
+        if best_student not in not_isolated_students:
+            log.user("The best student is isolated: skipping the social round")
+            return False
+
         log.user("===================== Best student and Other Not Isolated Students =========================")
         log.user(f"- Best Student: {best_student}")
         log.user(f"- Other Not Isolated Students: {other_not_isolated_students}")

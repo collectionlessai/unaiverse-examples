@@ -203,26 +203,25 @@ class WWorld(World):
         behav.set_welcome_message("Welcome to the Turing Hotel 🏨, it's amazing to have a new guest!")
 
         behav.add_state("init", action="init", blocking=False)
-        behav.add_state("ready", blocking=True, msg="🔗 Connecting to a randomly selected hotel manager",
+        behav.add_state("ready", blocking=True, msg='**Entering the hotel**\n\nConnecting to a randomly selected hotel manager…',
                         action="ready")
         behav.add_state("wait_for_ready", blocking=False,
-                        msg=f"⏳ Waiting outside (you will stay outside for {Config.decompression_time} seconds "
-                            f"to recover)")
+                        msg=f'**A pause outside**\n\nWaiting {Config.decompression_time} seconds before trying to enter again.')
         behav.add_state("reached_hotel_manager", blocking=False,
-                        msg="🏢 Entered the hotel (hotel manager contacted)")
-        behav.add_state("hall", blocking=True, msg="🏢 Walking through the hall (waiting to be sent to a floor)")
-        behav.add_state("wait_for_hall", blocking=False, msg="⏳ Waiting in the hall (decompression)")
+                        msg='**Hotel contacted**\n\nWaiting for the hotel manager to confirm the connection.')
+        behav.add_state("hall", blocking=True, msg='**In the hall**\n\nWaiting to be assigned to a floor.')
+        behav.add_state("wait_for_hall", blocking=False, msg=f'**A pause in the hall**\n\nWaiting {Config.decompression_time} seconds before the next floor assignment.')
         behav.add_state("reached_floor_manager", blocking=False,
-                        msg="🪜 Going upstairs (floor manager contacted)")
+                        msg='**Going upstairs**\n\nContacted the floor manager for the assigned floor.')
         behav.add_state("floor", blocking=False,
-                        msg="🪜 Reached the right floor (waiting to be sent to a room)")
+                        msg='**On the assigned floor**\n\nWaiting to be assigned to a room.')
         behav.add_state("ready_for_room", blocking=False)
         behav.add_state("room_round_table", blocking=True)
         behav.add_state("msg_prepared", blocking=False)
         behav.add_state("room_voting_booth", blocking=False,
-                        msg="🗳 Entered the voting booth (waiting for vote request)")
+                        msg='**In the voting booth**\n\nWaiting for the vote request.')
         behav.add_state("can_vote", blocking=True)
-        behav.add_state("vote_provided", blocking=True, msg="✅ Vote provided")
+        behav.add_state("vote_provided", blocking=True, msg='**Vote sent**\n\nWaiting to return to the hall.')
 
         behav.add_transit("init", "ready", action="check_confirmation")
         behav.add_transit("ready", "reached_hotel_manager", action="connect_to_hotel_manager")
@@ -242,8 +241,7 @@ class WWorld(World):
                           args={}, delay=Config.decompression_time, teleport=True)
         behav.add_transit("floor", "ready_for_room", action="send_guest_sponsor", args={})
         behav.add_transit("ready_for_room", "room_round_table", action="goto_room", args={},
-                          msg="💬 Entered the room, sitting at the chat table "
-                              "(waiting for the start message)",
+                          msg='**In the room**\n\nSeated at the conversation table, waiting for the start message.',
                           ready=False)
         behav.add_transit("room_round_table", "msg_prepared", action="process", args={},
                           avoid_changing_ready=True, high_priority=True)

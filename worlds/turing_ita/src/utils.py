@@ -1,7 +1,10 @@
+import os
 import re
+import sys
+import json
+import time
 import random
 import atexit
-import sys
 
 from rich import box
 from .config import Config
@@ -11,7 +14,7 @@ from rich.table import Table
 from rich.console import Group
 from unaiverse.utils.logger import log
 from unaiverse.utils.misc import build_unaid
-from unaiverse.uai import (ISSUE_UNKNOWN_OPTION, ReplyEvent, build_form, describe_answer, find_reply, gen_id,
+from unaiverse.uai import (ISSUE_UNKNOWN_OPTION, ReplyEvent, build_form, compose_chart, describe_answer, find_reply, gen_id,
                                 has_fence, interactive_fields, normalize_label, parse_message, parse_reply,
                                 serialize_block)
 
@@ -82,6 +85,54 @@ def build_survey_wire(fake_name: str, other_fake_names: list[str]) -> tuple[str,
             log.error(f"Unable to compose the vote form, sending the plain request: {e}")
             vote_form = None
     return format_message(Config.manager_fake_name, survey), vote_form
+
+
+def build_vote_result_wire(vote_dict: dict) -> str:
+    """Reveal the saved session roster, even after peers have left the room.
+
+    Only aliases and natures go on the wire; account identities remain in the vote record.
+    The voter is included so the list describes the complete roster; the chart only counts the voter's
+    scored guesses (correct vs. incorrect), and it is omitted when no guess could be scored.
+    """
+    roster = {alias: info[0] for alias, info in vote_dict["ground_truth"].items()}
+    roster[vote_dict["voter_fake_name"]] = vote_dict["voter_nature"]
+    # Use the exact form and canonical answer received, never infer a vote from the raw prose.
+    votes = read_vote(vote_dict.get("vote"), vote_dict.get("vote_form"))
+    rows = [
+        f"| {Config.vote_result_alias_header} | {Config.vote_result_actual_header} | "
+        f"{Config.vote_result_your_vote} | {Config.vote_result_outcome_header} |",
+        "| :--- | :--- | :--- | :--- |",
+    ]
+    correct = 0
+    total = 0
+    for alias, nature in sorted(roster.items()):
+        actual = Config.vote_result_human_label if nature == VOTE_HUMAN else "Bot"
+        chosen = "—"
+        if alias == vote_dict["voter_fake_name"]:
+            outcome = Config.vote_result_self
+        elif alias in votes:
+            chosen = Config.vote_result_human_label if votes[alias] == VOTE_HUMAN else "Bot"
+            is_correct = votes[alias] == nature
+            total += 1
+            correct += is_correct
+            outcome = f"✅ {Config.vote_result_correct}" if is_correct else f"❌ {Config.vote_result_wrong}"
+        else:
+            outcome = Config.vote_result_no_vote
+        # Alias values come from the world's fixed room-name list, not participant text.
+        rows.append(f"| {alias} | {actual} | {chosen} | {outcome} |")
+    score = Config.vote_result_score.format(correct=correct, total=total) if total else ""
+    wrong = total - correct
+    chart = compose_chart(
+        "bar",
+        [{"label": Config.vote_result_correct, "points": [[Config.vote_result_correct, correct]]},
+         {"label": Config.vote_result_wrong, "points": [[Config.vote_result_wrong, wrong]]}],
+        f"{Config.vote_result_correct}: {correct} - {Config.vote_result_wrong}: {wrong}",
+    ) if total else ""
+    body = "\n\n".join(part for part in [
+        f"### {Config.vote_result_title}", Config.vote_result_context, chart,
+        f"**{Config.vote_result_roster_title}**", "\n".join(rows), f"**{score}**" if score else "",
+    ] if part)
+    return format_message(Config.manager_fake_name, "[vote_result] \n\n" + body)
 
 
 def vote_list_values(form_spec: dict, text: str) -> tuple[dict[str, str] | None, list[str] | None]:
@@ -331,7 +382,7 @@ def parse_vote_msg(
             if n not in results:
                 results[n] = label
 
-    # Pattern 4: Answer-framing — "my guess is Ben, Cal" → human
+    # Pattern 4: Answer-framing - "my guess is Ben, Cal" → human
     frame = (r'(?:(?:my|I)\s+)?(?:guess|vote|answer|pick|choice|bet)'
              r'\s+(?:is|would\s+be|goes?\s+to|for)\s+')
     p_frame = re.compile(
@@ -351,7 +402,7 @@ def parse_vote_msg(
             for t in tokens:
                 results[norm(t)] = 'human'
 
-    # Pattern 6: Positional keywords — "bot, bot" or "human, bot, human"
+    # Pattern 6: Positional keywords - "bot, bot" or "human, bot, human"
     # When no agent names appear in the text, map keywords to agents by position
     if not results and len(all_agents) > 0:
         if not re.search(r'\b' + agent_re + r'\b', text, re.IGNORECASE):
@@ -366,6 +417,322 @@ def parse_vote_msg(
                             results[norm(agents[i])] = classify(m.group(1))
 
     return results
+
+
+
+def test_vote_result_reveal(monkeypatch):
+    """A reveal survives room cleanup and reaches the log without becoming another model turn."""
+    import asyncio
+    from types import SimpleNamespace
+    from unaiverse.uai import encode_reply, to_model_text
+    from .guest import WAgent
+
+    record = {"voter_fake_name": "Ivy", "voter_nature": VOTE_HUMAN,
+              "ground_truth": {"Roy": (VOTE_AI, "private-ai-id"),
+                               "Ada": (VOTE_HUMAN, "private-human-id")}}
+    wire = build_vote_result_wire(record)
+    assert wire.startswith("[vote_result] ")
+    # Without a scored guess there is nothing to chart: only the roster is revealed.
+    assert not any(p["type"] == "data" for p in parse_message(wire))
+    assert f"| Ada | {Config.vote_result_human_label} |" in wire
+    assert f"| Ivy | {Config.vote_result_human_label} |" in wire
+    assert "| Roy | Bot |" in wire
+    assert "private-" not in wire
+
+    # The saved answer makes correct and wrong guesses explicit; self is never scored.
+    form = build_vote_form(["Roy", "Ada"], form_id="results")
+    record["vote_form"] = form
+    record["vote"] = encode_reply(form, {"roy": VOTE_HUMAN, "ada": VOTE_HUMAN})
+    scored = build_vote_result_wire(record)
+    chart = next(p["spec"] for p in parse_message(scored) if p["type"] == "data")
+    assert chart["chart"] == "bar"
+    assert chart["series"] == [
+        {"label": Config.vote_result_correct, "points": [[Config.vote_result_correct, 1]]},
+        {"label": Config.vote_result_wrong, "points": [[Config.vote_result_wrong, 1]]},
+    ]
+    assert scored.index("```uai") < scored.index("| Ada |")
+    plain = to_model_text(scored)
+    assert f"{Config.vote_result_correct}: 1" in plain and "```" not in plain
+    assert f"| Ada | {Config.vote_result_human_label} | {Config.vote_result_human_label} | ✅ {Config.vote_result_correct} |" in scored
+    assert f"| Roy | Bot | {Config.vote_result_human_label} | ❌ {Config.vote_result_wrong} |" in scored
+    assert Config.vote_result_score.format(correct=1, total=2) in scored
+    assert f"| Ivy | {Config.vote_result_human_label} | — | {Config.vote_result_self} |" in scored
+    assert "private-" not in scored
+
+    # Missing, invalid and unrelated replies must not be labelled as wrong guesses.
+    for answer in (None, "Roy", encode_reply(dict(form, id="other"), {"roy": VOTE_HUMAN})):
+        record["vote"] = answer
+        unavailable = build_vote_result_wire(record)
+        assert "✅" not in unavailable and "❌" not in unavailable
+        assert Config.vote_result_no_vote in unavailable
+    record["vote"] = encode_reply(form, {"roy": VOTE_AI})
+    partial = build_vote_result_wire(record)
+    assert f"| Roy | Bot | Bot | ✅ {Config.vote_result_correct} |" in partial
+    assert f"| Ada | {Config.vote_result_human_label} | — | {Config.vote_result_no_vote} |" in partial
+    assert Config.vote_result_score.format(correct=1, total=1) in partial
+
+    # Even an ignored chat session shows the reveal, once, before goto_hall completes.
+    printed = []
+    monkeypatch.setattr(log, "user", printed.append)
+    guest = SimpleNamespace(_ignore_messages=True)
+    async def status(msg):
+        return await WAgent.get_status_msg(guest, msg)
+    guest.get_status_msg = status
+    assert asyncio.run(WAgent.goto_hall(guest, msg=wire)) is True
+    assert printed == [strip_service_tag(wire)]
+    assert asyncio.run(WAgent.goto_hall(guest)) is True
+    assert len(printed) == 1
+
+    # An all-correct vote still retains both bars, including the zero.
+    record["vote"] = encode_reply(form, {"roy": VOTE_AI, "ada": VOTE_HUMAN})
+    spec = next(p["spec"] for p in parse_message(build_vote_result_wire(record)) if p["type"] == "data")
+    assert [s["points"][0][1] for s in spec["series"]] == [2, 0]
+
+
+
+
+def test_vote_result_never_calls_processor(monkeypatch):
+    """A reveal is log-only, both during and after a session, even with a process UUID."""
+    import asyncio
+    from types import SimpleNamespace
+    from .guest import WAgent
+
+    printed = []
+    monkeypatch.setattr(log, "user", printed.append)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Vote results must never reach the processor")
+
+    wire = build_vote_result_wire({"voter_fake_name": "Ivy", "voter_nature": VOTE_HUMAN,
+                                   "ground_truth": {"Roy": (VOTE_AI, "private-id")}})
+    for ignored in (False, True):
+        events = ["previous chat event"]
+        guest = SimpleNamespace(_ignore_messages=ignored, _pending_events=events,
+                                _WAgent__push_to_processor=forbidden, process=forbidden,
+                                send=forbidden, uai_remember_form=forbidden,
+                                stdin=SimpleNamespace(set=forbidden))
+        assert asyncio.run(WAgent.get_status_msg(guest, msg=wire, process_uuid="unused")) is True
+        assert guest._pending_events == ["previous chat event"]
+        assert guest._ignore_messages is ignored
+    assert printed == [strip_service_tag(wire)] * 2
+
+
+def test_floor_manager_vote_reveal():
+    """Early and late stream delivery both produce a scored reveal from the recorded vote."""
+    import asyncio
+    import json
+    from types import MethodType, SimpleNamespace
+    from unaiverse.interaction import CompletionReason
+    from unaiverse.streams import Stream
+    from unaiverse.streams.dataprops import DataProps
+    from unaiverse.uai import encode_reply
+
+    async def load_manager():
+        # The role installs its executor at import time, so import it inside a live loop.
+        from .floor_manager import GuestStatus, WAgent
+        return GuestStatus, WAgent
+    GuestStatus, WAgent = asyncio.run(load_manager())
+    vote_form = build_vote_form(["Roy"], form_id="received")
+    vote_wire = encode_reply(vote_form, {"roy": VOTE_AI})
+
+    def setup():
+        sent, ejected, statuses = [], [], []
+        stream = Stream(props=DataProps(name="processor", data_type="text"))
+        room = SimpleNamespace(
+            id="room", fake_name_of=lambda guest: "Ivy",
+            get_fake_names_seen_by=lambda alias: {"Roy", "Ivy"},
+            get_unaid_of=lambda guest: "private-voter-id",
+            get_ground_truth_of=lambda guest: VOTE_HUMAN,
+            get_ground_truth_of_fake_name=lambda alias: VOTE_AI,
+            get_unaid_of_fake_name=lambda alias: "private-ai-id",
+            guest_whose_fake_name_is=lambda alias: "bot",
+            count_messages_recv_by=lambda **kwargs: 1,
+            set_status=lambda guest, status: statuses.append(status),
+            get_status=lambda guest: statuses[-1] if statuses else GuestStatus.IN_VOTING_BOOTH,
+            count_human_guests=lambda: 1,
+            age=0,
+        )
+        room.get_time_in_current_status = lambda guest: room.age
+        floor = SimpleNamespace(id="floor", is_in_a_room=lambda guest: guest not in ejected,
+                                get_hotel_manager_of=lambda guest: "hotel",
+                                get_room_of=lambda guest: room)
+        async def send(**kwargs):
+            sent.append(kwargs)
+            return True
+        manager = SimpleNamespace(floor=floor, get_peer_id=lambda: "manager", send=send,
+                                  _guest2vote_info={"guest": ["vote-uuid", None, vote_form]},
+                                  world_agents={"guest": object()},
+                                  get_stream=lambda *args, **kwargs: stream,
+                                  _WAgent__eject_and_clear_guest=ejected.append)
+        manager._WAgent__return_guest_to_hall = MethodType(WAgent._WAgent__return_guest_to_hall, manager)
+        manager.guest_back_to_hall = MethodType(WAgent.guest_back_to_hall, manager)
+        return manager, stream, sent, ejected, statuses
+
+    for early_delivery in (False, True):
+        manager, stream, sent, ejected, statuses = setup()
+        if early_delivery:
+            stream.set(vote_wire, uuid="vote-uuid")
+        completed = SimpleNamespace(target=["guest"], completion_reason=CompletionReason.OK)
+        assert asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed)) is True
+        assert statuses == [GuestStatus.AWAITING_VOTE_DATA]
+        assert not sent and not ejected
+        if not early_delivery:
+            # Completion can arrive first. No reveal and no disconnection before the answer arrives.
+            assert asyncio.run(WAgent.send_votes(manager)) is False
+            assert not sent and not ejected
+            assert manager._guest2vote_info["guest"][1]["vote"] is None
+            stream.set(vote_wire, uuid="vote-uuid")
+        assert asyncio.run(WAgent.send_votes(manager)) is True
+        hall = next(s for s in sent if s.get("action_name") == "goto_hall")
+        assert hall["target"] == "guest" and hall["from_state"] == "vote_provided"
+        reveal = hall["action_kwargs"]["msg"]
+        assert reveal.startswith("[vote_result] ") and "private-" not in reveal
+        assert f"| Roy | Bot | Bot | ✅ {Config.vote_result_correct} |" in reveal
+        assert Config.vote_result_no_vote not in reveal
+        assert ejected == ["guest"]
+        packet = json.loads(next(s["data_samples"]["votes"] for s in sent if "data_samples" in s))[0]
+        assert packet["vote"] == vote_wire and packet["vote_form"] == vote_form
+        assert packet["ground_truth"] == {"Roy": [VOTE_AI, "private-ai-id"]}
+        assert manager._guest2vote_info == {}
+        sent.clear()
+        assert asyncio.run(WAgent.send_votes(manager)) is False
+        assert not sent  # A later tick cannot send a duplicate result or vote.
+
+    manager, stream, sent, ejected, statuses = setup()
+    completed = SimpleNamespace(target=["guest"], completion_reason=CompletionReason.TIMEOUT)
+    assert asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed)) is True
+    assert not sent and not ejected
+    # Explicit removal before voting still returns from can_vote, with no reveal.
+    assert asyncio.run(WAgent.guest_back_to_hall(manager, guest="guest")) is True
+    hall = next(s for s in sent if s["action_name"] == "goto_hall")
+    assert hall["from_state"] == "can_vote" and hall["action_kwargs"] == {}
+
+    # Missing output cannot strand a guest indefinitely or trigger another processor request.
+    manager, stream, sent, ejected, statuses = setup()
+    completed.completion_reason = CompletionReason.OK
+    asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed))
+    assert asyncio.run(WAgent._WAgent__handle_single_guest_by_status(manager, "guest")) is True
+    assert not sent
+    manager.floor.get_room_of("guest").age = Config.survey_reply_time + 1
+    assert asyncio.run(WAgent._WAgent__handle_single_guest_by_status(manager, "guest")) is True
+    hall = next(s for s in sent if s.get("action_name") == "goto_hall")
+    assert hall["from_state"] == "vote_provided" and hall["action_kwargs"] == {}
+    assert ejected == ["guest"]
+
+    # A peer who disconnects while the answer is in transit is removed without a fake result.
+    manager, stream, sent, ejected, statuses = setup()
+    completed.completion_reason = CompletionReason.OK
+    asyncio.run(WAgent.guest_back_to_hall(manager, interaction=completed))
+    manager.world_agents.clear()
+    assert asyncio.run(WAgent.send_votes(manager)) is False
+    assert not sent and manager._guest2vote_info == {}
+
+
+
+def test_floor_assignment_packs_floors(monkeypatch):
+    """Fill lonely guests hotel-wide, count in-flight arrivals, open new rooms on the busiest floor before
+    overbooking, and do not send a guest back to the room he just left."""
+    from collections import Counter
+    from .hotel import Hotel
+
+    monkeypatch.setattr(Config, "max_guests_per_room", 2)
+    monkeypatch.setattr(Config, "max_overbooked_guests", 1)
+
+    def hotel():
+        result = Hotel(managed_guest_profiles={})
+        # Add in reverse order to ensure discovery order is not the tie-breaker.
+        result.add_floor("b", "manager-b", ["b1", "b2"])
+        result.add_floor("a", "manager-a", ["a1", "a2"])
+        return result
+
+    structure = hotel()
+    assigned, remaining = compute_check_in_proposals(structure, [f"g{i}" for i in range(7)])
+    assert not remaining
+    assert Counter(p["floor_id"] for p in assigned.values()) == {"a": 4, "b": 3}
+    assert all(room.count_guests(count_temp_too=True) <= 2 for room in structure.get_rooms())
+
+    # Successive hotel cycles can run before any floor update has arrived.
+    structure = hotel()
+    assigned, _ = compute_check_in_proposals(structure, ["g0", "g1", "g2"])
+    for guest, proposal in assigned.items():
+        structure.add_expected_guest(guest, structure.get_floor(proposal["floor_id"]))
+    assigned, _ = compute_check_in_proposals(structure, ["g3", "g4"])
+    assert Counter(p["floor_id"] for p in assigned.values()) == {"a": 1, "b": 1}
+    for guest, proposal in assigned.items():
+        structure.add_expected_guest(guest, structure.get_floor(proposal["floor_id"]))
+    assigned, _ = compute_check_in_proposals(structure, ["g5", "g6"])
+    assert {p["floor_id"] for p in assigned.values()} == {"b"}
+
+    # Prefer a floor already in use even when its identity sorts after an empty one.
+    structure = hotel()
+    floor = structure.get_floor("b")
+    room = floor.get_room("b1")
+    floor.insert("present", None, "hotel", room, assign_fake_name=False)
+    structure.add_expected_guest("present", floor)  # An update already placed this guest; do not count twice.
+    assigned, remaining = compute_check_in_proposals(structure, [f"new{i}" for i in range(5)])
+    assert not remaining and Counter(p["floor_id"] for p in assigned.values()) == {"b": 3, "a": 2}
+
+    # Floor-manager room allocation still fills a singleton before opening another room.
+    assigned, remaining = compute_check_in_proposals(floor, ["peer"])
+    assert not remaining and assigned["peer"]["room_id"] == "b1"
+
+    # Exhausted floors leave excess guests waiting instead of exceeding room limits.
+    structure = hotel()
+    guests = [f"capacity{i}" for i in range(14)]
+    assigned, remaining = compute_check_in_proposals(structure, guests)
+    assert len(assigned) == 12 and len(remaining) == 2
+    assert set(assigned).isdisjoint(remaining)
+    assert set(assigned) | set(remaining) == set(guests)
+    assert all(room.count_guests(count_temp_too=True) == 3 for room in structure.get_rooms())
+
+    # A lonely guest on another floor comes before a busier floor (e.g., the room a guest just left)
+    structure = hotel()
+    floor_a, floor_b = structure.get_floor("a"), structure.get_floor("b")
+    floor_a.insert("busy", None, "hotel", floor_a.get_room("a1"), assign_fake_name=False)
+    floor_a.insert("busier", None, "hotel", floor_a.get_room("a1"), assign_fake_name=False)
+    floor_b.insert("lonely", None, "hotel", floor_b.get_room("b1"), assign_fake_name=False)
+    monkeypatch.setattr(Config, "max_guests_per_room", 3)
+    assigned, _ = compute_check_in_proposals(structure, ["back"])
+    assert assigned["back"] == {"floor_id": "b", "room_id": "b1"}
+
+    # Same, when the lonely guest was just sent upstairs and no floor update reported him yet
+    structure = hotel()
+    floor_a = structure.get_floor("a")
+    floor_a.insert("busy", None, "hotel", floor_a.get_room("a1"), assign_fake_name=False)
+    floor_a.insert("busier", None, "hotel", floor_a.get_room("a1"), assign_fake_name=False)
+    structure.add_expected_guest("in_flight", structure.get_floor("b"))
+    assigned, _ = compute_check_in_proposals(structure, ["back"])
+    assert assigned["back"]["floor_id"] == "b"
+
+    # A guest waits alone in a new room rather than overbooking a full one
+    monkeypatch.setattr(Config, "max_guests_per_room", 2)
+    structure = hotel()
+    floor_a = structure.get_floor("a")
+    for room_id in ("a1", "a2"):
+        for i in range(2):
+            floor_a.insert(f"{room_id}-{i}", None, "hotel", floor_a.get_room(room_id), assign_fake_name=False)
+    assigned, _ = compute_check_in_proposals(structure, ["new"])
+    assert assigned["new"]["floor_id"] == "b"
+
+    # The room a guest just left is avoided, even when it has a lonely guest or some free spots...
+    for left_behind in (["mate"], ["mate", "other"]):
+        structure = hotel()
+        floor_a = structure.get_floor("a")
+        for guest in left_behind:
+            floor_a.insert(guest, None, "hotel", floor_a.get_room("a1"), assign_fake_name=False)
+        assigned, _ = compute_check_in_proposals(structure, ["back", "new"], {"back": "a1"})
+        assert assigned["back"]["room_id"] != "a1"
+
+    # ... but it is better than waiting in the hall
+    structure = hotel()
+    for floor in structure.get_floors():
+        for room in floor.get_rooms():
+            for i in range(3 if room.id != "a1" else 2):
+                floor.insert(f"{room.id}-{i}", None, "hotel", room, assign_fake_name=False)
+    assigned, remaining = compute_check_in_proposals(structure, ["back"], {"back": "a1"})
+    assert not remaining and assigned["back"]["room_id"] == "a1"
+
+    empty = Hotel(managed_guest_profiles={})
+    assert compute_check_in_proposals(empty, ["waiting"]) == ({}, ["waiting"])
 
 
 def test_vote_form_roundtrip():
@@ -930,107 +1297,96 @@ def test_parse_vote_msg_letters():
     print(f"\n{passed}/{total} passed")
 
 
-def compute_check_in_proposals(structure, guests_to_check_in: list):
+def compute_check_in_proposals(structure, guests_to_check_in: list, previous_rooms: dict | None = None):
+    """Propose a room to each guest: rooms with a lonely guest first, then rooms with some free spots, then
+    a new room (on the busiest floor, when the structure is the hotel), and overbooking only when there is
+    no empty room left.
+
+    Opening a new room means that a guest waits alone for somebody else: this is preferred to crowding a
+    room beyond its capacity. The room-filling priority is hotel-wide: a lonely guest on a floor is served
+    before a busier floor gets more people. In the hotel, the guests already sent upstairs but not yet
+    reported by the floor updates keep their seats, otherwise the rooms they are going to look emptier than
+    they are (and a new guest ends up alone, or back to the only room that looks populated).
+
+    previous_rooms (guest -> room ID) are the rooms the guests just left: a guest is sent back to his
+    previous room only if there is no other room for him.
+    """
     # Clearing temp room assignments (if any)
     for room in structure.get_rooms():
         room.clear_temp_assignments()
 
+    # Reserving the seats of the guests in flight (the floor will pick their rooms with this same policy)
+    if hasattr(structure, "get_floors"):
+        for floor in structure.get_floors():
+            pending_guests = sorted(set(floor.get_expected_guests()) - set(floor.get_guests()))
+            if len(pending_guests) > 0:
+                _compute_room_check_ins(floor, pending_guests)
+
+    return _compute_room_check_ins(structure, guests_to_check_in, previous_rooms)
+
+
+def _compute_room_check_ins(structure, guests_to_check_in: list, previous_rooms: dict | None = None):
+    """Apply the room-filling policy without clearing reservations from this check-in cycle."""
     # Data that will be returned
     proposed_check_ins = {}  # Checked in guests (peer ID to dictionary {"floor_id": FLOOR_ID, "room_id": ROOM_ID})
     cannot_check_in = []  # Guests for which check in was not possible (no free rooms for them)
+    previous_rooms = previous_rooms if previous_rooms is not None else {}
 
-    # Shuffling guests waiting in the hall
+    def floor_of(_room):
+        return structure.get_floor_of_room(_room.id) if hasattr(structure, "get_floor_of_room") else structure
+
+    # In the hotel, a new room is opened on the busiest floor, to keep the active floors packed
+    # (stable manager identities break ties, so all the hotel managers open the same floor)
+    def busiest_floor_first(_room):
+        if not hasattr(structure, "get_floor_of_room"):
+            return 0, ""
+        _floor = floor_of(_room)
+        return -sum(r.count_guests(count_temp_too=True) for r in _floor.get_rooms()), _floor.floor_manager
+
+    def best_room(_rooms):
+        """The room with the highest priority (None if no room can accept a guest)."""
+        _lonely, _free, _empty, _overbooked = [], [], [], []
+        for _room in _rooms:
+            _count = _room.count_guests(count_temp_too=True)
+            if _count == 0:
+                _empty.append(_room)
+            elif _room.are_fake_names_clashing():
+                continue
+            elif _count == 1:
+                _lonely.append(_room)
+            elif _count < Config.max_guests_per_room:
+                _free.append(_room)
+            elif _count < Config.max_guests_per_room + Config.max_overbooked_guests:
+                _overbooked.append(_room)
+
+        # Guests are spread over the rooms of the same kind (the less crowded first, ties are random)
+        for _candidates in (_lonely, _free):
+            if len(_candidates) > 0:
+                return min(_candidates, key=lambda r: r.count_guests(count_temp_too=True))
+        if len(_empty) > 0:
+            return sorted(_empty, key=busiest_floor_first)[0]
+        if len(_overbooked) > 0:
+            return min(_overbooked, key=lambda r: r.count_guests(count_temp_too=True))
+        return None
+
+    # Shuffling guests waiting in the hall and rooms (rooms order breaks ties)
     guests_to_check_in = random.sample(guests_to_check_in, len(guests_to_check_in))
+    rooms = random.sample(list(structure.get_rooms()), len(structure.rooms))
 
-    # Init counters and conditioning variables
-    g = 0
-    sc = 0
-    so = 0
-    critical_rooms = []
-    ordinary_rooms = []
-    randomize_rooms_considering_updated_counts = True
+    # Consider guests one by one, re-counting room occupation (temp assignments included) each time
+    for g, guest in enumerate(guests_to_check_in):
+        previous_room = previous_rooms.get(guest)
+        room = best_room([r for r in rooms if r.id != previous_room])
+        if room is None:
+            room = best_room(rooms)  # The previous room is better than waiting in the hall
 
-    # Consider guests one by one
-    while g < len(guests_to_check_in):
+        # No ways, no spots left at all
+        if room is None:
+            cannot_check_in = guests_to_check_in[g:]
+            break
 
-        # We shuffle and re-count room occupation at the beginning and whenever we looped over all the rooms
-        if randomize_rooms_considering_updated_counts:
-
-            # Shuffling rooms (all of them, despite being full or empty or whatever)
-            rooms = random.sample(list(structure.get_rooms()), len(structure.rooms))
-
-            # Filtering: rooms with only 1 guest (critical rooms)
-            critical_rooms = [r for r in rooms
-                              if r.count_guests(count_temp_too=True) == 1 and
-                              not r.are_fake_names_clashing()]
-
-            # Filtering: rooms with that can still accept guests (ordinary rooms)
-            ordinary_rooms = [r for r in rooms
-                              if (1 < r.count_guests(count_temp_too=True) < Config.max_guests_per_room) and
-                              not r.are_fake_names_clashing()]
-
-            # Ops, no free spots in rooms with somebody already there: go overbooking!
-            # (of course, there are no critical rooms in this case)
-            if len(critical_rooms) + len(ordinary_rooms) == 0:
-                ordinary_rooms = [r for r in rooms
-                                  if (1 < r.count_guests(count_temp_too=True) < (Config.max_guests_per_room +
-                                                                                 Config.max_overbooked_guests) and
-                                      not r.are_fake_names_clashing())]
-
-            # Ops (x2), overbooking did not help! Let's consider empty rooms, one by one
-            if len(critical_rooms) + len(ordinary_rooms) == 0:
-                empty_rooms = [r for r in rooms
-                               if r.count_guests(count_temp_too=True) == 0]
-                if len(empty_rooms) > 0:
-                    ordinary_rooms = [empty_rooms[0]]  # We only take the first one, so we will fill it before switching
-
-            # Ops (x3), no ways, no spots left at all, ...
-            if len(critical_rooms) + len(ordinary_rooms) == 0:
-                cannot_check_in = guests_to_check_in[g:]
-                return proposed_check_ins, cannot_check_in
-
-            # Blocking re-counts
-            randomize_rooms_considering_updated_counts = False
-
-        # Getting guest
-        guest = guests_to_check_in[g]
-
-        # First: try to send the guest to one of the critical rooms
-        if sc < len(critical_rooms):
-            room = critical_rooms[sc]
-            if hasattr(structure, "get_floor_of_room"):
-                floor = structure.get_floor_of_room(room.id)
-            else:
-                floor = structure
-            sc += 1
-
-            # If the floor is valid, we assign the guest to it
-            proposed_check_ins[guest] = {"floor_id": floor.id, "room_id": room.id}
-            room.add_temp_assignment(guest)
-
-        # Second: we try to send the guest somewhere else, using a general criterion
-        if guest not in proposed_check_ins and so < len(ordinary_rooms):
-            room = ordinary_rooms[so]
-            if hasattr(structure, "get_floor_of_room"):
-                floor = structure.get_floor_of_room(room.id)
-            else:
-                floor = structure
-            so += 1
-
-            # If the floor is valid, we assign the guest to it
-            proposed_check_ins[guest] = {"floor_id": floor.id, "room_id": room.id}
-            room.add_temp_assignment(guest)
-
-        # Third: if we went over all the rooms, we recount their occupation (considering also temp assignments
-        # we did so far) and we will go over them again
-        if so >= len(ordinary_rooms):
-            sc = 0  # Reset
-            so = 0  # Reset
-            randomize_rooms_considering_updated_counts = True
-
-        # If the current guest was checked-in, we move to the next one, otherwise we will reconsider the guest
-        if guest in proposed_check_ins:
-            g += 1
+        proposed_check_ins[guest] = {"floor_id": floor_of(room).id, "room_id": room.id}
+        room.add_temp_assignment(guest)
 
     return proposed_check_ins, cannot_check_in
 
@@ -1092,6 +1448,41 @@ def normalize_event(msg: str) -> str:
 
 def unformat_message(msg: str) -> list[str]:
     return msg[len(Config.sender_prefix):].split(Config.sender_suffix, 1)
+
+
+def dump_monitor_status(agent, role: str, build_status) -> None:
+    """Dump the status of a manager as a JSON file in Config.monitor_dir, read by the monitor TUI
+    (zoo/netcup_servers/turing_ita.py), one file per manager, named after its role and peer ID.
+
+    It is throttled to one dump every Config.monitor_every seconds and written atomically (temp file and rename),
+    so a reader never sees half a file. Any failure is swallowed: monitoring must never hurt the hotel.
+
+    Args:
+        agent: The manager (hotel or floor manager) whose status is dumped.
+        role: The role of the manager, as it will appear in the file name.
+        build_status: A function returning the role-specific part of the status (a JSON-serializable dict).
+    """
+    if not Config.monitor_dir:
+        return
+    now = time.time()
+    if now - getattr(agent, "_monitor_dumped_at", 0.) < Config.monitor_every:
+        return
+    agent._monitor_dumped_at = now
+    try:
+        peer_id = agent.get_peer_id()
+        status = {"role": role, "peer_id": peer_id, "unaid": build_unaid(agent.get_profile()), "pid": os.getpid(),
+                  "time": now, "max_guests_per_room": Config.max_guests_per_room,
+                  "max_overbooked_guests": Config.max_overbooked_guests, "test_duration": Config.test_duration,
+                  "survey_reply_time": Config.survey_reply_time,
+                  "broadcast_when_no_humans": Config.broadcast_when_no_humans, **build_status()}
+        folder = os.path.expanduser(Config.monitor_dir)
+        os.makedirs(folder, exist_ok=True)
+        path = os.path.join(folder, f"{role}-{peer_id}.json")
+        with open(path + ".tmp", "w") as f:
+            json.dump(status, f, default=str)
+        os.replace(path + ".tmp", path)
+    except Exception as e:
+        log.error(f"Unable to dump the monitor status ({e})")
 
 
 def print_live(structure, status_msg: str):

@@ -137,6 +137,13 @@
             "msg": "&#128282; Waiting while students leave...",
             "blocking": true,
             "time_to_wait_before_acting": 3.0
+        },
+        "subscribing": {
+            "action": null,
+            "action_kwargs": {},
+            "msg": null,
+            "blocking": true,
+            "time_to_wait_before_acting": 0.0
         }
     },
     "transitions": {
@@ -352,7 +359,7 @@
                     "action": "compare_eval",
                     "action_kwargs": {
                         "cmp": "min",
-                        "thres": 1.0
+                        "thres": 0.5
                     },
                     "msg": null,
                     "ready": true,
@@ -380,19 +387,6 @@
         "best_found": [
             {
                 "on": {
-                    "action": "social_round",
-                    "action_kwargs": {},
-                    "msg": null,
-                    "ready": true,
-                    "high_priority": false,
-                    "max_duration": 0.0,
-                    "retry_timeout": 0.0,
-                    "delay": 0.0
-                },
-                "goto": "best_teaching"
-            },
-            {
-                "on": {
                     "action": "nop",
                     "action_kwargs": {},
                     "msg": null,
@@ -402,7 +396,7 @@
                     "retry_timeout": 0.0,
                     "delay": 0.0
                 },
-                "goto": "change_lecture"
+                "goto": "subscribing"
             }
         ],
         "best_not_found": [
@@ -467,6 +461,34 @@
                     "delay": 0.0
                 },
                 "goto": "wait_for_disengagement"
+            }
+        ],
+        "subscribing": [
+            {
+                "on": {
+                    "action": "social_round",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 2.0
+                },
+                "goto": "best_teaching"
+            },
+            {
+                "on": {
+                    "action": "nop",
+                    "action_kwargs": {},
+                    "msg": null,
+                    "ready": true,
+                    "high_priority": false,
+                    "max_duration": 0.0,
+                    "retry_timeout": 0.0,
+                    "delay": 2.5
+                },
+                "goto": "change_lecture"
             }
         ],
         "best_teaching": [

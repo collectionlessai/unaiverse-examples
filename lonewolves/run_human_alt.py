@@ -17,8 +17,8 @@ Custom.SKIP_WAS_ALIVE_CHECK = True
 
 # Agent
 agent = Agent(proc=HumanModule(),
-              proc_inputs=["text", "img", "all"],
-              proc_outputs=["text"] if cmd_args.no_img else ["text", "img"])
+              proc_inputs=["text", "img", "file", "all"],
+              proc_outputs=["text"] if cmd_args.no_img else ["text", "img", "file"])
 
 # Node hosting agent
 node_agent = Node(agent, node_name=cmd_args.node, hidden=False, clock_delta=1. / 25.)

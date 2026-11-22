@@ -20,49 +20,49 @@
         "ready": {
             "action": "ready",
             "action_kwargs": {},
-            "msg": "&#128279; Connecting to a randomly selected hotel manager",
+            "msg": "**Entering the hotel**\n\nConnecting to a randomly selected hotel manager&#8230;",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "wait_for_ready": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9203; Waiting outside (you will stay outside for 90 seconds to recover)",
+            "msg": "**A pause outside**\n\nWaiting 90 seconds before trying to enter again.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "reached_hotel_manager": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#127970; Entered the hotel (hotel manager contacted)",
+            "msg": "**Hotel contacted**\n\nWaiting for the hotel manager to confirm the connection.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "hall": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#127970; Walking through the hall (waiting to be sent to a floor)",
+            "msg": "**In the hall**\n\nWaiting to be assigned to a floor.",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         },
         "wait_for_hall": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9203; Waiting in the hall (decompression)",
+            "msg": "**A pause in the hall**\n\nWaiting 90 seconds before the next floor assignment.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "reached_floor_manager": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#129692; Going upstairs (floor manager contacted)",
+            "msg": "**Going upstairs**\n\nContacted the floor manager for the assigned floor.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
         "floor": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#129692; Reached the right floor (waiting to be sent to a room)",
+            "msg": "**On the assigned floor**\n\nWaiting to be assigned to a room.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
@@ -90,7 +90,7 @@
         "room_voting_booth": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#128499; Entered the voting booth (waiting for vote request)",
+            "msg": "**In the voting booth**\n\nWaiting for the vote request.",
             "blocking": false,
             "time_to_wait_before_acting": 0.0
         },
@@ -104,7 +104,7 @@
         "vote_provided": {
             "action": null,
             "action_kwargs": {},
-            "msg": "&#9989; Vote provided",
+            "msg": "**Vote sent**\n\nWaiting to return to the hall.",
             "blocking": true,
             "time_to_wait_before_acting": 0.0
         }
@@ -207,7 +207,7 @@
                 "on": {
                     "action": "goto_room",
                     "action_kwargs": {},
-                    "msg": "&#128172; Entered the room, sitting at the chat table (waiting for the start message)",
+                    "msg": "**In the room**\n\nSeated at the conversation table, waiting for the start message.",
                     "ready": false,
                     "high_priority": false,
                     "max_duration": 0.0,

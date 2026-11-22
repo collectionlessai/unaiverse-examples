@@ -483,7 +483,7 @@
                         "wait_completion": true
                     },
                     "msg": "&#128640; Send",
-                    "ready": false,
+                    "ready": true,
                     "high_priority": false,
                     "max_duration": 0.0,
                     "retry_timeout": 0.0,

@@ -81,7 +81,7 @@ class WWorld(World):
                                                for i in range(0, dummy_agent.get_num_rounds())]})
         behav.add_wildcards({"<learn_steps>": dummy_agent.get_teach_steps(),
                              "<eval_steps>": dummy_agent.get_eval_steps(),
-                             "<cmp_thres>": 1.0})
+                             "<cmp_thres>": 0.5})
 
         # Counting
         behav.add_state("engagement_complete", msg="🔔 Ready for the lecture")
@@ -112,8 +112,16 @@ class WWorld(World):
         # asks them to learn (via 'learn_from_student'), and asks the best to label (via 'teach'), all
         # back-to-back.
         behav.transitions["best_found"] = {}  # Clearing existing transitions, loaded from the template
-        behav.add_transit("best_found", "best_teaching", action="social_round")
-        behav.add_transit("best_found", "change_lecture", action="nop", args={})
+
+        # The social round starts a moment after the subscription request that manage_best_of_class sent on entering
+        # 'best_found': a student binds the streams of a request when the request arrives, so it must have subscribed
+        # to the best student's stream (its 'subscribe' action) before the request to learn from it arrives. The wait
+        # is in a state of its own, with no action (the action of 'best_found' must run once), and the fallback comes
+        # later, so that it never fires before the social round is tried.
+        behav.add_transit("best_found", "subscribing", action="nop", args={})
+        behav.add_state("subscribing", blocking=True)
+        behav.add_transit("subscribing", "best_teaching", action="social_round", delay=2.0)
+        behav.add_transit("subscribing", "change_lecture", action="nop", args={}, delay=2.5)
         behav.add_transit("best_teaching", "change_lecture", action="all_asks_done")
         behav.add_teleport("best_teaching", "change_lecture", action="nop",
                            delay="<others_learn_exam_timeout>", msg="⏰ Timeout!")

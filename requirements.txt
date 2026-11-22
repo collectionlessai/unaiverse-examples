@@ -1,3 +1,4 @@
+accelerate
 beautifulsoup4
 opencv-python
 Flask
@@ -8,6 +9,7 @@ matplotlib
 ntplib
 numpy
 nltk
+num2words
 Pillow
 prompt_toolkit
 protobuf

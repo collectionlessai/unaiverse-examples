@@ -14,6 +14,7 @@
 """
 import sys
 import copy
+import time
 import json
 import asyncio
 from .room import Room
@@ -54,6 +55,12 @@ class WAgent(Agent):
         # yet" apart from a real incoherence (without this, every end-of-conversation wave would race
         # the 3-seconds update cadence and reset the floor)
         self._ejected_ahead = {}
+
+        # The room where each guest had his last conversation (guest -> (room id, time)): a guest coming back
+        # from the hall is not sent there again, if there is another room for him (see
+        # compute_check_in_proposals). Only a completed conversation counts: a guest dropped by a floor
+        # (e.g., too slow to join) or disconnected never met anybody, and he can go back there
+        self._previous_rooms = {}
 
         # Agents fake names
         self.fake_names = Room.make_fake_names(letters=Config.use_letter_names)
@@ -138,7 +145,12 @@ class WAgent(Agent):
             return False
 
         # Proposing check-ins accordingly to the current status of the hotel
-        proposed_check_ins, _ = compute_check_in_proposals(self.hotel, guests_to_check_in)
+        # (the room a guest left is forgotten after a while, e.g., when he is the last one around)
+        now = time.time()
+        self._previous_rooms = {g: (r, t) for g, (r, t) in self._previous_rooms.items()
+                                if now - t < 2 * Config.test_duration}
+        previous_rooms = {g: r for g, (r, _) in self._previous_rooms.items()}
+        proposed_check_ins, _ = compute_check_in_proposals(self.hotel, guests_to_check_in, previous_rooms)
         self._proposed_check_ins.update(proposed_check_ins)
         return True
 
@@ -750,5 +762,8 @@ class WAgent(Agent):
     @action
     async def guest_back_to_hall(self, guest: str | None = None):
         assert guest is not None
+        floor = self.hotel.get_floor_of(guest)
+        if floor is not None and floor.is_in_a_room(guest):
+            self._previous_rooms[guest] = (floor.get_room_of(guest).id, time.time())
         self.__eject_ahead_of_updates(guest)
         return True
