@@ -84,8 +84,10 @@ class WAgent(Agent):
 
         # These variables start with "__" to protect them from the auto-clearing procedure
         self.__hotel_manager: str | None = None  # The peer ID of the selected hotel manager
+        self.__hotel_manager_on_tick = False
         self.__prev_hotel_manager: str | None = None
         self.__floor_manager: str | None = None  # The peer ID of the selected floor manager
+        self.__floor_manager_on_tick = False
         self.__queued_msgs: list[str] = []  # Messages waiting for the anti-flooding cooldown to expire
         self.__last_msg_sent_time: float = -1.  # When the last message was sent to the room (-1: never)
         self.__flood_warned: bool = False  # Whether the "too fast" notice was already printed in this burst
@@ -105,18 +107,22 @@ class WAgent(Agent):
         assert self.behav is not None
 
         # Checking if we lost connection to the hotel manager
-        if self.__hotel_manager is not None and await self.disconnected(agent=self.__hotel_manager):
+        if (self.__hotel_manager is not None and self.__hotel_manager_on_tick and
+                await self.disconnected(agent=self.__hotel_manager)):
             log.user("❌ Oops! Lost connection to the hotel manager!")
             self.__hotel_manager = None  # Clearing
+            self.__hotel_manager_on_tick = False
             await self.disconnect_floor_manager()  # Disconnecting floor manager too (will clear too)
 
             self.reset_status()
             await self.behav.act_ghost_transition(to_state="wait_for_ready")
 
         # Checking if we lost connection to the floor manager
-        elif self.__floor_manager is not None and await self.disconnected(agent=self.__floor_manager):
+        elif (self.__floor_manager is not None and self.__floor_manager_on_tick and
+              await self.disconnected(agent=self.__floor_manager)):
             log.user("❌ Oops! Lost connection to the floor manager!")
             self.__floor_manager = None
+            self.__floor_manager_on_tick = False
             await self.disconnect_hotel_manager()  # Disconnecting hotel manager (will clear too)
 
             self.reset_status()
@@ -221,13 +227,17 @@ class WAgent(Agent):
     async def hotel_manager_ack(self):
         if self.__hotel_manager is None:
             return False
-        return await self.connected(self.__hotel_manager, handshake_completed=True)
+        ack = await self.connected(self.__hotel_manager, handshake_completed=True)
+        if ack:
+            self.__hotel_manager_on_tick = True
+        return ack
 
     @action
     async def disconnect_hotel_manager(self):
         if self.__hotel_manager is not None:
             await self.disconnect(self.__hotel_manager)
             self.__hotel_manager = None
+            self.__hotel_manager_on_tick = False
         return True
 
     @action
@@ -255,13 +265,17 @@ class WAgent(Agent):
     async def floor_manager_ack(self):
         if self.__floor_manager is None:
             return False
-        return await self.connected(self.__floor_manager, handshake_completed=True)
+        ack = await self.connected(self.__floor_manager, handshake_completed=True)
+        if ack:
+            self.__floor_manager_on_tick = True
+        return ack
 
     @action
     async def disconnect_floor_manager(self):
         if self.__floor_manager is not None:
             await self.disconnect(self.__floor_manager)
             self.__floor_manager = None
+            self.__floor_manager_on_tick = False
         return True
 
     @action
